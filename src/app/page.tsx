@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, SearchCheck, PenTool, BrainCircuit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConnectSection } from '@/components/home/ConnectSection';
+import { SpotlightCard } from '@/components/ui/SpotlightCard';
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,7 +15,22 @@ export default function Home() {
     { id: '2', title: 'AWS Solutions Architect', type: 'Certification' },
     { id: '3', title: 'Learning Spanish', type: 'Language' },
     { id: '4', title: 'Organic Chemistry', type: 'Science' },
-    { id: '5', title: 'Project Management', type: 'Skill' }
+    { id: '5', title: 'Project Management', type: 'Skill' },
+    { id: '6', title: 'Machine Learning', type: 'Technology' },
+    { id: '7', title: 'Calculus I', type: 'Mathematics' },
+    { id: '8', title: 'World History', type: 'Subject' },
+    { id: '9', title: 'Python Programming', type: 'Technology' },
+    { id: '10', title: 'Japanese JLPT N5', type: 'Language' },
+    { id: '11', title: 'Photography', type: 'Art' },
+    { id: '12', title: 'CFA Level 1', type: 'Certification' },
+    { id: '13', title: 'Microeconomics', type: 'Economics' },
+    { id: '14', title: 'Anatomy and Physiology', type: 'Science' },
+    { id: '15', title: 'Creative Writing', type: 'Art' },
+    { id: '16', title: 'Data Structures and Algorithms', type: 'Technology' },
+    { id: '17', title: 'French B1', type: 'Language' },
+    { id: '18', title: 'PMP Certification', type: 'Certification' },
+    { id: '19', title: 'Graphic Design', type: 'Skill' },
+    { id: '20', title: 'Linear Algebra', type: 'Mathematics' }
   ].filter(res => res.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const steps = [
@@ -153,23 +169,20 @@ export default function Home() {
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {steps.map((step, i) => (
-              <motion.div 
-                key={i}
-                className="bg-[#1a1815]/50 rounded-2xl p-6 border border-white/5 text-center flex flex-col items-center"
-                variants={{
-                  hidden: { opacity: 0, y: 20 },
-                  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
-                }}
+            {steps.map((step, index) => (
+              <SpotlightCard
+                key={index}
+                className="flex flex-col items-center text-center group"
+                spotlightColor="rgba(245, 158, 11, 0.15)"
               >
-                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-6 text-accent">
-                  <step.icon className="w-6 h-6" />
+                <div className="h-14 w-14 rounded-2xl bg-[#1a1815] border border-white/5 flex items-center justify-center mb-6 shadow-inner group-hover:scale-110 transition-transform duration-300">
+                  <step.icon className="h-7 w-7 text-accent" />
                 </div>
-                <h3 className="text-white font-medium text-lg mb-2">{step.title}</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">
+                <h3 className="text-white font-medium text-lg mb-2 relative z-10">{step.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed relative z-10">
                   {step.description}
                 </p>
-              </motion.div>
+              </SpotlightCard>
             ))}
           </div>
         </motion.div>
