@@ -4,12 +4,11 @@ import { useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
-import Image from 'next/image';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export function ConnectSection() {
-  const sectionRef = useRef<HTMLElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
   useGSAP(() => {
@@ -36,7 +35,7 @@ export function ConnectSection() {
     // Calculate the total scrollable distance
     function getScrollAmount() {
       if (!track) return 0;
-      let trackWidth = track.scrollWidth;
+      const trackWidth = track.scrollWidth;
       return -(trackWidth - window.innerWidth);
     }
     
