@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { login, signup } from './actions';
+import { createClient } from '@/utils/supabase/client';
 import { BrainCircuit, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -10,18 +11,34 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     setError(null);
     const action = isLogin ? login : signup;
     const res = await action(formData);
-    
+
     // If we reach here, it means there was an error (successful login redirects)
     if (res?.error) {
       setError(res.error);
       setLoading(false);
     }
+  }
+
+  async function handleGoogleSignIn() {
+    setGoogleLoading(true);
+    setError(null);
+    const supabase = createClient();
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (oauthError) {
+      setError(oauthError.message);
+      setGoogleLoading(false);
+    }
+    // On success, Supabase redirects the browser to Google; no further action here.
   }
 
   return (
@@ -58,6 +75,23 @@ export default function LoginPage() {
           </p>
 
           <form action={handleSubmit} className="space-y-4 relative z-10">
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="name">
+                  Name
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Ada Lovelace"
+                  required
+                  className="w-full bg-[#1a1815] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="email">
                 Email
@@ -66,12 +100,13 @@ export default function LoginPage() {
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 placeholder="you@example.com"
                 required
                 className="w-full bg-[#1a1815] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="password">
                 Password
@@ -80,6 +115,7 @@ export default function LoginPage() {
                 id="password"
                 name="password"
                 type="password"
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
                 placeholder="••••••••"
                 required
                 className="w-full bg-[#1a1815] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
@@ -109,6 +145,34 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          <div className="flex items-center gap-3 my-6 relative z-10">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Or</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading}
+            aria-label={googleLoading ? 'Connecting to Google…' : undefined}
+            className="relative z-10 w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-3.5 px-4 rounded-xl transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {googleLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
+                  <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.46c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.58-5.17 3.58-8.81z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.92l-3.88-3c-1.08.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.94H1.28v3.1C3.25 21.3 7.31 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.29 14.29A7.2 7.2 0 0 1 4.9 12c0-.79.14-1.56.39-2.29v-3.1H1.28A11.98 11.98 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.01-3.1z" />
+                  <path fill="#EA4335" d="M12 4.77c1.76 0 3.35.61 4.6 1.79l3.44-3.44C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.28 6.61l4.01 3.1C6.23 6.88 8.88 4.77 12 4.77z" />
+                </svg>
+                Continue with Google
+              </>
+            )}
+          </button>
 
           <div className="mt-6 text-center relative z-10">
             <button

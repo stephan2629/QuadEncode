@@ -152,3 +152,22 @@ create policy "own reviews" on reviews
 create policy "own imports" on imports
   for all using (exists (select 1 from subjects s where s.id = imports.subject_id and s.user_id = auth.uid()))
   with check (exists (select 1 from subjects s where s.id = imports.subject_id and s.user_id = auth.uid()));
+
+-- Auto-create a profile row for every new auth user, covering both
+-- email/password signup and OAuth (Google) signup uniformly, since OAuth
+-- users never go through the app's own signup server action.
+create function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (user_id, display_name)
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', ''));
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
