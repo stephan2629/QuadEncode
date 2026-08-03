@@ -156,7 +156,9 @@ create policy "own imports" on imports
 -- Auto-create a profile row for every new auth user, covering both
 -- email/password signup and OAuth (Google) signup uniformly, since OAuth
 -- users never go through the app's own signup server action.
-create function public.handle_new_user()
+-- This section is idempotent and safe to run on its own against an
+-- existing database.
+create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
@@ -168,6 +170,13 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- Backfill profiles for any users created before the trigger existed.
+insert into public.profiles (user_id, display_name)
+select u.id, coalesce(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name', '')
+from auth.users u
+where not exists (select 1 from public.profiles p where p.user_id = u.id);
