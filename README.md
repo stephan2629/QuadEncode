@@ -33,6 +33,8 @@ CI runs lint, typecheck, tests, and build on every push via `.github/workflows/c
 
 ## Current state
 
-**Phase 0 (foundations) — done.** Repo, TypeScript strict mode, Tailwind, Supabase project with schema and RLS, Netlify deploy, CI pipeline. No app features yet — the home page is a placeholder proving the deploy pipeline works.
+**Phase 0 (foundations) — done.** Repo, TypeScript strict mode, Tailwind, Supabase project with schema and RLS, Netlify deploy, CI pipeline.
 
-Next: Phase 1 (auth and notes).
+**Phase 1 (auth and notes) — done.** Sign up, sign in, sign out, protected routes (`/dashboard`, `/notes/[id]`) via `src/proxy.ts`. A dashboard for creating subjects and notes. A markdown note editor with debounced autosave. No card machinery visible anywhere, per section 3.
+
+Next: Phase 2 (cards and review).
