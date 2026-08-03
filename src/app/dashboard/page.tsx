@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Book, Plus, LogOut, FileText, Trash2 } from 'lucide-react';
 import { createSubject, createNote, deleteSubject, deleteNote } from './actions';
 import { logout } from '../login/actions';
+import { ConfirmButton } from '@/components/ui/ConfirmButton';
 
 interface DashboardNote {
   id: string;
@@ -51,36 +52,36 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0908] text-white p-6 md:p-12 max-w-6xl mx-auto">
-      <header className="flex justify-between items-center mb-16">
-        <Link href="/" className="font-serif text-2xl font-bold tracking-tight text-accent flex items-center gap-2">
-          <Book className="w-6 h-6" /> Quad Encode
+    <div className="min-h-screen bg-[#0a0908] text-white p-4 sm:p-6 md:p-12 max-w-6xl mx-auto">
+      <header className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0 mb-10 md:mb-16">
+        <Link href="/" className="font-serif text-xl md:text-2xl font-bold tracking-tight text-accent flex items-center gap-2">
+          <Book className="w-5 h-5 md:w-6 md:h-6" /> Quad Encode
         </Link>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm hidden md:inline-block">{user.email}</span>
+        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+          <span className="text-gray-400 text-xs md:text-sm truncate max-w-[200px] sm:max-w-none">{user.email}</span>
           <form action={logout}>
             <button className="p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </form>
         </div>
       </header>
 
-      <div className="mb-12 flex justify-between items-end">
+      <div className="mb-8 md:mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
         <div>
-          <h1 className="text-4xl font-bold font-serif mb-2">Your Dashboard</h1>
-          <p className="text-gray-400">Manage your subjects and start taking notes.</p>
+          <h1 className="text-3xl md:text-4xl font-bold font-serif mb-2">Your Dashboard</h1>
+          <p className="text-sm md:text-base text-gray-400">Manage your subjects and start taking notes.</p>
         </div>
-        <form action={createSubject} className="flex gap-2">
+        <form action={createSubject} className="flex gap-2 w-full md:w-auto">
           <input 
             type="text" 
             name="name" 
             placeholder="New Subject Name..." 
             required
-            className="bg-[#14120f] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-accent text-sm"
+            className="flex-1 md:flex-none bg-[#14120f] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-accent text-sm"
           />
-          <button type="submit" className="bg-white/10 hover:bg-white/20 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Create
+          <button type="submit" className="bg-white/10 hover:bg-white/20 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap">
+            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Create</span>
           </button>
         </form>
       </div>
@@ -94,9 +95,13 @@ export default async function DashboardPage() {
               <h2 className="text-xl font-bold font-serif text-accent relative z-10">{subject.name}</h2>
               <form action={deleteSubject}>
                 <input type="hidden" name="id" value={subject.id} />
-                <button type="submit" className="text-gray-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <ConfirmButton
+                  confirmMessage={`Delete "${subject.name}" and all its notes? This can't be undone.`}
+                  aria-label={`Delete ${subject.name}`}
+                  className="text-gray-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
+                </ConfirmButton>
               </form>
             </div>
 
@@ -113,9 +118,13 @@ export default async function DashboardPage() {
                     </Link>
                     <form action={deleteNote}>
                       <input type="hidden" name="id" value={note.id} />
-                      <button type="submit" className="text-gray-600 hover:text-red-400 p-1 opacity-0 group-hover/note:opacity-100 transition-opacity">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      <ConfirmButton
+                        confirmMessage={`Delete "${note.title}"? This can't be undone.`}
+                        aria-label={`Delete ${note.title}`}
+                        className="text-gray-600 hover:text-red-400 p-1 opacity-0 group-hover/note:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="w-3 h-3" aria-hidden="true" />
+                      </ConfirmButton>
                     </form>
                   </div>
                 ))
@@ -126,15 +135,16 @@ export default async function DashboardPage() {
 
             <form action={createNote} className="mt-6 pt-4 border-t border-white/5 relative z-10 flex gap-2">
               <input type="hidden" name="subjectId" value={subject.id} />
-              <input 
-                type="text" 
-                name="title" 
-                placeholder="New note title..." 
+              <input
+                type="text"
+                name="title"
+                aria-label="New note title"
+                placeholder="New note title…"
                 required
                 className="bg-[#1a1815] border border-white/5 rounded-md px-3 py-1.5 flex-1 text-sm focus:outline-none focus:border-accent/50 text-white placeholder-gray-600"
               />
-              <button type="submit" className="text-accent hover:text-accent-muted p-1.5 bg-accent/10 rounded-md transition-colors">
-                <Plus className="w-4 h-4" />
+              <button type="submit" aria-label="Add note" className="text-accent hover:text-accent-muted p-1.5 bg-accent/10 rounded-md transition-colors">
+                <Plus className="w-4 h-4" aria-hidden="true" />
               </button>
             </form>
           </div>

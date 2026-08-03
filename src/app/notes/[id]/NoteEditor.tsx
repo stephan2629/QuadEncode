@@ -29,7 +29,7 @@ export default function NoteEditor({
 
   const handleContentChange = (value: string) => {
     setContent(value);
-    if (value !== initialData.body_md) setSaveStatus('saving');
+    setSaveStatus(value === initialData.body_md ? 'saved' : 'saving');
   };
 
   // Auto-save logic for content
@@ -71,6 +71,7 @@ export default function NoteEditor({
             </span>
             <input
               type="text"
+              aria-label="Note title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleBlur}
@@ -81,9 +82,9 @@ export default function NoteEditor({
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="text-xs flex items-center gap-1 text-gray-500">
-            <Save className="w-3 h-3" />
-            {saveStatus === 'saving' ? 'Saving...' : 'Saved'}
+          <div className="text-xs flex items-center gap-1 text-gray-500" aria-live="polite">
+            <Save className="w-3 h-3" aria-hidden="true" />
+            {saveStatus === 'saving' ? 'Saving…' : 'Saved'}
           </div>
           <button 
             onClick={() => setShowPreview(!showPreview)}
@@ -97,21 +98,22 @@ export default function NoteEditor({
       </header>
 
       {/* Editor Surface */}
-      <main className="flex-1 flex overflow-hidden relative">
-        <div className={`flex-1 flex flex-col h-full transition-all duration-300 ${showPreview ? 'w-1/2 border-r border-white/5' : 'w-full max-w-4xl mx-auto'}`}>
+      <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        <div className={`flex-1 flex flex-col h-full transition-all duration-300 ${showPreview ? 'hidden md:flex md:w-1/2 md:border-r md:border-white/5' : 'w-full max-w-4xl mx-auto'}`}>
           <textarea
             value={content}
             onChange={(e) => handleContentChange(e.target.value)}
-            className="flex-1 w-full p-6 md:p-10 bg-transparent resize-none focus:outline-none text-white text-base leading-relaxed font-mono selection:bg-accent/30"
-            placeholder="Start typing in markdown... (Use **bold**, # headers, and - lists)"
+            className="flex-1 w-full p-4 sm:p-6 md:p-10 bg-transparent resize-none focus:outline-none text-white text-sm md:text-base leading-relaxed font-mono selection:bg-accent/30"
+            aria-label="Note content"
+            placeholder="Start typing in markdown… (use **bold**, # headers, and - lists)"
             spellCheck="false"
           />
         </div>
 
         {/* Live Preview Pane */}
         {showPreview && (
-          <div className="w-1/2 h-full overflow-y-auto bg-[#14120f]/50 p-6 md:p-10 custom-scrollbar">
-            <div className="prose prose-invert prose-amber max-w-none">
+          <div className="w-full md:w-1/2 h-full overflow-y-auto bg-[#14120f]/50 p-4 sm:p-6 md:p-10 custom-scrollbar">
+            <div className="prose prose-sm md:prose-base prose-invert prose-amber max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {content || '*Preview will appear here*'}
               </ReactMarkdown>

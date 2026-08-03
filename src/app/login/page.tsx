@@ -87,7 +87,11 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+              <div
+                role="alert"
+                aria-live="polite"
+                className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm"
+              >
                 {error}
               </div>
             )}
@@ -95,10 +99,11 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
+              aria-label={loading ? (isLogin ? 'Signing in…' : 'Signing up…') : undefined}
               className="w-full bg-accent hover:bg-accent-muted text-[#14120f] font-bold py-3.5 px-4 rounded-xl transition-all shadow-[0_4px_14px_rgba(245,158,11,0.4)] hover:shadow-[0_6px_20px_rgba(245,158,11,0.6)] flex items-center justify-center mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
               ) : (
                 isLogin ? 'Sign In' : 'Sign Up'
               )}
