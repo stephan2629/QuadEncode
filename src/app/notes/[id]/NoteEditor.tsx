@@ -113,7 +113,13 @@ export default function NoteEditor({
   };
 
   const handleImportComplete = async (generatedPrompts: string) => {
-    const newContent = content + '\n\n## Open questions\n\n' + generatedPrompts;
+    // One "## Open questions" section per note: append under the existing
+    // heading if the note already has one.
+    const heading = '## Open questions';
+    const trimmed = content.replace(/\s*$/, '');
+    const newContent = trimmed.includes(heading)
+      ? `${trimmed}\n\n${generatedPrompts}\n`
+      : `${trimmed}\n\n${heading}\n\n${generatedPrompts}\n`;
     setContent(newContent);
     setSaveStatus('saving');
     await updateNoteContent(noteId, newContent);

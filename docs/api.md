@@ -34,6 +34,7 @@ Password reset doesn't need a server action: the login page calls `supabase.auth
 | `updateNoteContent` | `(id: string, body_md: string)` | Called on a 1s debounce from the editor. Saves `body_md`, then parses `??`/`>>` pairs (`parseBlanks`) and syncs cards: new pairs with a non-empty answer create a box-0 card, edits to an existing pair's text update its prompt/answer. Never deletes a card — removing a pair from the note does not remove its card. Deliberately skips `revalidatePath` to avoid interrupting typing. |
 | `updateNoteTitle` | `(id: string, title: string)` | Called on blur, not debounced. Revalidates `/notes/[id]` and `/dashboard`. |
 | `createClozeCard` | `(noteId: string, line: number, prompt: string, answer: string)` | Triggered by selecting text and pressing Cmd/Ctrl+K in the editor. Creates a box-0 `cloze` card directly — does not modify the note body. |
+| `generatePromptsFromFile` | `(noteId: string, formData: FormData)` | Phase 3 import. Accepts a `file` (PDF or image) or pasted `text`. PDFs are text-extracted locally with `pdf-parse`; the content goes to Gemini (`GEMINI_API_KEY`, server-only) with a prompts-only system prompt per section 2 — never answers. Returns up to 12 `??` prompts, each followed by an empty `>>` so they land as open blanks under `## Open questions`. Records a row in `imports`. |
 
 ## `src/app/review/actions.ts`
 

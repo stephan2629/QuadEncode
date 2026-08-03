@@ -31,13 +31,14 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect dashboard, notes, review, and practice routes
+  // Protect the app routes; everything else (marketing, login, auth) is public
   if (
     !user &&
     (request.nextUrl.pathname.startsWith('/dashboard') ||
       request.nextUrl.pathname.startsWith('/notes') ||
       request.nextUrl.pathname.startsWith('/review') ||
-      request.nextUrl.pathname.startsWith('/practice'))
+      request.nextUrl.pathname.startsWith('/practice') ||
+      request.nextUrl.pathname.startsWith('/imports'))
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'

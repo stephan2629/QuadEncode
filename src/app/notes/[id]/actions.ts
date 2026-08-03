@@ -184,13 +184,17 @@ CRITICAL RULES:
       generatedText = response.text || ''
     }
 
-    // Clean up the response to ensure it strictly follows the format
+    // Clean up the response to ensure it strictly follows the format.
+    // Each prompt gets an empty >> line so it parses as an open blank
+    // (section 7): it shows as a todo in the note, and filling the >>
+    // promotes it to a card the user answered themselves.
     const lines = generatedText
       .split('\n')
       .map(l => l.trim())
       .filter(l => l.startsWith('??'))
       .slice(0, 12)
-      .join('\n')
+      .map(l => `${l}\n>>`)
+      .join('\n\n')
 
     if (!lines) {
       throw new Error('Failed to generate valid prompts.')

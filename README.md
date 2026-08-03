@@ -39,4 +39,8 @@ CI runs lint, typecheck, tests, and build on every push via `.github/workflows/c
 
 **Phase 2 (cards and review) — done.** `??`/`>>` pairs in a note become box-0 cards automatically on save (`src/lib/parseBlanks.ts`, wired into `updateNoteContent`). Cloze cards via selecting text and pressing Cmd+K (`createClozeCard`, no note markup involved). A Leitner scheduler (`src/lib/scheduler.ts`) — binary Correct/Wrong, box 0-5, matching the section 8 interval table exactly. The review screen (`/review`) shows box-0 cards first with Keep/Edit/Delete quality control, then due cards with instant-reveal Correct/Wrong, capped at 20 cards per session, ending on a completion screen. A failed review's card carries a "Jump to note" link back to its source line. Three failures on a card append "Explain this a different way" as a new open prompt under `## Open questions` in the note. The Review entry point on the dashboard only appears once the user has at least one card, per section 3.
 
-Next: Phase 3 (imports).
+**Phase 2.5 (practice and session results) — done.** The review completion screen shows correct/wrong counts plus missed prompts with jump-to-note links. A multiple-choice practice mode (`/practice`, `src/lib/practice.ts`) builds questions from the user's own cards with distractors from their other answers — pure recognition, so it never writes to the Leitner schedule.
+
+**Phase 3 (imports) — done.** Paste text, upload a PDF (text extracted locally via `pdf-parse`), or upload a screenshot; Gemini (`GEMINI_API_KEY`, server-only) turns the material into at most 12 recall prompts — prompts only, never answers, per section 2. They land as open `??`/`>>` blanks under a single `## Open questions` heading, showing as todos until the user writes their own answers, which is what promotes them to cards. Each import is recorded; an Imports history page appears on the dashboard after the first one.
+
+Next: Phase 4 (discovery and paths).
