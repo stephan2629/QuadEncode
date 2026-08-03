@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Search, SearchCheck, PenTool, BrainCircuit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConnectSection } from '@/components/home/ConnectSection';
@@ -8,6 +9,13 @@ import { SpotlightCard } from '@/components/ui/SpotlightCard';
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (window.matchMedia('(pointer: fine)').matches) {
+      searchInputRef.current?.focus();
+    }
+  }, []);
 
   const mockSearchResults = [
     { id: '1', title: 'Music Theory', type: 'Subject' },
@@ -51,7 +59,16 @@ export default function Home() {
   ];
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto h-full flex flex-col justify-center min-h-[85vh]">
+    <div className="relative p-6 md:p-10 max-w-5xl mx-auto h-full flex flex-col justify-center min-h-[85vh]">
+      <div className="absolute top-6 right-6 md:top-10 md:right-10 z-50">
+        <Link 
+          href="/dashboard"
+          className="text-sm font-bold text-accent hover:text-white bg-accent/10 border border-accent/20 px-5 py-2.5 rounded-full transition-all hover:bg-accent/20"
+        >
+          Sign In / Dashboard
+        </Link>
+      </div>
+
       <motion.header 
         className="flex flex-col items-center justify-center text-center w-full mb-20"
         initial={{ opacity: 0, y: 15 }}
@@ -83,12 +100,15 @@ export default function Home() {
             <Search className="h-6 w-6 text-muted group-focus-within:text-accent transition-colors" />
           </div>
           <input
+            ref={searchInputRef}
             type="text"
+            name="search"
+            autoComplete="off"
+            aria-label="Search a topic, language, or skill"
             className="block w-full pl-14 pr-6 py-5 bg-[#1a1815] border border-white/10 rounded-full text-xl text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all shadow-xl"
-            placeholder="Search a topic, language, or skill..."
+            placeholder="Search a topic, language, or skill…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            autoFocus
           />
         </motion.div>
       </motion.header>
@@ -124,8 +144,8 @@ export default function Home() {
                         visible: { opacity: 1, y: 0 }
                       }}
                     >
-                      <div className="px-5 py-4 hover:bg-white/5 rounded-xl flex items-center justify-between group cursor-pointer transition-colors">
-                        <span className="text-white font-medium text-lg group-hover:text-accent transition-colors">{result.title}</span>
+                      <div className="px-5 py-4 rounded-xl flex items-center justify-between">
+                        <span className="text-white font-medium text-lg">{result.title}</span>
                         <span className="text-xs text-muted uppercase tracking-wider">{result.type}</span>
                       </div>
                     </motion.div>
