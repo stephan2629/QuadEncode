@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Layout, Columns, Save } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { updateNoteContent, updateNoteTitle } from './actions';
+import { updateNoteContent, updateNoteTitle, createClozeCard } from './actions';
+import { renderNoteForPreview } from '@/lib/parseBlanks';
 
 interface NoteData {
   id: string;
@@ -26,6 +28,8 @@ export default function NoteEditor({
   const [showPreview, setShowPreview] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const searchParams = useSearchParams();
 
   const handleContentChange = (value: string) => {
     setContent(value);
@@ -57,6 +61,50 @@ export default function NoteEditor({
     }
   };
 
+  // Back pointer: jump to a specific line, e.g. from a failed review (?line=N)
+  useEffect(() => {
+    const lineParam = searchParams.get('line');
+    const textarea = textareaRef.current;
+    if (lineParam === null || !textarea) return;
+
+    const lineIndex = Number(lineParam);
+    const lines = content.split('\n');
+    const offset = lines.slice(0, lineIndex).reduce((sum, l) => sum + l.length + 1, 0);
+
+    textarea.focus();
+    textarea.setSelectionRange(offset, offset + (lines[lineIndex]?.length ?? 0));
+    textarea.scrollTop = Math.max(0, (lineIndex - 3) * 20);
+    // Only run once on mount for the initial jump target.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cmd+K (Mac) or Ctrl+K (Windows): selected text becomes a cloze card.
+  // Doesn't touch the note body — the card is created directly.
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!(e.metaKey || e.ctrlKey) || e.key !== 'k') return;
+    e.preventDefault();
+
+    const textarea = e.currentTarget;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    if (start === end) return;
+
+    const selected = content.slice(start, end);
+    const lineStart = content.lastIndexOf('\n', start - 1) + 1;
+    const lineEndIndex = content.indexOf('\n', end);
+    const lineEnd = lineEndIndex === -1 ? content.length : lineEndIndex;
+    const lineText = content.slice(lineStart, lineEnd);
+    const lineNumber = content.slice(0, lineStart).split('\n').length - 1;
+
+    const selectedOffsetInLine = start - lineStart;
+    const prompt =
+      lineText.slice(0, selectedOffsetInLine) + '___' + lineText.slice(selectedOffsetInLine + selected.length);
+
+    await createClozeCard(noteId, lineNumber, prompt.trim(), selected.trim());
+  };
+
+  const previewSource = renderNoteForPreview(content);
+
   return (
     <div className="flex flex-col h-screen bg-[#0a0908] text-gray-300">
       {/* Minimal Chrome Header */}
@@ -86,7 +134,7 @@ export default function NoteEditor({
             <Save className="w-3 h-3" aria-hidden="true" />
             {saveStatus === 'saving' ? 'Saving…' : 'Saved'}
           </div>
-          <button 
+          <button
             onClick={() => setShowPreview(!showPreview)}
             className={`p-2 rounded-lg transition-colors flex items-center gap-2 text-sm ${showPreview ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
             title="Toggle Preview"
@@ -101,11 +149,13 @@ export default function NoteEditor({
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         <div className={`flex-1 flex flex-col h-full transition-all duration-300 ${showPreview ? 'hidden md:flex md:w-1/2 md:border-r md:border-white/5' : 'w-full max-w-4xl mx-auto'}`}>
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => handleContentChange(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="flex-1 w-full p-4 sm:p-6 md:p-10 bg-transparent resize-none focus:outline-none text-white text-sm md:text-base leading-relaxed font-mono selection:bg-accent/30"
             aria-label="Note content"
-            placeholder="Start typing in markdown… (use **bold**, # headers, and - lists)"
+            placeholder="Start typing in markdown… (use **bold**, # headers, ?? / >> for a recall prompt, and select text + Cmd+K for a cloze card)"
             spellCheck="false"
           />
         </div>
@@ -115,7 +165,7 @@ export default function NoteEditor({
           <div className="w-full md:w-1/2 h-full overflow-y-auto bg-[#14120f]/50 p-4 sm:p-6 md:p-10 custom-scrollbar">
             <div className="prose prose-sm md:prose-base prose-invert prose-amber max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {content || '*Preview will appear here*'}
+                {previewSource || '*Preview will appear here*'}
               </ReactMarkdown>
             </div>
           </div>

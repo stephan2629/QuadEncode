@@ -51,6 +51,17 @@ export default async function DashboardPage() {
     console.error('Error fetching subjects:', error);
   }
 
+  const { count: totalCardsRaw } = await supabase
+    .from('cards')
+    .select('id', { count: 'exact', head: true });
+  const totalCards = totalCardsRaw ?? 0;
+
+  const { count: dueCountRaw } = await supabase
+    .from('cards')
+    .select('id', { count: 'exact', head: true })
+    .or(`box.eq.0,and(box.gt.0,box.lt.5,due.lte.${new Date().toISOString()})`);
+  const dueCount = dueCountRaw ?? 0;
+
   return (
     <div className="min-h-screen bg-[#0a0908] text-white p-4 sm:p-6 md:p-12 max-w-6xl mx-auto">
       <header className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0 mb-10 md:mb-16">
@@ -70,7 +81,27 @@ export default async function DashboardPage() {
       <div className="mb-8 md:mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold font-serif mb-2">Your Dashboard</h1>
-          <p className="text-sm md:text-base text-gray-400">Manage your subjects and start taking notes.</p>
+          {totalCards > 0 ? (
+            <div className="flex items-center gap-4 mt-4 mb-2">
+              {dueCount > 0 && (
+                <span className="text-sm md:text-base text-accent bg-accent/10 px-3 py-1 rounded-full font-medium">
+                  {dueCount} {dueCount === 1 ? 'card' : 'cards'} due
+                </span>
+              )}
+              <Link
+                href="/review"
+                className={
+                  dueCount > 0
+                    ? 'text-sm md:text-base bg-accent text-[#0a0908] px-5 py-1.5 rounded-full font-bold hover:bg-accent/90 transition-colors'
+                    : 'text-sm md:text-base text-gray-400 hover:text-white transition-colors'
+                }
+              >
+                Review
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm md:text-base text-gray-400 mt-2">Manage your subjects and start taking notes.</p>
+          )}
         </div>
         <form action={createSubject} className="flex gap-2 w-full md:w-auto">
           <input 

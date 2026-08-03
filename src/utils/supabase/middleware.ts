@@ -31,11 +31,12 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect dashboard and notes routes
+  // Protect dashboard, notes, and review routes
   if (
     !user &&
     (request.nextUrl.pathname.startsWith('/dashboard') ||
-      request.nextUrl.pathname.startsWith('/notes'))
+      request.nextUrl.pathname.startsWith('/notes') ||
+      request.nextUrl.pathname.startsWith('/review'))
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'

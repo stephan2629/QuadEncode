@@ -23,6 +23,8 @@ Nothing in the interface, the copy, or the data model may assume a certification
 
 Web first. A mobile app comes later, so avoid anything that would block wrapping this in Capacitor.
 
+**Search works signed out.** The subject search on the public home page (an LLM interprets the free-text query into a subject and, later, a ranked path — see Phase 4) is usable without an account. Everything past search — saving a path, creating a subject or note, reviewing cards — requires signing in. Don't gate the search box itself behind auth.
+
 ---
 
 ## 2. The rule that governs every feature
@@ -85,7 +87,7 @@ Imported cards graduate to authored after two correct answers followed by the us
 | Database, Auth, Storage | Supabase (Postgres) |
 | Deploy | Netlify with the official Next.js plugin |
 | Testing | Vitest for unit, Playwright for end to end |
-| External APIs | YouTube Data API v3, a web search API such as Brave or Serper |
+| External APIs | Claude API for subject search and resource descriptions, YouTube Data API v3, a web search API such as Brave or Serper |
 
 Supabase over Firebase because the data is relational and row level security handles per user isolation without a custom auth layer.
 
@@ -165,7 +167,9 @@ Follow the software development life cycle. Each phase runs plan, design, build,
 Repo, TypeScript strict, Tailwind, Supabase project, environment variables, Netlify connection, CI running tests on push. Deploy a placeholder page to prove the pipeline works end to end before writing features.
 
 **Phase 1, auth and notes**
-Sign up, sign in, sign out, protected routes. Markdown note editor with autosave. Ships as a usable note app on its own, with no card machinery visible anywhere.
+Sign up, sign in, sign out, protected routes. Password reset. Google OAuth as an alternative to email/password sign-in. Markdown note editor with autosave. Ships as a usable note app on its own, with no card machinery visible anywhere.
+
+Shipped without password reset or Google sign-in — email/password only so far. Outstanding: add both via Supabase Auth (`resetPasswordForEmail` + a reset-password page, `signInWithOAuth({ provider: 'google' })` on the login page) before this phase is considered fully done.
 
 **Phase 2, cards and review**
 Blank parsing, cloze creation, box 0 promotion, review screen, Leitner scheduler, back pointer jump, session cap, completion screen. Review navigation appears only once a card exists. After this phase the app is genuinely usable for studying.
@@ -174,7 +178,7 @@ Blank parsing, cloze creation, box 0 promotion, review screen, Leitner scheduler
 Paste box first. Then PDF text extraction. Then screenshot import using a vision model to read questions from an image. All imports create imported tier cards or open prompts, never answers.
 
 **Phase 4, discovery and paths**
-YouTube Data API for playlists and chapters. Web search API for everything else. A hand curated source registry per subject as the reliable backbone. Free ranked above paid. Each resource gets a written description of what it covers and who it suits.
+LLM-interpreted subject search on the public home page, usable signed out. YouTube Data API for playlists and chapters. Web search API for everything else. A hand curated source registry per subject as the reliable backbone. Free ranked above paid. Each resource gets a written description of what it covers and who it suits. Signed-out users can search and browse results; saving a path or acting on it prompts sign-in.
 
 **Phase 5, polish**
 Motion, SEO, accessibility audit, performance, error states.
