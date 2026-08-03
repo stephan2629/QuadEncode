@@ -45,7 +45,7 @@ export async function getNote(id: string) {
   
   const { data, error } = await supabase
     .from('notes')
-    .select('*, subjects(name)')
+    .select('*, subjects(name), cards(id, line, type, prompt, answer)')
     .eq('id', id)
     .single()
     

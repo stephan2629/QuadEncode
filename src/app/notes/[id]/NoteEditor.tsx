@@ -14,6 +14,7 @@ interface NoteData {
   title: string;
   body_md: string;
   subjects: { name: string } | null;
+  cards?: { id: string; line: number; type: string; prompt: string; answer: string }[];
 }
 
 export default function NoteEditor({
@@ -27,6 +28,9 @@ export default function NoteEditor({
   const [title, setTitle] = useState(initialData.title || '');
   const [showPreview, setShowPreview] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
+  const [clozeCards, setClozeCards] = useState(
+    initialData.cards?.filter((c) => c.type === 'cloze').map(c => ({ line: c.line, prompt: c.prompt, answer: c.answer })) || []
+  );
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const searchParams = useSearchParams();
@@ -100,10 +104,13 @@ export default function NoteEditor({
     const prompt =
       lineText.slice(0, selectedOffsetInLine) + '___' + lineText.slice(selectedOffsetInLine + selected.length);
 
+    setSaveStatus('saving');
     await createClozeCard(noteId, lineNumber, prompt.trim(), selected.trim());
+    setClozeCards((prev) => [...prev, { line: lineNumber, prompt: prompt.trim(), answer: selected.trim() }]);
+    setSaveStatus('saved');
   };
 
-  const previewSource = renderNoteForPreview(content);
+  const previewSource = renderNoteForPreview(content, clozeCards);
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0908] text-gray-300">

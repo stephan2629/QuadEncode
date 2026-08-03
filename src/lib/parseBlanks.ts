@@ -37,10 +37,14 @@ export function parseBlanks(bodyMd: string): ParsedBlank[] {
 // Renders ??/>> pairs as styled blockquote callouts for the markdown preview
 // pane, so an open blank "shows as a todo in the note" (section 7) without
 // needing in-place textarea highlighting.
-export function renderNoteForPreview(bodyMd: string): string {
+export function renderNoteForPreview(
+  bodyMd: string,
+  clozeCards: { line: number; prompt: string; answer: string }[] = []
+): string {
   const lines = bodyMd.split('\n');
   const blanks = parseBlanks(bodyMd);
-  if (blanks.length === 0) return bodyMd;
+  
+  if (blanks.length === 0 && clozeCards.length === 0) return bodyMd;
 
   const out: string[] = [];
   let i = 0;
@@ -58,6 +62,13 @@ export function renderNoteForPreview(bodyMd: string): string {
       blankIndex++;
     } else {
       out.push(lines[i]);
+      
+      // Inject cloze card callouts after the line they belong to
+      const lineClozes = clozeCards.filter(c => c.line === i);
+      for (const cloze of lineClozes) {
+        out.push(`> **Cloze:** ${cloze.prompt} *(Answer: ${cloze.answer})*`);
+      }
+      
       i++;
     }
   }
