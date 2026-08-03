@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Layout, Columns, Save, FileDown } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import dynamic from 'next/dynamic';
 import ImportModal from '@/components/ui/ImportModal';
+
+const MarkdownPreview = dynamic(() => import('@/components/ui/MarkdownPreview'), { ssr: false });
 import { updateNoteContent, updateNoteTitle, createClozeCard } from './actions';
 import { renderNoteForPreview } from '@/lib/parseBlanks';
 
@@ -196,24 +197,7 @@ export default function NoteEditor({
         {/* Live Preview Pane */}
         {showPreview && (
           <div className="w-full md:w-1/2 h-full overflow-y-auto bg-[#0a0908] p-6 md:p-10 custom-scrollbar shadow-inner">
-            <div className="prose prose-sm md:prose-base prose-invert prose-amber max-w-none prose-p:leading-relaxed prose-headings:text-white prose-a:text-accent">
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  blockquote: ({ node, children, ...props }) => (
-                    <div className="relative my-8 p-6 rounded-2xl bg-[#14120f] border border-white/10 backdrop-blur-md overflow-hidden group shadow-lg">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-accent/80 group-hover:bg-accent transition-colors duration-300" />
-                      <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                      <div className="relative z-10 text-gray-200 m-0 [&>p]:m-0 [&>p]:mb-2 last:[&>p]:mb-0">
-                        {children}
-                      </div>
-                    </div>
-                  )
-                }}
-              >
-                {previewSource || '*Preview will appear here*'}
-              </ReactMarkdown>
-            </div>
+            <MarkdownPreview source={previewSource} />
           </div>
         )}
       </main>
