@@ -153,7 +153,9 @@ Leitner boxes, not SM-2.
 
 Correct moves up one box. Wrong drops to box 1. Three failures spawn a new prompt in the source note reading "Explain this a different way."
 
-Sessions cap at 20 cards even when more are due and end with a real completion screen. Practice modes covering one note, one subject, or weak cards do not write to the schedule.
+Sessions cap at 20 cards even when more are due and end with a real completion screen showing correct/wrong counts and the missed prompts with their back-pointer links. Practice modes covering one note, one subject, or weak cards do not write to the schedule.
+
+Multiple choice exists only as a practice mode (`/practice`), never as the graded review. It is recognition rather than recall, so per section 2 it cannot feed the Leitner schedule; distractors come from the user's own other cards, and the results screen states that practice doesn't change the schedule.
 
 ---
 

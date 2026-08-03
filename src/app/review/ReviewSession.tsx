@@ -22,6 +22,11 @@ interface Card {
 
 type Stage = 'question' | 'answer' | 'wrong-feedback' | 'editing';
 
+interface SessionResult {
+  card: Card;
+  correct: boolean;
+}
+
 export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }) {
   const [queue] = useState(initialQueue);
   const [index, setIndex] = useState(0);
@@ -31,9 +36,10 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
   const [busy, setBusy] = useState(false);
   const [editDraft, setEditDraft] = useState({ prompt: '', answer: '' });
   const [edited, setEdited] = useState<{ prompt: string; answer: string } | null>(null);
+  const [results, setResults] = useState<SessionResult[]>([]);
 
   if (index >= queue.length) {
-    return <CompletionScreen />;
+    return <CompletionScreen results={results} />;
   }
 
   const card = queue[index];
@@ -61,6 +67,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
     if (busy) return;
     setBusy(true);
     await submitReview(card.id, correct);
+    setResults((prev) => [...prev, { card, correct }]);
     setBusy(false);
     if (correct) {
       advance('right');

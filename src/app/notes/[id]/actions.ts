@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { GoogleGenAI } from '@google/genai'
+import { PDFParse } from 'pdf-parse'
 import { parseBlanks } from '@/lib/parseBlanks'
 
 async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClient>>, noteId: string, bodyMd: string) {
@@ -132,29 +133,52 @@ CRITICAL RULES:
 
     if (file) {
       const buffer = Buffer.from(await file.arrayBuffer())
-      const base64Data = buffer.toString('base64')
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                inlineData: {
-                  data: base64Data,
-                  mimeType: file.type
-                }
-              },
-              { text: promptText }
-            ]
-          }
-        ]
-      })
-      generatedText = response.text || ''
+
+      if (file.type === 'application/pdf') {
+        // Extract text from PDF locally to bypass Gemini's 1000-page limit and File API quirks
+        const parser = new PDFParse({ data: new Uint8Array(buffer) })
+        const parsed = await parser.getText()
+        const pdfText = parsed.text
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.5-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: `Here is the extracted text from the document:\n\n${pdfText}` },
+                { text: promptText }
+              ]
+            }
+          ]
+        })
+        generatedText = response.text || ''
+      } else {
+        // For images, we can safely use inlineData as they are usually small
+        const base64Data = buffer.toString('base64')
+        
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.5-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    data: base64Data,
+                    mimeType: file.type
+                  }
+                },
+                { text: promptText }
+              ]
+            }
+          ]
+        })
+        generatedText = response.text || ''
+      }
     } else if (text) {
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3.5-flash',
         contents: `${promptText}\n\nSource Material:\n${text}`
       })
       generatedText = response.text || ''

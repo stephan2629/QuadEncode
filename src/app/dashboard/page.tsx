@@ -98,6 +98,11 @@ export default async function DashboardPage() {
               >
                 Review
               </Link>
+              {totalCards >= 2 && (
+                <Link href="/practice" className="text-sm md:text-base text-gray-400 hover:text-white transition-colors">
+                  Practice
+                </Link>
+              )}
             </div>
           ) : (
             <p className="text-sm md:text-base text-gray-400 mt-2">Manage your subjects and start taking notes.</p>
