@@ -3,7 +3,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { GoogleGenAI } from '@google/genai'
-import { PDFParse } from 'pdf-parse'
 import { parseBlanks } from '@/lib/parseBlanks'
 
 async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClient>>, noteId: string, bodyMd: string) {
@@ -136,6 +135,9 @@ CRITICAL RULES:
 
       if (file.type === 'application/pdf') {
         // Extract text from PDF locally to bypass Gemini's 1000-page limit and File API quirks
+        // We dynamically import it here so it doesn't crash the entire page route on Netlify
+        const pdfParseModule = await import('pdf-parse')
+        const PDFParse = pdfParseModule.PDFParse || pdfParseModule.default
         const parser = new PDFParse({ data: new Uint8Array(buffer) })
         const parsed = await parser.getText()
         const pdfText = parsed.text

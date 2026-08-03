@@ -129,45 +129,45 @@ export default function NoteEditor({
   const previewSource = renderNoteForPreview(content, clozeCards);
 
   return (
-    <div className="flex flex-col h-screen bg-[#0a0908] text-gray-300">
-      {/* Minimal Chrome Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-[#14120f]">
+    <div className="flex flex-col h-screen bg-[#0a0908] text-gray-300 selection:bg-accent/30 selection:text-[#0a0908]">
+      {/* Premium Glassmorphic Header */}
+      <header className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-[#0a0908]/80 backdrop-blur-xl sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="text-gray-500 hover:text-white transition-colors p-1">
+          <Link href="/dashboard" className="text-gray-500 hover:text-accent transition-colors p-1 hover:bg-accent/10 rounded-lg">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="flex flex-col">
             <span className="text-xs text-accent font-semibold uppercase tracking-wider">
               {initialData.subjects?.name || 'Subject'}
             </span>
-            <input
+              <input
               type="text"
               aria-label="Note title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleBlur}
-              className="bg-transparent text-white font-serif font-bold text-lg focus:outline-none focus:border-b focus:border-white/20 border-b border-transparent placeholder-gray-600"
+              className="bg-transparent text-white font-sans font-bold text-lg focus:outline-none focus:border-b focus:border-accent/50 border-b border-transparent placeholder-gray-600 transition-colors"
               placeholder="Untitled Note"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="text-xs flex items-center gap-1 text-gray-500" aria-live="polite">
-            <Save className="w-3 h-3" aria-hidden="true" />
-            {saveStatus === 'saving' ? 'Saving…' : 'Saved'}
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="text-xs flex items-center gap-1.5 text-gray-500 px-3 py-1.5 rounded-full bg-white/5" aria-live="polite">
+            <Save className={`w-3.5 h-3.5 ${saveStatus === 'saving' ? 'animate-pulse text-accent' : ''}`} aria-hidden="true" />
+            <span className="hidden sm:inline">{saveStatus === 'saving' ? 'Saving…' : 'Saved'}</span>
           </div>
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="p-2 rounded-lg transition-colors flex items-center gap-2 text-sm text-gray-400 hover:text-white hover:bg-white/5"
+            className="px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm text-gray-400 hover:text-accent hover:bg-accent/10 active:scale-95"
             title="Import File"
           >
             <FileDown className="w-4 h-4" />
-            <span className="hidden sm:inline">Import</span>
+            <span className="hidden sm:inline font-medium">Import</span>
           </button>
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className={`p-2 rounded-lg transition-colors flex items-center gap-2 text-sm ${showPreview ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+            className={`px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm active:scale-95 ${showPreview ? 'bg-accent text-[#0a0908] font-bold shadow-[0_0_15px_rgba(var(--accent),0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/10 font-medium'}`}
             title="Toggle Preview"
           >
             {showPreview ? <Layout className="w-4 h-4" /> : <Columns className="w-4 h-4" />}
@@ -179,23 +179,38 @@ export default function NoteEditor({
       {/* Editor Surface */}
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         <div className={`flex-1 flex flex-col h-full transition-all duration-300 ${showPreview ? 'hidden md:flex md:w-1/2 md:border-r md:border-white/5' : 'w-full max-w-4xl mx-auto'}`}>
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => handleContentChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="flex-1 w-full p-4 sm:p-6 md:p-10 bg-transparent resize-none focus:outline-none text-white text-sm md:text-base leading-relaxed font-mono selection:bg-accent/30"
-            aria-label="Note content"
-            placeholder="Start typing in markdown… (use **bold**, # headers, ?? / >> for a recall prompt, and select text + Cmd+K for a cloze card)"
-            spellCheck="false"
-          />
+          <div className="relative flex-1 group">
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => handleContentChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="absolute inset-0 w-full h-full p-6 md:p-10 bg-transparent resize-none focus:outline-none text-gray-200 text-sm md:text-base leading-relaxed font-mono custom-scrollbar"
+              aria-label="Note content"
+              placeholder="Start typing in markdown… (use **bold**, # headers, ?? / >> for a recall prompt, and select text + Cmd+K for a cloze card)"
+              spellCheck="false"
+            />
+          </div>
         </div>
 
         {/* Live Preview Pane */}
         {showPreview && (
-          <div className="w-full md:w-1/2 h-full overflow-y-auto bg-[#14120f]/50 p-4 sm:p-6 md:p-10 custom-scrollbar">
-            <div className="prose prose-sm md:prose-base prose-invert prose-amber max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <div className="w-full md:w-1/2 h-full overflow-y-auto bg-[#0a0908] p-6 md:p-10 custom-scrollbar shadow-inner">
+            <div className="prose prose-sm md:prose-base prose-invert prose-amber max-w-none prose-p:leading-relaxed prose-headings:text-white prose-a:text-accent">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  blockquote: ({ node, children, ...props }) => (
+                    <div className="relative my-8 p-6 rounded-2xl bg-[#14120f] border border-white/10 backdrop-blur-md overflow-hidden group shadow-lg">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-accent/80 group-hover:bg-accent transition-colors duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="relative z-10 text-gray-200 m-0 [&>p]:m-0 [&>p]:mb-2 last:[&>p]:mb-0">
+                        {children}
+                      </div>
+                    </div>
+                  )
+                }}
+              >
                 {previewSource || '*Preview will appear here*'}
               </ReactMarkdown>
             </div>

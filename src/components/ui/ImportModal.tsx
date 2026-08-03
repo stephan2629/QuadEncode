@@ -65,96 +65,107 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-lg">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-[#14120f] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative"
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          transition={{ type: "spring", duration: 0.5 }}
+          className="bg-[#0a0908]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden"
         >
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          <h2 className="text-xl font-bold text-white mb-6">Import Source Material</h2>
-
-          {/* Toggle Tabs */}
-          <div className="flex bg-white/5 p-1 rounded-xl mb-6">
-            <button
-              onClick={() => setTextMode(false)}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${!textMode ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
-            >
-              Upload File
-            </button>
-            <button
-              onClick={() => setTextMode(true)}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${textMode ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
-            >
-              Paste Text
-            </button>
-          </div>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl">
-              {error}
-            </div>
-          )}
-
-          {!textMode ? (
-            <div 
-              className="border-2 border-dashed border-white/10 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:border-accent/50 transition-colors cursor-pointer group bg-black/20"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input 
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="application/pdf,image/png,image/jpeg,image/webp"
-                className="hidden"
-              />
-              {file ? (
-                <>
-                  {file.type === 'application/pdf' ? (
-                    <FileText className="w-10 h-10 text-accent mb-3" />
-                  ) : (
-                    <ImageIcon className="w-10 h-10 text-accent mb-3" />
-                  )}
-                  <p className="text-white font-medium text-sm break-all">{file.name}</p>
-                  <p className="text-gray-500 text-xs mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                </>
-              ) : (
-                <>
-                  <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-4 group-hover:bg-accent/10 transition-colors">
-                    <UploadCloud className="w-6 h-6 text-gray-400 group-hover:text-accent transition-colors" />
-                  </div>
-                  <p className="text-gray-300 font-medium mb-1">Click to upload file</p>
-                  <p className="text-gray-500 text-xs">PDF or Image (PNG, JPG)</p>
-                </>
-              )}
-            </div>
-          ) : (
-            <textarea
-              value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
-              placeholder="Paste article, notes, or raw text here..."
-              className="w-full h-40 bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-accent/50 resize-none"
-            />
-          )}
-
-          <div className="mt-6 flex justify-end gap-3">
+          {/* Subtle gradient glow behind the modal content */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-accent/10 blur-[60px] pointer-events-none" />
+          <div className="relative z-10">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold text-gray-400 hover:text-white transition-colors"
+              className="absolute -top-2 -right-2 text-gray-500 hover:text-white bg-white/5 hover:bg-white/10 rounded-full p-2 transition-all"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Import Source Material</h2>
+
+            {/* Toggle Tabs */}
+            <div className="flex bg-black/40 p-1 rounded-xl mb-6 border border-white/5 relative">
+              <button
+                onClick={() => setTextMode(false)}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-300 relative z-10 ${!textMode ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+              >
+                Upload File
+              </button>
+              <button
+                onClick={() => setTextMode(true)}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-300 relative z-10 ${textMode ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+              >
+                Paste Text
+              </button>
+              {/* Animated pill background */}
+              <div 
+                className={`absolute top-1 bottom-1 w-[calc(50%-0.25rem)] bg-white/10 rounded-lg transition-all duration-300 ease-out ${textMode ? 'left-[calc(50%+0.125rem)]' : 'left-1'}`}
+              />
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                {error}
+              </div>
+            )}
+
+            {!textMode ? (
+              <div 
+                className="relative border-2 border-dashed border-white/10 rounded-2xl p-10 flex flex-col items-center justify-center text-center hover:border-accent/60 transition-all duration-300 cursor-pointer group bg-gradient-to-b from-white/[0.02] to-transparent overflow-hidden"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="application/pdf,image/png,image/jpeg,image/webp"
+                  className="hidden"
+                />
+                {file ? (
+                  <div className="relative z-10 flex flex-col items-center animate-in fade-in zoom-in duration-300">
+                    {file.type === 'application/pdf' ? (
+                      <FileText className="w-12 h-12 text-accent mb-4 drop-shadow-[0_0_15px_rgba(var(--accent),0.5)]" />
+                    ) : (
+                      <ImageIcon className="w-12 h-12 text-accent mb-4 drop-shadow-[0_0_15px_rgba(var(--accent),0.5)]" />
+                    )}
+                    <p className="text-white font-medium text-sm break-all max-w-full px-4">{file.name}</p>
+                    <p className="text-gray-500 text-xs mt-2 bg-black/50 px-3 py-1 rounded-full">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                ) : (
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-14 h-14 bg-white/5 rounded-full flex items-center justify-center mb-5 group-hover:bg-accent/20 group-hover:scale-110 transition-all duration-300">
+                      <UploadCloud className="w-7 h-7 text-gray-400 group-hover:text-accent transition-colors" />
+                    </div>
+                    <p className="text-gray-200 font-semibold mb-2">Click to upload file</p>
+                    <p className="text-gray-500 text-xs max-w-[200px]">Supports PDF documents and Images (PNG, JPG)</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder="Paste your article, notes, or raw text here..."
+                className="w-full h-48 bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-accent/60 resize-none custom-scrollbar transition-colors shadow-inner"
+              />
+            )}
+          </div>
+
+          <div className="mt-8 flex justify-end gap-3 relative z-10">
+            <button
+              onClick={onClose}
+              className="px-5 py-2.5 text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleImport}
               disabled={loading || (!textMode && !file) || (textMode && !pastedText.trim())}
-              className="px-5 py-2 bg-accent hover:bg-accent-muted text-[#14120f] text-sm font-bold rounded-xl transition-all disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2.5 bg-accent hover:bg-accent-muted text-[#14120f] text-sm font-bold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:grayscale flex items-center gap-2 shadow-[0_0_20px_rgba(var(--accent),0.4)] hover:shadow-[0_0_25px_rgba(var(--accent),0.6)] active:scale-95"
             >
               {loading ? (
                 <>
