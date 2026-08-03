@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, BrainCircuit, PenTool, Layout } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,6 +14,8 @@ export default function Home() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<User | null>(null);
 
+  const router = useRouter();
+  
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -24,14 +27,13 @@ export default function Home() {
     }
   }, []);
 
-  const mockSearchResults = [
-    { id: '1', title: 'Music Theory', type: 'Subject' },
-    { id: '2', title: 'AWS Solutions Architect', type: 'Certification' },
-    { id: '3', title: 'Learning Spanish', type: 'Language' },
-    { id: '4', title: 'Organic Chemistry', type: 'Science' },
-    { id: '5', title: 'Project Management', type: 'Skill' },
-    { id: '6', title: 'Machine Learning', type: 'Technology' },
-  ].filter(res => res.title.toLowerCase().includes(searchQuery.toLowerCase()));
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      const slug = searchQuery.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      router.push(`/study/${slug}`);
+    }
+  };
 
   const features = [
     {
@@ -138,7 +140,10 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <div className={`relative transition-all duration-500 rounded-2xl border ${isFocused ? 'border-accent shadow-[0_0_40px_rgba(245,158,11,0.2)] bg-[#14120f]/90' : 'border-white/10 bg-[#14120f]/60'} backdrop-blur-xl overflow-hidden`}>
+          <form 
+            onSubmit={handleSearch}
+            className={`relative transition-all duration-500 rounded-2xl border ${isFocused ? 'border-accent shadow-[0_0_40px_rgba(245,158,11,0.2)] bg-[#14120f]/90' : 'border-white/10 bg-[#14120f]/60'} backdrop-blur-xl overflow-hidden`}
+          >
             <div className="flex items-center px-4 md:px-6 py-3 md:py-4">
               <Search className={`h-5 w-5 md:h-6 md:w-6 transition-colors duration-300 ${isFocused ? 'text-accent' : 'text-gray-500'}`} />
               <input
@@ -151,51 +156,11 @@ export default function Home() {
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setTimeout(() => setIsFocused(false), 200)}
               />
-              <div className="hidden md:flex items-center gap-1 text-xs text-gray-500 bg-white/5 px-2 py-1 rounded-md border border-white/5">
-                <kbd>⌘</kbd> <kbd>K</kbd>
-              </div>
+              <button type="submit" className="hidden md:flex items-center gap-1 text-xs text-gray-500 hover:text-white hover:bg-white/10 bg-white/5 px-3 py-1.5 rounded-md border border-white/5 transition-colors cursor-pointer">
+                Search <kbd className="ml-1 font-sans">↵</kbd>
+              </button>
             </div>
-          </div>
-
-          {/* Search Dropdown */}
-          <AnimatePresence>
-            {(searchQuery.length > 0 && isFocused) && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                transition={{ duration: 0.2 }}
-                className="absolute top-full mt-4 w-full bg-[#14120f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl text-left"
-              >
-                <div className="p-2">
-                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Subjects
-                  </div>
-                  {mockSearchResults.length > 0 ? (
-                    mockSearchResults.map((result) => (
-                      <Link 
-                        href={`/dashboard`} 
-                        key={result.id}
-                        className="flex items-center justify-between px-4 py-3 hover:bg-white/5 rounded-xl cursor-pointer transition-colors group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="bg-accent/10 p-2 rounded-lg text-accent group-hover:scale-110 transition-transform">
-                            <Layout className="w-4 h-4" />
-                          </div>
-                          <span className="text-gray-200 font-medium text-sm md:text-base">{result.title}</span>
-                        </div>
-                        <span className="text-[10px] md:text-xs text-gray-500 bg-white/5 px-2 py-1 rounded-full">{result.type}</span>
-                      </Link>
-                    ))
-                  ) : (
-                    <div className="px-4 py-6 text-center text-sm text-gray-500">
-                      No matching subjects found. <span className="text-accent hover:underline cursor-pointer">Create it?</span>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          </form>
         </motion.div>
 
         {/* Feature Grid */}

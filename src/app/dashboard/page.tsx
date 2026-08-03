@@ -5,6 +5,7 @@ import { Book, Plus, LogOut, FileText, Trash2 } from 'lucide-react';
 import { createSubject, createNote, deleteSubject, deleteNote } from './actions';
 import { logout, deleteAccount } from '../login/actions';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
+import PendingPathSaver from './PendingPathSaver';
 
 interface DashboardNote {
   id: string;
@@ -69,6 +70,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0908] text-white p-4 sm:p-6 md:p-12 max-w-6xl mx-auto">
+      <PendingPathSaver />
+      
       <header className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0 mb-10 md:mb-16">
         <Link href="/" className="font-serif text-xl md:text-2xl font-bold tracking-tight text-accent flex items-center gap-2">
           <Book className="w-5 h-5 md:w-6 md:h-6" /> Quad Encode
