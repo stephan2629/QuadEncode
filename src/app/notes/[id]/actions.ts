@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { GoogleGenAI } from '@google/genai'
 import { parseBlanks } from '@/lib/parseBlanks'
 
 async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClient>>, noteId: string, bodyMd: string) {
@@ -80,25 +81,112 @@ export async function updateNoteContent(id: string, body_md: string) {
 export async function createClozeCard(noteId: string, line: number, prompt: string, answer: string) {
   const supabase = await createClient()
 
-  const { error } = await supabase.from('cards').insert([
-    {
+  const { error } = await supabase
+    .from('cards')
+    .insert({
       note_id: noteId,
       line,
-      tier: 'authored',
       type: 'cloze',
+      tier: 'authored',
       prompt,
-      answer,
-      box: 0,
-      due: new Date().toISOString(),
-    },
-  ])
+      answer
+    })
 
   if (error) {
     console.error('Error creating cloze card:', error)
-    return { error: error.message }
+    return { error: 'Failed to create card' }
   }
 
+  revalidatePath(`/notes/${noteId}`)
   return { success: true }
+}
+
+export async function generatePromptsFromFile(subjectId: string, formData: FormData) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Unauthorized')
+
+    const file = formData.get('file') as File | null
+    const text = formData.get('text') as string | null
+
+    if (!file && !text) {
+      throw new Error('No file or text provided')
+    }
+
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    let promptText = `
+You are an expert tutor. Your goal is to extract key concepts, terms, and facts from the provided material and convert them into diagnostic study questions.
+CRITICAL RULES:
+1. Output ONLY the prompts/questions. NEVER output answers.
+2. Format each prompt exactly like this: ?? [Question or Concept]
+3. Maximum 12 prompts.
+4. Do not include any other text, introductory remarks, or formatting. Just the lines starting with ??.
+`
+
+    let generatedText = ''
+
+    if (file) {
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const base64Data = buffer.toString('base64')
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-1.5-flash',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                inlineData: {
+                  data: base64Data,
+                  mimeType: file.type
+                }
+              },
+              { text: promptText }
+            ]
+          }
+        ]
+      })
+      generatedText = response.text || ''
+    } else if (text) {
+      const response = await ai.models.generateContent({
+        model: 'gemini-1.5-flash',
+        contents: `${promptText}\n\nSource Material:\n${text}`
+      })
+      generatedText = response.text || ''
+    }
+
+    // Clean up the response to ensure it strictly follows the format
+    const lines = generatedText
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('??'))
+      .slice(0, 12)
+      .join('\n')
+
+    if (!lines) {
+      throw new Error('Failed to generate valid prompts.')
+    }
+
+    // Record the import
+    const { error: importError } = await supabase
+      .from('imports')
+      .insert({
+        subject_id: subjectId,
+        kind: file ? (file.type === 'application/pdf' ? 'pdf' : 'image') : 'text',
+        raw_ref: file ? file.name : 'pasted_text',
+        status: 'completed'
+      })
+      
+    if (importError) {
+      console.error('Error recording import:', importError)
+    }
+
+    return { text: lines }
+  } catch (error: any) {
+    console.error('Error generating prompts:', error)
+    return { error: error.message || 'Failed to generate prompts' }
+  }
 }
 
 export async function updateNoteTitle(id: string, title: string) {

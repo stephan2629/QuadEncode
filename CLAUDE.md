@@ -167,9 +167,7 @@ Follow the software development life cycle. Each phase runs plan, design, build,
 Repo, TypeScript strict, Tailwind, Supabase project, environment variables, Netlify connection, CI running tests on push. Deploy a placeholder page to prove the pipeline works end to end before writing features.
 
 **Phase 1, auth and notes**
-Sign up, sign in, sign out, protected routes. Password reset. Google OAuth as an alternative to email/password sign-in. Markdown note editor with autosave. Ships as a usable note app on its own, with no card machinery visible anywhere.
-
-Shipped without password reset or Google sign-in — email/password only so far. Outstanding: add both via Supabase Auth (`resetPasswordForEmail` + a reset-password page, `signInWithOAuth({ provider: 'google' })` on the login page) before this phase is considered fully done.
+Sign up (with name), sign in, sign out, protected routes. Password reset. Google OAuth as an alternative to email/password sign-in. Self-service account deletion. Markdown note editor with autosave. Ships as a usable note app on its own, with no card machinery visible anywhere.
 
 **Phase 2, cards and review**
 Blank parsing, cloze creation, box 0 promotion, review screen, Leitner scheduler, back pointer jump, session cap, completion screen. Review navigation appears only once a card exists. After this phase the app is genuinely usable for studying.

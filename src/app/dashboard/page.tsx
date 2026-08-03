@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Book, Plus, LogOut, FileText, Trash2 } from 'lucide-react';
 import { createSubject, createNote, deleteSubject, deleteNote } from './actions';
-import { logout } from '../login/actions';
+import { logout, deleteAccount } from '../login/actions';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 
 interface DashboardNote {
@@ -189,6 +189,17 @@ export default async function DashboardPage() {
           <p className="text-gray-500">Create your first subject above to start taking notes.</p>
         </div>
       )}
+
+      <footer className="mt-20 pt-8 border-t border-white/5 text-center">
+        <form action={deleteAccount}>
+          <ConfirmButton
+            confirmMessage="Delete your account? All subjects, notes, cards, and review history are permanently removed. This can't be undone."
+            className="text-xs text-gray-600 hover:text-red-400 transition-colors"
+          >
+            Delete account
+          </ConfirmButton>
+        </form>
+      </footer>
     </div>
   );
 }

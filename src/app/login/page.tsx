@@ -7,15 +7,42 @@ import { createClient } from '@/utils/supabase/client';
 import { BrainCircuit, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
+type Mode = 'login' | 'signup' | 'reset';
+
 export default function LoginPage() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<Mode>('login');
+  const isLogin = mode === 'login';
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setNotice(null);
+  }
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     setError(null);
+    setNotice(null);
+
+    if (mode === 'reset') {
+      const email = formData.get('email') as string;
+      const supabase = createClient();
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+      });
+      setLoading(false);
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setNotice('Check your email for a reset link.');
+      }
+      return;
+    }
+
     const action = isLogin ? login : signup;
     const res = await action(formData);
 
@@ -66,16 +93,18 @@ export default function LoginPage() {
           <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
           
           <h2 className="text-2xl font-bold text-white mb-2 relative z-10">
-            {isLogin ? 'Welcome back' : 'Create an account'}
+            {mode === 'login' && 'Welcome back'}
+            {mode === 'signup' && 'Create an account'}
+            {mode === 'reset' && 'Reset your password'}
           </h2>
           <p className="text-gray-400 text-sm mb-8 relative z-10">
-            {isLogin 
-              ? 'Enter your details to access your learning paths.' 
-              : 'Sign up to start organizing your knowledge.'}
+            {mode === 'login' && 'Enter your details to access your learning paths.'}
+            {mode === 'signup' && 'Sign up to start organizing your knowledge.'}
+            {mode === 'reset' && "Enter your email and we'll send you a reset link."}
           </p>
 
           <form action={handleSubmit} className="space-y-4 relative z-10">
-            {!isLogin && (
+            {mode === 'signup' && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="name">
                   Name
@@ -107,20 +136,40 @@ export default function LoginPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="password">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete={isLogin ? 'current-password' : 'new-password'}
-                placeholder="••••••••"
-                required
-                className="w-full bg-[#1a1815] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-              />
-            </div>
+            {mode !== 'reset' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="password">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
+                  placeholder="••••••••"
+                  required
+                  className="w-full bg-[#1a1815] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                />
+              </div>
+            )}
+
+            {isLogin && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => switchMode('reset')}
+                  className="text-xs text-gray-400 hover:text-white transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {notice && (
+              <div aria-live="polite" className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm">
+                {notice}
+              </div>
+            )}
 
             {error && (
               <div
@@ -135,24 +184,29 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              aria-label={loading ? (isLogin ? 'Signing in…' : 'Signing up…') : undefined}
               className="w-full bg-accent hover:bg-accent-muted text-[#14120f] font-bold py-3.5 px-4 rounded-xl transition-all shadow-[0_4px_14px_rgba(245,158,11,0.4)] hover:shadow-[0_6px_20px_rgba(245,158,11,0.6)] flex items-center justify-center mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
               ) : (
-                isLogin ? 'Sign In' : 'Sign Up'
+                <>
+                  {mode === 'login' && 'Sign In'}
+                  {mode === 'signup' && 'Sign Up'}
+                  {mode === 'reset' && 'Send Reset Link'}
+                </>
               )}
             </button>
           </form>
 
-          <div className="flex items-center gap-3 my-6 relative z-10">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Or</span>
-            <div className="h-px flex-1 bg-white/10" />
-          </div>
+          {mode !== 'reset' && (
+            <div className="flex items-center gap-3 my-6 relative z-10">
+              <div className="h-px flex-1 bg-white/10" />
+              <span className="text-xs text-gray-500 uppercase tracking-wider">Or</span>
+              <div className="h-px flex-1 bg-white/10" />
+            </div>
+          )}
 
-          <button
+          {mode !== 'reset' && <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading}
@@ -172,17 +226,17 @@ export default function LoginPage() {
                 Continue with Google
               </>
             )}
-          </button>
+          </button>}
 
           <div className="mt-6 text-center relative z-10">
             <button
               type="button"
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => switchMode(isLogin ? 'signup' : 'login')}
               className="text-sm text-gray-400 hover:text-white transition-colors"
             >
-              {isLogin 
-                ? "Don't have an account? Sign up" 
-                : "Already have an account? Sign in"}
+              {isLogin
+                ? "Don't have an account? Sign up"
+                : 'Already have an account? Sign in'}
             </button>
           </div>
         </div>

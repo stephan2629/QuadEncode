@@ -180,3 +180,18 @@ insert into public.profiles (user_id, display_name)
 select u.id, coalesce(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name', '')
 from auth.users u
 where not exists (select 1 from public.profiles p where p.user_id = u.id);
+
+-- Self-service account deletion. Deleting the auth.users row cascades
+-- through profiles and subjects (and from subjects through notes, cards,
+-- reviews, paths, imports) via the FKs above. security definer lets the
+-- authenticated user delete their own auth row without the service key.
+create or replace function public.delete_own_account()
+returns void
+language sql
+security definer set search_path = ''
+as $$
+  delete from auth.users where id = auth.uid();
+$$;
+
+revoke execute on function public.delete_own_account() from anon, public;
+grant execute on function public.delete_own_account() to authenticated;

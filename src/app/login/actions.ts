@@ -48,3 +48,16 @@ export async function logout() {
   await supabase.auth.signOut()
   redirect('/')
 }
+
+export async function deleteAccount() {
+  const supabase = await createClient()
+
+  const { error } = await supabase.rpc('delete_own_account')
+  if (error) {
+    console.error('Error deleting account:', error)
+    return
+  }
+
+  await supabase.auth.signOut()
+  redirect('/')
+}

@@ -4,13 +4,21 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Search, BrainCircuit, PenTool, Layout } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createClient } from '@/utils/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+
     if (window.matchMedia('(pointer: fine)').matches) {
       searchInputRef.current?.focus();
     }
@@ -58,12 +66,29 @@ export default function Home() {
           <BrainCircuit className="w-5 h-5 md:w-6 md:h-6 text-accent" />
           <span className="font-serif font-bold text-lg md:text-xl tracking-tight">Quad Encode</span>
         </div>
-        <Link 
-          href="/dashboard"
-          className="text-xs md:text-sm font-semibold text-accent hover:text-[#0a0908] bg-accent/10 hover:bg-accent border border-accent/20 px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all duration-300"
-        >
-          Sign In
-        </Link>
+        
+        {user ? (
+          <Link href="/dashboard" className="flex items-center gap-3 group bg-white/5 hover:bg-white/10 px-3 py-1.5 md:py-2 rounded-full border border-white/10 transition-colors">
+            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-accent/20 border border-accent overflow-hidden flex items-center justify-center">
+              {user.user_metadata?.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-accent text-xs md:text-sm font-bold">{user.email?.charAt(0).toUpperCase()}</span>
+              )}
+            </div>
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors hidden md:block">
+              {user.user_metadata?.name || 'Dashboard'}
+            </span>
+          </Link>
+        ) : (
+          <Link 
+            href="/dashboard"
+            className="text-xs md:text-sm font-semibold text-accent hover:text-[#0a0908] bg-accent/10 hover:bg-accent border border-accent/20 px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all duration-300"
+          >
+            Sign In
+          </Link>
+        )}
       </nav>
 
       {/* Main Hero Section */}

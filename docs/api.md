@@ -9,6 +9,13 @@ No `/app/api/` REST routes exist yet — all mutations go through Next.js Server
 | `login` | `(formData: FormData) => { error: string } \| void` | `email`/`password` fields. On success, redirects to `/dashboard`. |
 | `signup` | `(formData: FormData) => { error: string } \| void` | Same fields. Creates the account, redirects to `/dashboard`. |
 | `logout` | `() => void` | Signs out, redirects to `/`. |
+| `deleteAccount` | `() => void` | Calls the `delete_own_account` Postgres function (security definer, deletes the caller's `auth.users` row; everything else cascades via FKs), signs out, redirects to `/`. Behind a confirm dialog in the dashboard footer. |
+
+Password reset doesn't need a server action: the login page calls `supabase.auth.resetPasswordForEmail` client-side with a redirect to `/auth/callback?next=/auth/reset-password`, and the reset page calls `supabase.auth.updateUser({ password })` on the recovery session.
+
+## `src/app/auth/callback/route.ts`
+
+`GET /auth/callback?code=…&next=…` — exchanges an OAuth or recovery code for a session, then redirects to `next` (internal paths only, defaults to `/dashboard`). Used by both Google sign-in and the password reset email link.
 
 ## `src/app/dashboard/actions.ts`
 
