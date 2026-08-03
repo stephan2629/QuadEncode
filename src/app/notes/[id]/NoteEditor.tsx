@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Layout, Columns, Save } from 'lucide-react';
+import { ArrowLeft, Layout, Columns, Save, FileDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import ImportModal from '@/components/ui/ImportModal';
 import { updateNoteContent, updateNoteTitle, createClozeCard } from './actions';
 import { renderNoteForPreview } from '@/lib/parseBlanks';
 
@@ -27,6 +28,7 @@ export default function NoteEditor({
   const [content, setContent] = useState(initialData.body_md || '');
   const [title, setTitle] = useState(initialData.title || '');
   const [showPreview, setShowPreview] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [clozeCards, setClozeCards] = useState(
     initialData.cards?.filter((c) => c.type === 'cloze').map(c => ({ line: c.line, prompt: c.prompt, answer: c.answer })) || []
@@ -110,6 +112,14 @@ export default function NoteEditor({
     setSaveStatus('saved');
   };
 
+  const handleImportComplete = async (generatedPrompts: string) => {
+    const newContent = content + '\n\n## Open questions\n\n' + generatedPrompts;
+    setContent(newContent);
+    setSaveStatus('saving');
+    await updateNoteContent(noteId, newContent);
+    setSaveStatus('saved');
+  };
+
   const previewSource = renderNoteForPreview(content, clozeCards);
 
   return (
@@ -141,6 +151,14 @@ export default function NoteEditor({
             <Save className="w-3 h-3" aria-hidden="true" />
             {saveStatus === 'saving' ? 'Saving…' : 'Saved'}
           </div>
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="p-2 rounded-lg transition-colors flex items-center gap-2 text-sm text-gray-400 hover:text-white hover:bg-white/5"
+            title="Import File"
+          >
+            <FileDown className="w-4 h-4" />
+            <span className="hidden sm:inline">Import</span>
+          </button>
           <button
             onClick={() => setShowPreview(!showPreview)}
             className={`p-2 rounded-lg transition-colors flex items-center gap-2 text-sm ${showPreview ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
@@ -178,6 +196,13 @@ export default function NoteEditor({
           </div>
         )}
       </main>
+
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportComplete={handleImportComplete}
+        noteId={noteId}
+      />
     </div>
   );
 }

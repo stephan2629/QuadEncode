@@ -7,10 +7,10 @@ interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImportComplete: (generatedPrompts: string) => void;
-  subjectId: string;
+  noteId: string;
 }
 
-export default function ImportModal({ isOpen, onClose, onImportComplete, subjectId }: ImportModalProps) {
+export default function ImportModal({ isOpen, onClose, onImportComplete, noteId }: ImportModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [textMode, setTextMode] = useState(false);
   const [pastedText, setPastedText] = useState('');
@@ -44,18 +44,18 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, subject
         throw new Error('Please provide a file or paste some text.');
       }
 
-      const markdown = await generatePromptsFromFile(subjectId, formData);
-      if (markdown.error) {
-        throw new Error(markdown.error);
+      const markdown = await generatePromptsFromFile(noteId, formData);
+      if (markdown.error || !markdown.text) {
+        throw new Error(markdown.error || 'Import produced no prompts.');
       }
-      
+
       onImportComplete(markdown.text);
       onClose();
       // Reset state
       setFile(null);
       setPastedText('');
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong during import.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong during import.');
     } finally {
       setLoading(false);
     }

@@ -101,7 +101,7 @@ export async function createClozeCard(noteId: string, line: number, prompt: stri
   return { success: true }
 }
 
-export async function generatePromptsFromFile(subjectId: string, formData: FormData) {
+export async function generatePromptsFromFile(noteId: string, formData: FormData) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -114,8 +114,12 @@ export async function generatePromptsFromFile(subjectId: string, formData: FormD
       throw new Error('No file or text provided')
     }
 
+    // Get subject_id from noteId
+    const { data: noteData } = await supabase.from('notes').select('subject_id').eq('id', noteId).single()
+    const subjectId = noteData?.subject_id
+
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-    let promptText = `
+    const promptText = `
 You are an expert tutor. Your goal is to extract key concepts, terms, and facts from the provided material and convert them into diagnostic study questions.
 CRITICAL RULES:
 1. Output ONLY the prompts/questions. NEVER output answers.
@@ -169,23 +173,26 @@ CRITICAL RULES:
     }
 
     // Record the import
-    const { error: importError } = await supabase
-      .from('imports')
-      .insert({
-        subject_id: subjectId,
-        kind: file ? (file.type === 'application/pdf' ? 'pdf' : 'image') : 'text',
-        raw_ref: file ? file.name : 'pasted_text',
-        status: 'completed'
-      })
-      
-    if (importError) {
-      console.error('Error recording import:', importError)
+    if (subjectId) {
+      const { error: importError } = await supabase
+        .from('imports')
+        .insert({
+          subject_id: subjectId,
+          kind: file ? (file.type === 'application/pdf' ? 'pdf' : 'image') : 'text',
+          raw_ref: file ? file.name : 'pasted_text',
+          status: 'completed'
+        })
+        
+      if (importError) {
+        console.error('Error recording import:', importError)
+      }
     }
 
     return { text: lines }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error generating prompts:', error)
-    return { error: error.message || 'Failed to generate prompts' }
+    const message = error instanceof Error ? error.message : 'Failed to generate prompts'
+    return { error: message }
   }
 }
 
