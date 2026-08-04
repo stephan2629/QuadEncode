@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { m } from "framer-motion";
 import { login, signup } from './actions';
 import { createClient } from '@/utils/supabase/client';
+import { humanizeAuthError } from '@/lib/auth-errors';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -32,12 +33,13 @@ export default function LoginPage() {
     if (mode === 'reset') {
       const email = formData.get('email') as string;
       const supabase = createClient();
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+        redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
       });
       setLoading(false);
       if (resetError) {
-        setError(resetError.message);
+        setError(humanizeAuthError(resetError.message));
       } else {
         setNotice('Check your email for a reset link.');
       }
@@ -63,7 +65,7 @@ export default function LoginPage() {
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (oauthError) {
-      setError(oauthError.message);
+      setError(humanizeAuthError(oauthError.message));
       setGoogleLoading(false);
     }
     // On success, Supabase redirects the browser to Google; no further action here.
