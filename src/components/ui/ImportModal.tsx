@@ -107,7 +107,7 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
               <X className="w-4 h-4" />
             </button>
 
-            <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Import Source Material</h2>
+            <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Import source material</h2>
 
             {/* Toggle Tabs */}
             <div className="flex bg-black/40 p-1 rounded-xl mb-6 border border-white/5 relative">

@@ -189,9 +189,9 @@ export default function LoginPage() {
                 <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
               ) : (
                 <>
-                  {mode === 'login' && 'Sign In'}
-                  {mode === 'signup' && 'Sign Up'}
-                  {mode === 'reset' && 'Send Reset Link'}
+                  {mode === 'login' && 'Sign in'}
+                  {mode === 'signup' && 'Sign up'}
+                  {mode === 'reset' && 'Send reset link'}
                 </>
               )}
             </button>

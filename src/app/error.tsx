@@ -21,9 +21,9 @@ export default function Error({
       <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
         <AlertCircle className="w-8 h-8 text-red-500" />
       </div>
-      <h2 className="text-3xl font-bold font-serif mb-4 text-gray-100">Something went wrong!</h2>
+      <h2 className="text-3xl font-bold font-serif mb-4 text-gray-100">Something went wrong</h2>
       <p className="text-gray-400 mb-8 max-w-md mx-auto leading-relaxed">
-        We ran into an unexpected error trying to load this page. We&apos;ve logged the issue and are looking into it.
+        This page hit an unexpected error.
       </p>
       
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">

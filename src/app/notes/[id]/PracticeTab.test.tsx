@@ -18,22 +18,22 @@ describe('PracticeTab', () => {
 
   it('starts a session without crashing (regression: hooks were declared after early returns)', () => {
     render(<PracticeTab noteId="note-1" content={sampleContent} />);
-    fireEvent.click(screen.getByText('Start Practice'));
+    fireEvent.click(screen.getByText('Start practice'));
     expect(screen.getByText('Spaced repetition')).toBeInTheDocument();
   });
 
   it('flips a vocab card to reveal its answer', () => {
     render(<PracticeTab noteId="note-2" content={sampleContent} />);
-    fireEvent.click(screen.getByText('Start Practice'));
+    fireEvent.click(screen.getByText('Start practice'));
     fireEvent.click(screen.getByText('Spaced repetition'));
     expect(screen.getByText('Reviewing material at increasing intervals.')).toBeInTheDocument();
   });
 
   it('reaches the results screen after finishing the last card without crashing', () => {
     render(<PracticeTab noteId="note-4" content={sampleContent} />);
-    fireEvent.click(screen.getByText('Start Practice'));
+    fireEvent.click(screen.getByText('Start practice'));
     fireEvent.click(screen.getByText('Spaced repetition'));
     fireEvent.click(screen.getByText('Finish'));
-    expect(screen.getByText('Practice Complete')).toBeInTheDocument();
+    expect(screen.getByText('Practice complete')).toBeInTheDocument();
   });
 });

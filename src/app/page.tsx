@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { PenTool, BrainCircuit, RefreshCw, FileText, FileDown, Image as ImageIcon, Video, MoveRight } from 'lucide-react';
+import { PenTool, BrainCircuit, RefreshCw, FileText, FileDown, Image as ImageIcon, Video, MoveRight, Search, Eye } from 'lucide-react';
 import { m } from "framer-motion";
 import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
@@ -14,108 +14,14 @@ import SearchCharCount from '@/components/ui/SearchCharCount';
 const SubjectWall = dynamic(() => import('@/components/ui/SubjectWall'), { ssr: false });
 const TiltCard = dynamic(() => import('@/components/ui/TiltCard'), { ssr: false });
 const FlipCardDemo = dynamic(() => import('@/components/ui/FlipCardDemo'), { ssr: false });
-
-const MockAppWindow = () => (
-  <div className="w-full max-w-5xl mx-auto mt-16 md:mt-24 h-[400px] md:h-[600px] relative p-[1px] rounded-2xl overflow-hidden shadow-[0_0_80px_rgba(245,158,11,0.08)] transform-gpu hover:scale-[1.01] transition-transform duration-700">
-    {/* Uiverse-Style Spinning Border Beam */}
-    <div className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0_340deg,#f59e0b_360deg)] animate-[spin_4s_linear_infinite] opacity-60 z-0"></div>
-    
-    {/* Actual App Window */}
-    <div className="relative z-10 bg-[#0f0e0c] w-full h-full rounded-2xl flex flex-col text-left overflow-hidden">
-      {/* Titlebar */}
-      <div className="h-10 border-b border-white/10 flex items-center px-4 bg-[#14120f]">
-        <div className="flex gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50"></div>
-          <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
-          <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50"></div>
-        </div>
-        <div className="mx-auto text-xs font-mono text-gray-500">Quad Encode - Study Session</div>
-      </div>
-      {/* App Body */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-48 border-r border-white/10 hidden md:flex flex-col p-4 gap-2 bg-[#0a0908]">
-          <div className="text-xs font-bold text-gray-500 mb-2 tracking-widest">PATHS</div>
-          <div className="text-sm text-gray-300 py-1.5 px-3 bg-white/5 rounded-md border border-white/5">Music Theory</div>
-          <div className="text-sm text-gray-500 py-1.5 px-3 hover:text-gray-300 transition-colors cursor-default">Spanish</div>
-          <div className="text-sm text-gray-500 py-1.5 px-3 hover:text-gray-300 transition-colors cursor-default">Computer Science</div>
-          <div className="text-sm text-gray-500 py-1.5 px-3 hover:text-gray-300 transition-colors cursor-default">History</div>
-        </div>
-        {/* Main Editor/Review */}
-        <div className="flex-1 p-6 md:p-12 bg-[#14120f] flex flex-col justify-center items-center relative overflow-hidden">
-          {/* Subtle background glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-accent/5 rounded-full blur-[120px] pointer-events-none"></div>
-          
-          <div className="w-full max-w-lg z-10">
-            <div className="flex items-center gap-2 mb-6">
-              <span className="text-xs font-mono text-accent bg-accent/10 px-2 py-1 rounded uppercase tracking-widest">Review</span>
-              <span className="text-xs font-mono text-gray-500">Music Theory</span>
-            </div>
-            <div className="text-2xl md:text-4xl font-serif font-bold text-white mb-8 leading-tight">What is the relative minor of G major?</div>
-            
-            <div className="w-full h-32 border border-white/10 rounded-xl bg-[#0a0908] p-4 font-mono text-gray-500 flex flex-col justify-between group hover:border-white/20 transition-colors">
-              <span>Type your answer...</span>
-              <div className="w-3 h-5 bg-accent/50 animate-pulse"></div>
-            </div>
-            <div className="mt-6 flex justify-end">
-              <div className="px-6 py-2 bg-gradient-to-b from-accent to-yellow-600 text-[#0a0908] font-bold rounded-lg text-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_15px_rgba(245,158,11,0.4)]">Submit</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const SEARCH_SUGGESTIONS = [
-  "What do you want to learn?",
-  "Try 'Python Programming'",
-  "Try 'World War II'",
-  "Try 'Quantum Physics'",
-  "Try 'Machine Learning'",
-  "Try 'French Revolution'"
-];
+const MarkdownToRecallDemo = dynamic(() => import('@/components/ui/MarkdownToRecallDemo'), { ssr: false });
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<User | null>(null);
-
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [currentPlaceholder, setCurrentPlaceholder] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // While focused or mid-query the placeholder is a fixed value, not the
-  // typewriter animation - derived directly at render time rather than
-  // synced through an effect + setState, which would trigger an extra
-  // render every time isFocused/searchQuery changes.
-  const displayPlaceholder = isFocused || searchQuery.length > 0 ? SEARCH_SUGGESTIONS[0] : currentPlaceholder;
-
-  useEffect(() => {
-    if (isFocused || searchQuery.length > 0) return;
-
-    const currentFullText = SEARCH_SUGGESTIONS[placeholderIndex];
-
-    const timer = setTimeout(() => {
-      if (!isDeleting) {
-        if (currentPlaceholder.length < currentFullText.length) {
-          setCurrentPlaceholder(currentFullText.slice(0, currentPlaceholder.length + 1));
-        } else {
-          setTimeout(() => setIsDeleting(true), 2500);
-        }
-      } else {
-        if (currentPlaceholder.length > 0) {
-          setCurrentPlaceholder(currentFullText.slice(0, currentPlaceholder.length - 1));
-        } else {
-          setIsDeleting(false);
-          setPlaceholderIndex((prev) => (prev + 1) % SEARCH_SUGGESTIONS.length);
-        }
-      }
-    }, isDeleting ? 25 : 50);
-
-    return () => clearTimeout(timer);
-  }, [currentPlaceholder, isDeleting, placeholderIndex, isFocused, searchQuery]);
+  const [heroFlipped, setHeroFlipped] = useState(false);
 
   const router = useRouter();
   
@@ -159,6 +65,7 @@ export default function Home() {
   const loopSteps = [
     {
       n: '01',
+      icon: Search,
       title: 'Find the material',
       body: 'Type in the subject. Quad Encode ranks the strongest material on the open web and orders it into a path. Free resources come first, each with a plain description of what it covers and who it is actually for.',
       cta: 'See a real path',
@@ -166,6 +73,7 @@ export default function Home() {
     },
     {
       n: '02',
+      icon: PenTool,
       title: 'Write it down as prompts',
       body: 'Take notes in the editor, or bring in notes you already have. Write **Vocab:** and **Def:** around a term and it becomes a flip card. Nothing else to learn.',
       cta: 'Try the editor',
@@ -173,6 +81,7 @@ export default function Home() {
     },
     {
       n: '03',
+      icon: Eye,
       title: 'Answer before you are told',
       body: 'Review is a blank field, not a flashcard back. You write the answer, then compare it with the one you wrote when you understood it. What you keep missing returns sooner; what has stuck moves out of the way.',
       cta: 'Run a session',
@@ -282,10 +191,9 @@ export default function Home() {
 
       {/* Main Hero Section */}
       <main className="relative pt-32 md:pt-48 pb-16 md:pb-24 px-4 md:px-6 max-w-7xl mx-auto flex flex-col items-center justify-center text-center">
-        
         {/* Hero Copy (Massive Typography) */}
-        <m.h1 
-          className="text-[clamp(1.75rem,7vw,90px)] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.15] md:leading-[1.05] text-white"
+        <m.h1
+          className="text-[clamp(2.2rem,7vw,90px)] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.12] md:leading-[1.05] text-white"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
@@ -293,9 +201,9 @@ export default function Home() {
           Never see an answer you <br className="hidden md:block"/>
           didn&apos;t try to <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent via-yellow-400 to-accent">retrieve yourself.</span>
         </m.h1>
-        
-        <m.p 
-          className="text-lg sm:text-xl md:text-2xl text-gray-400 mb-12 md:mb-16 max-w-3xl mx-auto font-light px-4 leading-relaxed tracking-wide"
+
+        <m.p
+          className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-12 md:mb-16 max-w-3xl mx-auto font-light px-4 leading-relaxed tracking-wide"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
@@ -310,7 +218,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <div className="text-sm font-bold text-accent uppercase tracking-widest mb-3">Start here</div>
+          <div className="text-xs font-bold text-accent uppercase tracking-widest mb-3 font-mono">Start here</div>
           <form 
             onSubmit={handleSearch}
             className={`w-full relative transition-all duration-500 rounded-2xl overflow-hidden bg-[#14120f]/80 backdrop-blur-xl ${isFocused ? 'shadow-[0_0_0_2px_#f59e0b,0_0_40px_rgba(245,158,11,0.3)]' : 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_0_0_1px_rgba(255,255,255,0.1)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_0_0_1px_rgba(245,158,11,0.5)]'}`}
@@ -320,19 +228,19 @@ export default function Home() {
                 ref={searchInputRef}
                 type="text"
                 className="w-full bg-transparent border-none outline-none text-white text-base md:text-lg px-4 md:px-5 placeholder-gray-500 font-medium"
-                placeholder={displayPlaceholder}
+                placeholder="What do you want to learn?"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setTimeout(() => setIsFocused(false), 200)}
               />
               <SearchCharCount length={searchQuery.length} />
-              <button type="submit" className="hidden md:flex flex-shrink-0 items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-b from-accent to-yellow-600 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] hover:brightness-110 px-6 py-3 rounded-xl transition-all cursor-pointer active:scale-95 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]">
+              <button type="submit" className="hidden md:flex flex-shrink-0 items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-b from-accent to-yellow-600 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] hover:brightness-110 px-6 py-3 rounded-xl transition-all cursor-pointer active:scale-95">
                 Find the path <MoveRight className="w-4 h-4" />
               </button>
             </div>
           </form>
-          <button onClick={handleSearch} className="md:hidden mt-4 flex items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-b from-accent to-yellow-600 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] w-full justify-center">
+          <button onClick={handleSearch} className="md:hidden mt-4 flex items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-b from-accent to-yellow-600 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 w-full justify-center">
             Find the path <MoveRight className="w-4 h-4" />
           </button>
 
@@ -352,51 +260,70 @@ export default function Home() {
           </div>
         </m.div>
 
-        {/* Live Interactive Demo Widget */}
+        {/* Live Interactive Demo Widget - same colors, border, typography, and
+            zero-duration flip as the real vocab card in ReviewSession.tsx, so
+            this is a preview of the actual mechanic, not a lookalike. */}
         <m.div
           className="w-full relative z-30 mt-16 max-w-md mx-auto"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="bg-[#14120f] border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden group cursor-pointer" onClick={(e) => {
-            const el = e.currentTarget;
-            el.classList.toggle('flipped');
-          }}>
-            <div className="absolute top-0 left-0 w-full h-1 bg-accent/50 group-hover:bg-accent transition-colors"></div>
-            <div className="text-left">
-              <div className="text-xs font-bold text-accent uppercase tracking-wider mb-4">Try it instantly</div>
-              <p className="text-xl font-serif text-white mb-6">What is the core philosophy of Quad Encode?</p>
-              
-              <div className="relative h-20 perspective-1000">
-                <div className="w-full h-full transition-transform duration-0 transform-style-3d group-[.flipped]:rotate-x-180">
-                  <div className="absolute w-full h-full backface-hidden bg-white/5 border border-white/10 rounded-xl flex items-center justify-center p-4">
-                    <span className="text-gray-400 text-sm font-mono">Tap to reveal answer</span>
-                  </div>
-                  <div className="absolute w-full h-full backface-hidden bg-accent/10 border border-accent/50 rounded-xl flex items-center justify-center p-4 rotate-x-180">
-                    <span className="text-white text-base font-medium text-center">Never see an answer you didn&apos;t try to retrieve yourself.</span>
-                  </div>
-                </div>
+          <div className="text-xs font-bold text-accent uppercase tracking-wider mb-4 text-left">Try it instantly</div>
+          <div className="relative h-40" style={{ perspective: '1000px' }}>
+            <m.div
+              role="button"
+              tabIndex={0}
+              aria-label={heroFlipped ? 'Answer revealed. Press to flip back.' : 'Show answer'}
+              aria-pressed={heroFlipped}
+              className="w-full h-full relative cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-4 rounded-3xl"
+              style={{ transformStyle: 'preserve-3d' }}
+              animate={{ rotateY: heroFlipped ? 180 : 0 }}
+              transition={{ rotateY: { duration: 0 } }}
+              onClick={() => setHeroFlipped((f) => !f)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setHeroFlipped((f) => !f);
+                }
+              }}
+            >
+              {/* Front */}
+              <div
+                className="absolute inset-0 bg-[#0a0908] border-2 border-white/10 hover:border-white/20 transition-colors p-6 rounded-3xl flex flex-col items-center justify-center text-center shadow-xl"
+                style={{ backfaceVisibility: 'hidden' }}
+              >
+                <p className="text-lg font-serif leading-relaxed text-white">What is the core philosophy of Quad Encode?</p>
+                {!heroFlipped && (
+                  <p className="absolute bottom-4 text-[10px] text-gray-400 font-mono tracking-widest uppercase">Tap to reveal</p>
+                )}
               </div>
-            </div>
-            {/* Custom 3D CSS for the flip card demo */}
-            <style jsx>{`
-              .perspective-1000 { perspective: 1000px; }
-              .transform-style-3d { transform-style: preserve-3d; }
-              .backface-hidden { backface-visibility: hidden; }
-              .rotate-x-180 { transform: rotateX(180deg); }
-            `}</style>
+              {/* Back */}
+              <div
+                className="absolute inset-0 bg-[#14120f] border-2 border-white/10 p-6 rounded-3xl flex flex-col items-center justify-center text-center shadow-xl"
+                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+              >
+                <p className="text-base text-gray-300 leading-relaxed font-serif">Never see an answer you didn&apos;t try to retrieve yourself.</p>
+              </div>
+            </m.div>
           </div>
         </m.div>
 
-        {/* Obsidian-Style Mock App Window */}
+        {/* Markdown-to-recall preview: the actual mechanic, not a screenshot of it */}
         <m.div
-          className="w-full relative z-30 mt-16"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-4xl mx-auto relative z-30 mt-20 md:mt-28 text-left"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
         >
-          <MockAppWindow />
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-3 tracking-tight">One line becomes a card</h2>
+            <p className="text-gray-400 max-w-xl mx-auto">
+              Write <span className="font-mono text-accent">**Vocab:**</span> and <span className="font-mono text-blue-400">**Def:**</span> around a term in your notes. Try the card on the right yourself.
+            </p>
+          </div>
+          <MarkdownToRecallDemo />
         </m.div>
 
         {/* Feature Grid (Bento) */}
@@ -440,9 +367,9 @@ export default function Home() {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <h2 className="text-3xl font-serif font-bold text-white mb-10 md:mb-16 text-center">The loop</h2>
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-10 md:mb-16 text-center tracking-tight">How it works</h2>
           <m.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
             variants={staggerContainer}
             initial="hidden"
             whileInView="show"
@@ -450,12 +377,20 @@ export default function Home() {
           >
             {loopSteps.map((step) => (
               <m.div key={step.n} variants={fadeUpItem}>
-                <div className="font-mono text-sm text-accent mb-4">{step.n}</div>
-                <h3 className="text-xl font-bold font-serif mb-3 text-white">{step.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed mb-4">{step.body}</p>
-                <Link href={step.href} className="group/cta text-sm font-semibold text-accent hover:text-accent/80 transition-colors inline-flex items-center gap-1.5">
-                  {step.cta} <MoveRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover/cta:translate-x-1" />
-                </Link>
+                <TiltCard tiltAmount={4} className="group relative bg-[#14120f]/60 backdrop-blur-md border border-white/10 hover:border-white/20 rounded-3xl p-8 h-full flex flex-col transition-colors overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="bg-accent/10 w-12 h-12 rounded-2xl flex items-center justify-center text-accent group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                      <step.icon className="w-6 h-6" aria-hidden="true" />
+                    </div>
+                    <span className="font-mono text-sm text-gray-500">{step.n}</span>
+                  </div>
+                  <h3 className="text-xl font-bold font-serif mb-3 text-white transform-gpu translate-z-10">{step.title}</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed mb-6 flex-1 transform-gpu translate-z-10">{step.body}</p>
+                  <Link href={step.href} className="group/cta text-sm font-semibold text-accent hover:text-accent/80 transition-colors inline-flex items-center gap-1.5 transform-gpu translate-z-10">
+                    {step.cta} <MoveRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover/cta:translate-x-1" />
+                  </Link>
+                </TiltCard>
               </m.div>
             ))}
           </m.div>

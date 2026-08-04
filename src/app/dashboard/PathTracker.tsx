@@ -81,7 +81,7 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
 
   return (
     <div className="space-y-6 mb-12">
-      <h2 className="text-xl md:text-2xl font-bold font-serif">Active Paths</h2>
+      <h2 className="text-xl md:text-2xl font-bold font-serif">Active paths</h2>
       <AnimatePresence initial={false}>
         {optimisticPaths.map((path) => {
           const sortedSteps = [...path.path_steps].sort((a, b) => a.order - b.order);
@@ -92,10 +92,9 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
               key={path.id}
               layout
               exit={{ opacity: 0, x: -16, transition: { duration: 0.15 } }}
-              className="group perspective-[1000px]"
+              className="bg-[#14120f] border border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-xl hover:border-white/20 transition-colors duration-200"
             >
-              <TiltCard className="bg-[#14120f] border-2 border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent pointer-events-none"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none"></div>
 
                 <div className="flex justify-between items-start mb-6 relative z-10">
                   <div>
@@ -289,7 +288,6 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                     );
                   })}
                 </div>
-              </TiltCard>
             </m.div>
           );
         })}

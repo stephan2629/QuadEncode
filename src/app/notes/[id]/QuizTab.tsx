@@ -237,7 +237,7 @@ export default function QuizTab({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.1 }}
                   onClick={handleContinue}
-                  className="px-12 py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold tracking-wide transition-all flex items-center gap-2"
+                  className="w-full sm:w-auto justify-center px-8 py-3.5 sm:px-12 sm:py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold tracking-wide transition-all flex items-center gap-2"
                 >
                   {index + 1 < questions.length ? 'Next question' : 'See results'}
                   <ArrowRight className="w-4 h-4" aria-hidden="true" />

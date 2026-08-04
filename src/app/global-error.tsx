@@ -22,9 +22,9 @@ export default function GlobalError({
           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
             <AlertCircle className="w-8 h-8 text-red-500" />
           </div>
-          <h2 className="text-3xl font-bold font-serif mb-4 text-gray-100">Critical Error</h2>
+          <h2 className="text-3xl font-bold font-serif mb-4 text-gray-100">Critical error</h2>
           <p className="text-gray-400 mb-8 max-w-md mx-auto leading-relaxed">
-            The application encountered a critical error. We have logged the issue and are looking into it.
+            The app failed to load.
           </p>
           <div className="flex flex-col gap-4 items-center justify-center">
             <button
@@ -32,7 +32,7 @@ export default function GlobalError({
               className="flex items-center gap-2 bg-accent text-[#0a0908] font-bold px-6 py-3 rounded-xl hover:bg-accent/90 transition-colors"
             >
               <RotateCcw className="w-5 h-5" />
-              Reload Application
+              Reload application
             </button>
           </div>
         </div>

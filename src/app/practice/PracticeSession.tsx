@@ -52,7 +52,7 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
           >
             <Dumbbell className="w-12 h-12 text-accent" aria-hidden="true" />
           </m.div>
-          <h1 className="text-4xl font-serif font-bold mb-4">Practice complete</h1>
+          <h1 className="text-3xl md:text-4xl font-serif font-bold mb-4">Practice complete</h1>
           <p className="text-gray-400 mb-2 text-lg">
             {correct} of {results.length} correct
           </p>
@@ -78,9 +78,9 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
 
           <Link
             href="/dashboard"
-            className="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-full font-medium transition-all"
+            className="inline-block w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-full font-medium transition-all"
           >
-            Return to Dashboard
+            Return to dashboard
           </Link>
         </div>
       </div>
@@ -145,9 +145,9 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
             {picked !== null && (
               <button
                 onClick={handleNext}
-                className="px-12 py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold tracking-wide transition-all"
+                className="w-full sm:w-auto px-8 py-3.5 sm:px-12 sm:py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold tracking-wide transition-all"
               >
-                {index + 1 < questions.length ? 'Next' : 'See Results'}
+                {index + 1 < questions.length ? 'Next' : 'See results'}
               </button>
             )}
           </div>

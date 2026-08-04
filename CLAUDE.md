@@ -448,3 +448,15 @@ For AI generated resource descriptions in phase 4, put these constraints in the 
 - **Do not import from exam dump sites** or leaked question banks.
 - **Keep imported source text private** to the user who imported it.
 - **Enforce core rules:** If a request conflicts with section 3 (progressive disclosure), stop and say so before writing code.
+
+---
+
+## 21. Tone: energetic is fine, gamified is not
+
+Marketing and UI copy can be punchier and more energetic than a neutral tone guide would default to: stronger verbs, more urgency, more personality in headlines and CTAs. That allowance stops at two hard lines, both decided by the product owner and non-negotiable:
+
+- **Never fabricate a statistic.** No invented usage counts, completion rates, or "X people did this today" claims (section 12). This product has no user base yet; if a number appears, it must be real and computed live, never a hardcoded placeholder dressed up as a stat.
+- **No streak, XP, level, or badge mechanics, in copy or in the product.** Section 15's reasoning stands as originally written: streaks punish a bad week and make people quit. Words like "streak," "level up," "boss battle," or "unlock" (also banned outright in section 19) signal exactly this pattern and should not appear even as flavor text with no mechanic behind them, since that is still promising a game system the product doesn't and won't have.
+
+An earlier draft of this section approved copy that broke both rules (a fabricated "10k+ Prompts Solved Today" stat, streak and XP badges, "unlocking" language). That draft was wrong and has been replaced by this one. If a future prompt asks for gamified copy again, point back here rather than re-approving it.
+

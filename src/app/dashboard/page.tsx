@@ -109,14 +109,26 @@ export default async function DashboardPage() {
       if (totalCardsError) console.error('Error counting cards:', totalCardsError.message);
       totalCards = totalCountRaw ?? 0;
 
-      // Due Cards for Subject
-      const { count: dueCountRaw, error: dueCardsError } = await supabase
-        .from('cards')
-        .select('id', { count: 'exact', head: true })
-        .in('note_id', noteIds)
-        .or(`box.eq.0,and(box.gt.0,box.lt.5,due.lte.${new Date().toISOString()})`);
-      if (dueCardsError) console.error('Error counting due cards:', dueCardsError.message);
-      dueCount = dueCountRaw ?? 0;
+      // Due Cards for Subject (Box 0 plus Box 1-4 due)
+      try {
+        const { count: boxZeroCount } = await supabase
+          .from('cards')
+          .select('id', { count: 'exact', head: true })
+          .eq('box', 0)
+          .in('note_id', noteIds);
+
+        const { count: dueBoxGte1Count } = await supabase
+          .from('cards')
+          .select('id', { count: 'exact', head: true })
+          .gt('box', 0)
+          .lt('box', 5)
+          .lte('due', new Date().toISOString())
+          .in('note_id', noteIds);
+
+        dueCount = (boxZeroCount ?? 0) + (dueBoxGte1Count ?? 0);
+      } catch (err) {
+        console.error('Error counting due cards:', err);
+      }
     }
 
     // Imports for Subject
@@ -185,7 +197,7 @@ export default async function DashboardPage() {
             <input 
               type="text" 
               name="name" 
-              placeholder="New Subject Name..." 
+              placeholder="New subject name..."
               required
               className="flex-1 bg-[#1a1815] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-accent text-base md:text-sm"
             />
@@ -228,12 +240,12 @@ export default async function DashboardPage() {
               <input 
                 type="text" 
                 name="name" 
-                placeholder="New Subject..." 
+                placeholder="New subject..."
                 required
                 className="flex-1 md:flex-none bg-[#14120f] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-accent text-base md:text-sm"
               />
               <button type="submit" className="bg-white/10 hover:bg-white/20 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap">
-                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add Subject</span>
+                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add subject</span>
               </button>
             </form>
           </div>
@@ -260,7 +272,7 @@ export default async function DashboardPage() {
                 className="bg-[#1a1815] border border-white/5 rounded-lg px-4 py-2 flex-1 text-base md:text-sm focus:outline-none focus:border-accent/50 text-white placeholder-gray-600"
               />
               <button type="submit" aria-label="Add note" className="text-[#0a0908] bg-accent hover:bg-accent/90 px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-2 text-sm">
-                <Plus className="w-4 h-4" aria-hidden="true" /> Create Note
+                <Plus className="w-4 h-4" aria-hidden="true" /> Create note
               </button>
             </form>
           </div>

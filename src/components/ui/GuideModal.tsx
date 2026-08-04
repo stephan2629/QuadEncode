@@ -36,7 +36,7 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-white tracking-tight">Editor Guide</h2>
+                    <h2 className="text-lg font-bold text-white tracking-tight">Editor guide</h2>
                     <p className="text-xs text-gray-400">Master the QuadEncode learning tools</p>
                   </div>
                 </div>
@@ -59,7 +59,7 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5">
                       <List className="w-5 h-5 text-gray-300 mb-2" />
-                      <h4 className="text-sm font-semibold text-white mb-1">Interactive Transcripts</h4>
+                      <h4 className="text-sm font-semibold text-white mb-1">Interactive transcripts</h4>
                       <p className="text-xs text-gray-400 leading-relaxed">
                         The Transcript tab automatically loads the spoken words from the video. Click on any timestamp to instantly seek the video to that moment.
                       </p>
@@ -107,7 +107,7 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                   <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="text-sm font-semibold text-white mb-1">Cloze Deletion (Fill in the blank)</h4>
+                        <h4 className="text-sm font-semibold text-white mb-1">Cloze deletion (fill in the blank)</h4>
                         <p className="text-xs text-gray-400">Highlight any text in your editor and press the shortcut to turn it into a fill-in-the-blank flashcard.</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0 ml-4">

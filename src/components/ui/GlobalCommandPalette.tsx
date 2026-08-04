@@ -55,7 +55,7 @@ export function GlobalCommandPalette() {
     <Command.Dialog 
       open={open} 
       onOpenChange={setOpen}
-      label="Global Command Menu"
+      label="Global command menu"
       className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] sm:pt-[20vh] bg-black/50 backdrop-blur-sm"
     >
       <div className="w-full max-w-2xl bg-[#14120F]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -76,14 +76,14 @@ export function GlobalCommandPalette() {
               className="flex items-center px-4 py-3 mt-1 rounded-lg text-sm text-gray-200 cursor-pointer aria-selected:bg-white/10 aria-selected:text-white"
             >
               <LayoutDashboard className="w-4 h-4 mr-3 text-accent" />
-              Go to Dashboard
+              Go to dashboard
             </Command.Item>
             <Command.Item 
               onSelect={() => { setOpen(false); router.push('/review'); }}
               className="flex items-center px-4 py-3 mt-1 rounded-lg text-sm text-gray-200 cursor-pointer aria-selected:bg-white/10 aria-selected:text-white"
             >
               <Book className="w-4 h-4 mr-3 text-green-400" />
-              Start Review Session
+              Start review session
             </Command.Item>
           </Command.Group>
 
@@ -116,7 +116,7 @@ export function GlobalCommandPalette() {
               className="flex items-center px-4 py-3 mt-1 rounded-lg text-sm text-red-400 cursor-pointer aria-selected:bg-red-500/10 aria-selected:text-red-300"
             >
               <LogOut className="w-4 h-4 mr-3" />
-              Sign Out
+              Sign out
             </Command.Item>
           </Command.Group>
         </Command.List>

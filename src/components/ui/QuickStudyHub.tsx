@@ -22,7 +22,7 @@ export function QuickStudyHub({ activeSubjectId, dueCount }: QuickStudyHubProps)
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xl font-bold font-serif text-white tracking-tight flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-accent" /> Quick Study Hub
+            <Sparkles className="w-5 h-5 text-accent" /> Quick study hub
           </h3>
           <p className="text-xs text-gray-400 font-light mt-0.5">Jump directly into recall, path discovery, or instant command search.</p>
         </div>
@@ -43,13 +43,13 @@ export function QuickStudyHub({ activeSubjectId, dueCount }: QuickStudyHubProps)
                   <Brain className="w-6 h-6" />
                 </div>
                 {dueCount > 0 && (
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent text-[#0a0908] shadow-md animate-pulse">
-                    {dueCount} Due
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent text-[#0a0908] shadow-md">
+                    {dueCount} due
                   </span>
                 )}
               </div>
               <h4 className="text-lg font-bold font-serif text-white group-hover:text-accent transition-colors">
-                Start Spaced Repetition
+                Start spaced repetition
               </h4>
               <p className="text-xs text-gray-400 mt-1 leading-relaxed font-light">
                 Flip 0ms cards using Leitner box intervals to retain information long-term.
@@ -57,7 +57,7 @@ export function QuickStudyHub({ activeSubjectId, dueCount }: QuickStudyHubProps)
             </div>
 
             <div className="mt-6 flex items-center text-xs font-semibold text-accent gap-2 group-hover:translate-x-1 transition-transform">
-              <span>Review Now</span>
+              <span>Review now</span>
               <Play className="w-3.5 h-3.5 fill-accent" />
             </div>
           </Link>
@@ -77,11 +77,11 @@ export function QuickStudyHub({ activeSubjectId, dueCount }: QuickStudyHubProps)
                   <Compass className="w-6 h-6" />
                 </div>
                 <span className="text-[10px] font-mono font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-400">
-                  AI Curated
+                  AI curated
                 </span>
               </div>
               <h4 className="text-lg font-bold font-serif text-white group-hover:text-amber-400 transition-colors">
-                Discover Learning Paths
+                Discover learning paths
               </h4>
               <p className="text-xs text-gray-400 mt-1 leading-relaxed font-light">
                 Type any subject to instantly curate top-rated video courses and documentation.
@@ -89,7 +89,7 @@ export function QuickStudyHub({ activeSubjectId, dueCount }: QuickStudyHubProps)
             </div>
 
             <div className="mt-6 flex items-center text-xs font-semibold text-amber-400 gap-2 group-hover:translate-x-1 transition-transform">
-              <span>Search Paths</span>
+              <span>Search paths</span>
               <Compass className="w-3.5 h-3.5" />
             </div>
           </Link>
@@ -117,7 +117,7 @@ export function QuickStudyHub({ activeSubjectId, dueCount }: QuickStudyHubProps)
                 </span>
               </div>
               <h4 className="text-lg font-bold font-serif text-white">
-                Command Palette
+                Command palette
               </h4>
               <p className="text-xs text-gray-300 mt-1 leading-relaxed font-light">
                 Press ⌘K anywhere to jump across subjects, notes, and instant study tools.

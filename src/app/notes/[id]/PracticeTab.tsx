@@ -145,22 +145,22 @@ export default function PracticeTab({ noteId, content, clozeCards = [] }: Practi
           >
             <BookOpen className="w-10 h-10 text-accent" aria-hidden="true" />
           </m.div>
-          <h2 className="text-3xl font-serif font-bold mb-4 text-white">Practice Mode</h2>
+          <h2 className="text-3xl font-serif font-bold mb-4 text-white">Practice mode</h2>
           <p className="text-gray-400 mb-8 text-lg">
-            Review a random mix of up to 15 flashcards from this note. This is a local practice session and does not affect your spaced-repetition schedule.
+            Review a practice set of {Math.min(cards.length, 10)} flashcard{Math.min(cards.length, 10) === 1 ? '' : 's'} from this note. This is a local practice session and does not affect your spaced-repetition schedule.
           </p>
           <button
             onClick={() => {
-              const shuffled = [...cards].sort(() => Math.random() - 0.5).slice(0, 15);
+              const shuffled = [...cards].sort(() => Math.random() - 0.5).slice(0, 10);
               setSessionCards(shuffled);
               setIndex(0);
               setRevealed(false);
               setPicked(null);
               setStage('active');
             }}
-            className="px-8 py-4 bg-accent hover:bg-accent/90 text-white rounded-xl font-bold tracking-wide transition-colors"
+            className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 bg-accent hover:bg-accent/90 text-white rounded-xl font-bold tracking-wide transition-colors"
           >
-            Start Practice
+            Start practice
           </button>
         </div>
       </div>
@@ -178,7 +178,7 @@ export default function PracticeTab({ noteId, content, clozeCards = [] }: Practi
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-accent/10 mb-6 border border-accent/20">
             <Check className="w-10 h-10 text-accent" aria-hidden="true" />
           </div>
-          <h2 className="text-3xl font-serif font-bold mb-4 text-white">Practice Complete</h2>
+          <h2 className="text-3xl font-serif font-bold mb-4 text-white">Practice complete</h2>
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-[#0a0908] p-4 rounded-2xl border border-white/5">
               <div className="text-3xl font-mono text-accent font-bold mb-1">{sessionCards.length}</div>
@@ -279,14 +279,14 @@ export default function PracticeTab({ noteId, content, clozeCards = [] }: Practi
         <div className="mt-12 flex flex-col items-center min-h-[5rem] gap-2">
           {revealed ? (
             <>
-              <div className="flex gap-4">
+              <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
                 <m.button
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.1 }}
                   onClick={handlePrevious}
                   disabled={index === 0}
-                  className="px-6 py-4 bg-white/5 hover:bg-white/10 rounded-xl font-bold tracking-wide transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none justify-center px-4 py-3.5 sm:px-6 sm:py-4 bg-white/5 hover:bg-white/10 rounded-xl font-bold tracking-wide transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowLeft className="w-4 h-4" aria-hidden="true" />
                   Previous
@@ -296,7 +296,7 @@ export default function PracticeTab({ noteId, content, clozeCards = [] }: Practi
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.1 }}
                   onClick={handleNext}
-                  className="px-12 py-4 bg-accent hover:bg-accent/90 text-[#0a0908] rounded-xl font-bold tracking-wide transition-all flex items-center gap-2"
+                  className="flex-1 sm:flex-none justify-center px-6 py-3.5 sm:px-12 sm:py-4 bg-accent hover:bg-accent/90 text-[#0a0908] rounded-xl font-bold tracking-wide transition-all flex items-center gap-2"
                 >
                   {index + 1 < sessionCards.length ? 'Next card' : 'Finish'}
                   <ArrowRight className="w-4 h-4" aria-hidden="true" />

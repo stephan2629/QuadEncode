@@ -46,7 +46,7 @@ export function DashboardHeroBanner({
             transition={{ delay: 0.2, duration: 0.4 }}
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs font-semibold uppercase tracking-wider mb-3 backdrop-blur-md"
           >
-            <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Active Learning Workspace
+            <Sparkles className="w-3.5 h-3.5" /> Active learning workspace
           </m.div>
 
           <m.h2
@@ -64,7 +64,7 @@ export function DashboardHeroBanner({
             transition={{ delay: 0.4, duration: 0.4 }}
             className="text-gray-300 text-xs sm:text-sm md:text-base mt-2 font-light max-w-md leading-relaxed"
           >
-            Master concepts with instant 0ms flashcards, Leitner spaced repetition, and interactive AI notes.
+            Instant-reveal flashcards on a Leitner schedule, built from your own notes.
           </m.p>
         </div>
 
@@ -80,7 +80,7 @@ export function DashboardHeroBanner({
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs text-gray-400 font-medium">Total Notes</div>
+              <div className="text-xs text-gray-400 font-medium">Total notes</div>
               <div className="text-lg font-bold text-white font-serif">{noteCount}</div>
             </div>
           </div>
@@ -96,13 +96,13 @@ export function DashboardHeroBanner({
           </div>
 
           {dueCount > 0 && (
-            <div className="bg-accent/20 backdrop-blur-xl border border-accent/40 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.2)] animate-pulse">
+            <div className="bg-accent/20 backdrop-blur-xl border border-accent/40 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
               <div className="p-2 rounded-xl bg-accent text-[#0a0908]">
                 <BookOpen className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-xs text-accent font-bold uppercase tracking-wider">Due Review</div>
-                <div className="text-lg font-bold text-white font-serif">{dueCount} Cards</div>
+                <div className="text-xs text-accent font-bold uppercase tracking-wider">Due review</div>
+                <div className="text-lg font-bold text-white font-serif">{dueCount} cards</div>
               </div>
             </div>
           )}

@@ -425,7 +425,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
               <div className="flex flex-col items-center gap-2">
                 <button
                   onClick={handleReveal}
-                  className="w-full md:w-auto px-12 py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold tracking-wide transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+                  className="w-full md:w-auto px-8 py-3.5 md:px-12 md:py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold tracking-wide transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
                 >
                   Show Answer
                 </button>
@@ -443,7 +443,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.1 }}
                   onClick={() => advance(picked === mcData.correct ? 'right' : 'left', { graduate: graduateNext })}
-                  className="px-12 py-4 bg-accent hover:bg-accent/90 text-[#0a0908] rounded-xl font-bold tracking-wide transition-all active:scale-95 flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+                  className="w-full sm:w-auto justify-center px-8 py-3.5 sm:px-12 sm:py-4 bg-accent hover:bg-accent/90 text-[#0a0908] rounded-xl font-bold tracking-wide transition-all active:scale-95 flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
                 >
                   Next question <ArrowRight className="w-4 h-4" />
                 </m.button>
@@ -519,7 +519,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
               <button
                 onClick={handleGraduate}
                 disabled={busy || !reExplainDraft.trim()}
-                className="w-full md:w-auto px-12 py-4 bg-accent hover:bg-accent/90 text-[#0a0908] rounded-xl font-bold tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+                className="w-full md:w-auto px-8 py-3.5 md:px-12 md:py-4 bg-accent hover:bg-accent/90 text-[#0a0908] rounded-xl font-bold tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
               >
                 Continue
               </button>
@@ -552,7 +552,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                 </Link>
                 <button
                   onClick={() => advance('left')}
-                  className="w-full md:w-auto px-12 py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold tracking-wide transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+                  className="w-full md:w-auto px-8 py-3.5 md:px-12 md:py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold tracking-wide transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
                 >
                   Continue
                 </button>
