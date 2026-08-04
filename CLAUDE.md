@@ -412,7 +412,7 @@ No text in this product may read as AI written. This covers every string a user 
 
 Run the humanizer skill over all copy before it ships. It is a required step in every phase, not a final polish pass.
 
-- **Headline Copy:** Strictly plain language. The landing page headline focuses on retrieval-first learning ("Never see an answer you didn't try to retrieve yourself").
+- **Headline copy:** Sentence case, not Title Case, matching every other heading on the site. The landing page headline can be energetic per section 21, but stops short of gamified vocabulary (no "quest," "unlock," streaks, or badges) and never states a stat as fact. Current headline: "Outsmart your own brain. Study without the boredom."
 - Lowercase standard UI: "Sign in", not "Sign In". "Create note", not "Create Note".
 - Don't use words like: vibrant, seamless, unlock, empower, revolutionize, supercharge, dive in, journey.
 - No em dashes. Use parentheses or start a new sentence.

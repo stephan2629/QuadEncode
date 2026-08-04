@@ -468,7 +468,7 @@ export default function NoteEditor({
               tabIndex={0}
               className="flex-1 flex flex-col overflow-hidden w-full h-full relative bg-[#0a0908]"
             >
-              <PracticeTab noteId={noteId} content={content} clozeCards={clozeCards} />
+              <PracticeTab content={content} clozeCards={clozeCards} />
             </m.div>
           )}
 

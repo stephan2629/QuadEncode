@@ -19,20 +19,10 @@ function shuffle<T>(items: T[]): T[] {
   return arr;
 }
 
-const FALLBACK_DISTRACTORS = [
-  "Not enough context provided.",
-  "None of the above.",
-  "All of the above.",
-  "A concept related to the current topic."
-];
-
 export function parseLocalQuiz(markdown: string): QuizQuestion[] {
   const blanks = parseBlanks(markdown);
   const questions: QuizQuestion[] = [];
-  
-  const vocabBlanks = blanks.filter(b => b.kind === 'vocab' && b.answer);
-  const vocabDefs = vocabBlanks.map(b => b.answer);
-  
+
   for (const blank of blanks) {
     if (blank.kind === 'quiz') {
       const parts = blank.answer.split('|').map(s => s.trim()).filter(Boolean);

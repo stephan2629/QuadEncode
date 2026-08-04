@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Command } from 'cmdk';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { Book, LayoutDashboard, LogOut, Plus, Search } from 'lucide-react';
+import { Book, LayoutDashboard, LogOut, Search } from 'lucide-react';
 import { logout } from '@/app/login/actions';
 
 export function GlobalCommandPalette() {

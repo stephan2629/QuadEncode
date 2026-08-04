@@ -2,7 +2,7 @@ import { getNote } from './actions'
 import NoteEditor from './NoteEditor'
 import { redirect } from 'next/navigation'
 
-export default async function NotePage({ params }: { params: { id: string } }) {
+export default async function NotePage({ params }: { params: Promise<{ id: string }> }) {
   // Await the params object before accessing properties
   const { id } = await params
 

@@ -14,11 +14,6 @@ interface AnsweredQuestion {
 
 type Stage = 'idle' | 'loading' | 'playing' | 'results';
 
-function hoursUntilReset(resetAtIso: string): number {
-  const resetAt = new Date(resetAtIso).getTime() + 24 * 60 * 60 * 1000;
-  return Math.max(1, Math.ceil((resetAt - Date.now()) / (60 * 60 * 1000)));
-}
-
 export default function QuizTab({
   noteId,
   content,

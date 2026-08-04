@@ -24,7 +24,7 @@ export default function Home() {
   const [heroFlipped, setHeroFlipped] = useState(false);
 
   const router = useRouter();
-  
+
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -128,7 +128,7 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen bg-[#0a0908] overflow-hidden selection:bg-accent/30 text-white font-sans">
-      
+
       {/* Uiverse-Style Dotted Background */}
       <div className="absolute inset-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none -z-20 [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_100%)] opacity-70"></div>
 
@@ -184,44 +184,56 @@ export default function Home() {
             href="/dashboard"
             className="text-xs md:text-sm font-semibold text-accent hover:text-[#0a0908] bg-[#14120f] hover:bg-gradient-to-b hover:from-accent hover:to-yellow-600 border border-white/10 hover:border-accent/0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all duration-300 inline-block active:scale-95"
           >
-            Sign In
+            Sign in
           </Link>
         )}
       </m.nav>
 
       {/* Main Hero Section */}
-      <main className="relative pt-32 md:pt-48 pb-16 md:pb-24 px-4 md:px-6 max-w-7xl mx-auto flex flex-col items-center justify-center text-center">
+      <main className="relative pt-32 md:pt-44 pb-16 md:pb-24 px-4 md:px-6 max-w-7xl mx-auto flex flex-col items-center justify-center text-center">
+        {/* Ambient Hero Glow */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-r from-amber-500/15 via-accent/10 to-amber-600/15 blur-[140px] rounded-full pointer-events-none -z-10" />
+
+        {/* Kicker Badge */}
+        <m.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs font-mono font-bold uppercase tracking-wider mb-6 shadow-[0_0_20px_rgba(245,158,11,0.2)] backdrop-blur-md"
+        >
+          <BrainCircuit className="w-4 h-4 text-accent animate-pulse" /> Active Recall Workspace
+        </m.div>
+
         {/* Hero Copy (Massive Typography) */}
         <m.h1
-          className="text-[clamp(2.2rem,7vw,90px)] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.12] md:leading-[1.05] text-white"
+          className="text-[clamp(2.5rem,7.5vw,96px)] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.1] md:leading-[1.03] text-white"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
-          Never see an answer you <br className="hidden md:block"/>
-          didn&apos;t try to <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent via-yellow-400 to-accent">retrieve yourself.</span>
+          Outsmart your own brain. <br className="hidden md:block" />
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent via-yellow-400 to-amber-500">Study without the boredom.</span>
         </m.h1>
 
         <m.p
-          className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-12 md:mb-16 max-w-3xl mx-auto font-light px-4 leading-relaxed tracking-wide"
+          className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-10 md:mb-14 max-w-2xl mx-auto font-light px-4 leading-relaxed tracking-wide"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          Search a topic to build a learning path, take notes, and turn them into recall prompts.
+          Turn web topics and notes into recall prompts. Type your answer first.
         </m.p>
 
         {/* Search Bar Component */}
-        <m.div 
+        <m.div
           className="relative w-full max-w-2xl z-40 flex flex-col items-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
         >
-          <div className="text-xs font-bold text-accent uppercase tracking-widest mb-3 font-mono">Start here</div>
-          <form 
+          <form
             onSubmit={handleSearch}
-            className={`w-full relative transition-all duration-500 rounded-2xl overflow-hidden bg-[#14120f]/80 backdrop-blur-xl ${isFocused ? 'shadow-[0_0_0_2px_#f59e0b,0_0_40px_rgba(245,158,11,0.3)]' : 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_0_0_1px_rgba(255,255,255,0.1)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_0_0_1px_rgba(245,158,11,0.5)]'}`}
+            className={`w-full relative transition-all duration-500 rounded-2xl overflow-hidden bg-[#14120f]/90 backdrop-blur-2xl border ${isFocused ? 'border-accent shadow-[0_0_0_2px_#f59e0b,0_0_40px_rgba(245,158,11,0.3)]' : 'border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_10px_40px_rgba(0,0,0,0.6)] hover:border-accent/50'}`}
           >
             <div className="flex items-center px-2 py-2">
               <input
@@ -235,24 +247,24 @@ export default function Home() {
                 onBlur={() => setTimeout(() => setIsFocused(false), 200)}
               />
               <SearchCharCount length={searchQuery.length} />
-              <button type="submit" className="hidden md:flex flex-shrink-0 items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-b from-accent to-yellow-600 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] hover:brightness-110 px-6 py-3 rounded-xl transition-all cursor-pointer active:scale-95">
-                Find the path <MoveRight className="w-4 h-4" />
+              <button type="submit" className="hidden md:flex flex-shrink-0 items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:brightness-110 px-6 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95">
+                Find path <MoveRight className="w-4 h-4" />
               </button>
             </div>
           </form>
-          <button onClick={handleSearch} className="md:hidden mt-4 flex items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-b from-accent to-yellow-600 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 w-full justify-center">
-            Find the path <MoveRight className="w-4 h-4" />
+          <button onClick={handleSearch} className="md:hidden mt-4 flex items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 w-full justify-center">
+            Find path <MoveRight className="w-4 h-4" />
           </button>
 
           {/* Example Chips */}
           <div className="flex flex-wrap justify-center gap-2 mt-6">
-            <span className="text-sm text-gray-500 mr-2 self-center">Try:</span>
+            <span className="text-xs text-gray-400 font-mono mr-1 self-center">TRY:</span>
             {['CompTIA Security+', 'Spanish Vocab', 'Music Theory'].map((chip) => (
               <button
                 key={chip}
                 type="button"
                 onClick={() => setSearchQuery(chip)}
-                className="px-3 py-1 text-sm bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-all"
+                className="px-3.5 py-1.5 text-xs bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-all font-medium"
               >
                 {chip}
               </button>
@@ -342,20 +354,20 @@ export default function Home() {
             whileInView="show"
             viewport={{ once: true }}
           >
-          {features.map((feature, idx) => (
-            <m.div key={idx} variants={fadeUpItem} className={idx === 0 ? "md:col-span-2 md:row-span-2" : "col-span-1"}>
-              <TiltCard tiltAmount={4} className="relative group bg-[#14120f]/60 backdrop-blur-md border border-white/10 hover:border-white/20 rounded-3xl p-8 md:p-10 transition-colors overflow-hidden h-full flex flex-col justify-center">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                <div className="bg-accent/10 w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-accent mb-6 md:mb-8 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-                  <feature.icon className="w-6 h-6 md:w-8 md:h-8" />
-                </div>
-                <h3 className="text-2xl md:text-3xl font-bold font-serif mb-4 text-white transform-gpu translate-z-10">{feature.title}</h3>
-                <p className="text-gray-400 text-sm md:text-lg leading-relaxed transform-gpu translate-z-10 font-light">
-                  {feature.description}
-                </p>
-              </TiltCard>
-            </m.div>
-          ))}
+            {features.map((feature, idx) => (
+              <m.div key={idx} variants={fadeUpItem} className={idx === 0 ? "md:col-span-2 md:row-span-2" : "col-span-1"}>
+                <TiltCard tiltAmount={4} className="relative group bg-[#14120f]/60 backdrop-blur-md border border-white/10 hover:border-white/20 rounded-3xl p-8 md:p-10 transition-colors overflow-hidden h-full flex flex-col justify-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                  <div className="bg-accent/10 w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-accent mb-6 md:mb-8 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                    <feature.icon className="w-6 h-6 md:w-8 md:h-8" />
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-bold font-serif mb-4 text-white transform-gpu translate-z-10">{feature.title}</h3>
+                  <p className="text-gray-400 text-sm md:text-lg leading-relaxed transform-gpu translate-z-10 font-light">
+                    {feature.description}
+                  </p>
+                </TiltCard>
+              </m.div>
+            ))}
           </m.div>
         </m.div>
 
@@ -394,7 +406,7 @@ export default function Home() {
               </m.div>
             ))}
           </m.div>
-          
+
           <div className="mt-16 w-full max-w-4xl mx-auto rounded-3xl overflow-hidden border border-white/10 relative h-64 md:h-96">
             <div className="absolute inset-0 bg-gradient-to-t from-[#0a0908] via-transparent to-transparent z-10"></div>
             <Image
@@ -423,18 +435,18 @@ export default function Home() {
           </p>
 
           <div className="mt-16 md:mt-24 flex flex-col md:flex-row flex-wrap justify-center gap-8 perspective-1000">
-            <FlipCardDemo 
-              kind="Music Theory" 
+            <FlipCardDemo
+              kind="Music Theory"
               prompt="What is the relative minor of G major?"
               answer="E minor"
             />
-            <FlipCardDemo 
-              kind="Computer Science" 
+            <FlipCardDemo
+              kind="Computer Science"
               prompt="What is the time complexity of binary search?"
               answer="O(log n)"
             />
-            <FlipCardDemo 
-              kind="Spanish" 
+            <FlipCardDemo
+              kind="Spanish"
               prompt="Translate: 'To develop'"
               answer="Desarrollar"
             />

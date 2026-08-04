@@ -2,8 +2,7 @@
 
 import { m } from 'framer-motion';
 import Link from 'next/link';
-import { BookOpen, Brain, Edit3, Play, Sparkles } from 'lucide-react';
-import { TiltCard } from '../ui/TiltCard';
+import { BookOpen, Brain, Edit3, Sparkles } from 'lucide-react';
 
 export interface SubjectPath {
   id: string;

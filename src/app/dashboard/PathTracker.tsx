@@ -6,7 +6,6 @@ import { m, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Circle, Trash2, ExternalLink, RefreshCw, PlayCircle, XCircle, NotebookPen, Loader2 } from 'lucide-react';
 import { updatePathStepStatus, deletePath, createNoteForVideo } from './actions';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
-import { TiltCard } from '@/components/ui/TiltCard';
 import { extractYouTubeId, extractYouTubePlaylistId } from '@/lib/youtube';
 import { toast } from 'sonner';
 

@@ -1,5 +1,3 @@
-import { ArrowLeft } from 'lucide-react';
-
 export default function NoteLoading() {
   return (
     <div className="flex flex-col h-screen bg-[#14120f]">

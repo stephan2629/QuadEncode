@@ -1,5 +1,3 @@
-import { Book } from 'lucide-react';
-
 export default function DashboardLoading() {
   return (
     <div className="min-h-screen bg-[#0a0908] text-white p-4 sm:p-6 md:p-12 max-w-6xl mx-auto flex flex-col items-center">

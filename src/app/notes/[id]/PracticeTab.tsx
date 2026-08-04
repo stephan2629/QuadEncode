@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { Check, X, ArrowRight, ArrowLeft, BookOpen, RotateCcw } from 'lucide-react';
+import { Check, ArrowRight, ArrowLeft, BookOpen, RotateCcw } from 'lucide-react';
 import { parseLocalQuiz } from '@/lib/quiz-parser';
 
 interface NoteCard {
@@ -19,12 +19,11 @@ interface ClozeCard {
 }
 
 interface PracticeTabProps {
-  noteId: string;
   content: string;
   clozeCards?: ClozeCard[];
 }
 
-export default function PracticeTab({ noteId, content, clozeCards = [] }: PracticeTabProps) {
+export default function PracticeTab({ content, clozeCards = [] }: PracticeTabProps) {
   // Cmd+K cloze cards live in separate component state, not the note body
   // markdown, so parseLocalQuiz (which only reads **Vocab:**/**Quiz:**
   // blanks) can't see them - merge them in here or they silently vanish
@@ -54,18 +53,13 @@ export default function PracticeTab({ noteId, content, clozeCards = [] }: Practi
   const [sessionCards, setSessionCards] = useState<NoteCard[]>([]);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const [picked, setPicked] = useState<string | null>(null);
   const [stage, setStage] = useState<'start' | 'active' | 'results'>('start');
 
   const currentCard = sessionCards[index];
-  const isQuiz = !!currentCard?.answer.includes('|');
-
-  const options = useMemo(() => ({ options: [] as string[], correct: '' }), []);
 
   const handleNext = useCallback(() => {
     if (index + 1 < sessionCards.length) {
       setRevealed(false);
-      setPicked(null);
       setIndex(index + 1);
     } else {
       setStage('results');
@@ -75,16 +69,9 @@ export default function PracticeTab({ noteId, content, clozeCards = [] }: Practi
   const handlePrevious = useCallback(() => {
     if (index > 0) {
       setRevealed(false);
-      setPicked(null);
       setIndex(index - 1);
     }
   }, [index]);
-
-  const handlePick = useCallback((option: string) => {
-    if (revealed) return;
-    setPicked(option);
-    setRevealed(true);
-  }, [revealed]);
 
   useEffect(() => {
     if (stage !== 'active') return;
@@ -119,7 +106,7 @@ export default function PracticeTab({ noteId, content, clozeCards = [] }: Practi
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [stage, revealed, handleNext, handlePrevious, handlePick]);
+  }, [stage, revealed, handleNext, handlePrevious]);
 
   if (cards.length === 0) {
     return (
@@ -155,7 +142,6 @@ export default function PracticeTab({ noteId, content, clozeCards = [] }: Practi
               setSessionCards(shuffled);
               setIndex(0);
               setRevealed(false);
-              setPicked(null);
               setStage('active');
             }}
             className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 bg-accent hover:bg-accent/90 text-white rounded-xl font-bold tracking-wide transition-colors"
@@ -196,14 +182,12 @@ export default function PracticeTab({ noteId, content, clozeCards = [] }: Practi
             }}
             className="w-full py-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold tracking-wide transition-colors flex items-center justify-center gap-2"
           >
-            <RotateCcw className="w-4 h-4" /> Practice Again
+            <RotateCcw className="w-4 h-4" /> Practice again
           </button>
         </m.div>
       </div>
     );
   }
-
-  const isCorrect = isQuiz ? picked === options.correct : true;
 
   return (
     <div className="flex-1 flex flex-col p-6 md:p-10 overflow-y-auto custom-scrollbar relative">
