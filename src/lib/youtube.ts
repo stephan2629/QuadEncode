@@ -1,3 +1,19 @@
+// Pulls a bare video id out of any watch/embed/shorts/youtu.be URL shape.
+// Shared so PathTracker's inline preview and the note split-view video pane
+// agree on one parsing rule instead of each keeping its own regex.
+export function extractYouTubeId(url: string): string | null {
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=))([^&?]+)/)
+  return match ? match[1] : null
+}
+
+// A curated resource is just as often a full playlist (youtube.com/playlist?list=...
+// or a watch URL with a &list= param) as a single video - this has its own embed
+// shape (embed/videoseries?list=ID), so it needs its own extraction.
+export function extractYouTubePlaylistId(url: string): string | null {
+  const match = url.match(/[?&]list=([^&]+)/)
+  return match ? match[1] : null
+}
+
 export interface YouTubeCandidate {
   title: string
   url: string
@@ -14,12 +30,16 @@ export interface YouTubeCandidate {
 // sorted, so this doesn't risk surfacing something unrelated, and unlike a
 // hard publishedAfter cutoff it can't zero out results for a niche topic
 // that simply hasn't had a video uploaded recently.
-export async function searchYouTube(query: string, apiKey: string): Promise<YouTubeCandidate[]> {
+export async function searchYouTube(
+  query: string,
+  apiKey: string,
+  opts?: { type?: string; order?: string; maxResults?: string }
+): Promise<YouTubeCandidate[]> {
   const params = new URLSearchParams({
     part: 'snippet',
-    type: 'video,playlist',
-    maxResults: '8',
-    order: 'date',
+    type: opts?.type || 'video,playlist',
+    maxResults: opts?.maxResults || '8',
+    order: opts?.order || 'date',
     q: query,
     key: apiKey,
   })

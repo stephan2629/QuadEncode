@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseBlanks, renderNoteForPreview } from './parseBlanks';
+import { parseBlanks, renderNoteForPreview, parseTimestamp, formatTimestamp } from './parseBlanks';
 
 describe('parseBlanks', () => {
   it('pairs an adjacent Vocab/Def line', () => {
@@ -85,6 +85,41 @@ describe('parseBlanks', () => {
     expect(parseBlanks(md)).toEqual([
       { line: 0, answerLine: 1, kind: 'vocab', prompt: 'Term', answer: 'Definition' },
     ]);
+  });
+
+  it('attaches an **At:** marker to the blank that follows it', () => {
+    const md = '**At:** 2:22\n**Vocab:** Term\n**Def:** Definition';
+    const [blank] = parseBlanks(md);
+    expect(blank.videoT).toBe(142);
+  });
+
+  it('does not carry a marker over to a second, unrelated blank', () => {
+    const md = ['**At:** 1:00', '**Vocab:** T1', '**Def:** D1', '**Vocab:** T2', '**Def:** D2'].join('\n');
+    const [first, second] = parseBlanks(md);
+    expect(first.videoT).toBe(60);
+    expect(second.videoT).toBeUndefined();
+  });
+
+  it('leaves videoT undefined when there is no marker at all', () => {
+    const md = '**Vocab:** Term\n**Def:** Definition';
+    expect(parseBlanks(md)[0].videoT).toBeUndefined();
+  });
+});
+
+describe('parseTimestamp / formatTimestamp', () => {
+  it('parses M:SS and H:MM:SS into total seconds', () => {
+    expect(parseTimestamp('2:22')).toBe(142);
+    expect(parseTimestamp('1:02:03')).toBe(3723);
+  });
+
+  it('rejects malformed timestamps', () => {
+    expect(parseTimestamp('not-a-time')).toBeNull();
+    expect(parseTimestamp('5')).toBeNull();
+  });
+
+  it('formats seconds back into the same shape it parses', () => {
+    expect(formatTimestamp(142)).toBe('2:22');
+    expect(formatTimestamp(3723)).toBe('1:02:03');
   });
 });
 

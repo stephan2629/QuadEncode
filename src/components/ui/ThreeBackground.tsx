@@ -18,6 +18,20 @@ function useIsClient() {
   );
 }
 
+// Subscribed live (not read once at mount) so toggling the OS setting
+// mid-session actually stops the animation instead of requiring a reload.
+function usePrefersReducedMotion() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+      mql.addEventListener('change', onChange);
+      return () => mql.removeEventListener('change', onChange);
+    },
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => false
+  );
+}
+
 function AnimatedBlob() {
   const meshRef = useRef<Mesh>(null);
 
@@ -30,7 +44,7 @@ function AnimatedBlob() {
 
   return (
     <Float speed={1.5} rotationIntensity={0.5} floatIntensity={1}>
-      <Sphere ref={meshRef} args={[1, 64, 64]} scale={2} position={[2, 0, -2]}>
+      <Sphere ref={meshRef} args={[1, 64, 64]} scale={3.5} position={[2, 0, -2]}>
         <MeshDistortMaterial
           color="#ff4f00"
           attach="material"
@@ -38,12 +52,12 @@ function AnimatedBlob() {
           speed={1.5}
           roughness={0.2}
           metalness={0.8}
-          opacity={0.1}
+          opacity={0.3}
           transparent
           wireframe={false}
         />
       </Sphere>
-      <Sphere args={[1, 32, 32]} scale={1.5} position={[-2, 1, -4]}>
+      <Sphere args={[1, 32, 32]} scale={2.5} position={[-2, 1, -4]}>
         <MeshDistortMaterial
           color="#ffffff"
           attach="material"
@@ -51,7 +65,7 @@ function AnimatedBlob() {
           speed={1}
           roughness={0.5}
           metalness={0.2}
-          opacity={0.05}
+          opacity={0.15}
           transparent
         />
       </Sphere>
@@ -61,16 +75,12 @@ function AnimatedBlob() {
 
 export function ThreeBackground() {
   const isClient = useIsClient();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
-  if (!isClient) return null;
-
-  // Use a media query match for prefers-reduced-motion to avoid mounting canvas if motion is reduced
-  if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    return null;
-  }
+  if (!isClient || prefersReducedMotion) return null;
 
   return (
-    <div className="fixed inset-0 z-[-1] pointer-events-none" aria-hidden="true">
+    <div className="fixed inset-0 z-[-1] pointer-events-none blur-[100px] opacity-70" aria-hidden="true">
       <Canvas camera={{ position: [0, 0, 5], fov: 45 }} dpr={[1, 2]}>
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} intensity={1.5} color="#ff4f00" />

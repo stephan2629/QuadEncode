@@ -13,7 +13,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Build one phase at a time.** Ask before moving on.
 - **Every phase ends deployed and working.**
 - **Prefer the simplest thing that works.** No abstraction until there are three cases.
-- **Enforce core rules:** Always force retrieval before recognition (users never see an answer they didn't write or attempt to retrieve). Adhere strictly to progressive disclosure (features only appear when there's data for them).
+- **Enforce core rules:** Adhere strictly to progressive disclosure (features only appear when there's data for them).
 
 # AGENTS.md: Quad Encode Agent Roles & Workflows
 
@@ -26,7 +26,6 @@ This document defines specialized agent roles for AI coding assistants working o
 1. **Spec First:** Before writing code, write a brief plan listing affected files, schema changes, and potential edge cases.
 2. **Chunked Tasks:** Break implementation into discrete steps (max 2-3 files per step). Validate after each step.
 3. **Core Rules Enforcement:** 
-   - Never reveal answers before user retrieval (`CLAUDE.md` §2).
    - Maintain progressive disclosure—no empty state placeholders (`CLAUDE.md` §3).
    - Respect AI rate limits (max 2 quizzes/day, `CLAUDE.md` §5).
 
@@ -48,7 +47,7 @@ This document defines specialized agent roles for AI coding assistants working o
 * **Responsibilities:** Next.js App Router components, Tailwind CSS styling, Framer Motion animations, accessible interfaces.
 * **Key Guidelines:**
   - **Palette & Type:** Warm near-black (`#14120F`), serif for prompt/question text (28px min), monospace for technical terms, sans-serif for chrome.
-  - **Motion Rules:** Answer reveal MUST be **0ms duration** (instant). Card flips use 3D axis rotation. Wrap layout in `MotionConfig reducedMotion="user"`.
+  - **Motion Rules:** Card flips use 3D axis rotation with a smooth spring animation. Wrap layout in `MotionConfig reducedMotion="user"`.
   - **Quizzes:** Build clean, single-question Codecademy-style views with instant feedback and a comprehensive diagnostic results summary screen.
   - **Rate Limit UI:** Display remaining daily quota on quiz trigger buttons (`2/2 left today`).
 

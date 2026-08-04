@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { m, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Circle, Trash2, ExternalLink, RefreshCw, PlayCircle, XCircle } from 'lucide-react';
-import { updatePathStepStatus, deletePath } from './actions';
+import { CheckCircle2, Circle, Trash2, ExternalLink, RefreshCw, PlayCircle, XCircle, NotebookPen, Loader2 } from 'lucide-react';
+import { updatePathStepStatus, deletePath, createNoteForVideo } from './actions';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { TiltCard } from '@/components/ui/TiltCard';
+import { extractYouTubeId, extractYouTubePlaylistId } from '@/lib/youtube';
+import { toast } from 'sonner';
 
 interface Resource {
   id: string;
@@ -31,18 +34,25 @@ export interface PathData {
   path_steps: PathStep[];
 }
 
-function getYouTubeId(url: string): string | null {
-  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
-  return match ? match[1] : null;
-}
-
 export default function PathTracker({ initialPaths }: { initialPaths: PathData[] }) {
+  const router = useRouter();
   const [optimisticPaths, setOptimisticPaths] = useState(initialPaths);
   const [loadingStepId, setLoadingStepId] = useState<string | null>(null);
   const [deletingPathId, setDeletingPathId] = useState<string | null>(null);
   const [activeVideoStepId, setActiveVideoStepId] = useState<string | null>(null);
+  const [takingNotesStepId, setTakingNotesStepId] = useState<string | null>(null);
 
   if (!optimisticPaths || optimisticPaths.length === 0) return null;
+
+  const handleTakeNotes = async (subjectId: string, stepId: string, title: string, videoId: string) => {
+    setTakingNotesStepId(stepId);
+    const result = await createNoteForVideo(subjectId, title, videoId);
+    if ('id' in result) {
+      router.push(`/notes/${result.id}`);
+    } else {
+      setTakingNotesStepId(null);
+    }
+  };
 
   const handleToggle = async (pathId: string, stepId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'completed' ? 'unstarted' : 'completed';
@@ -66,6 +76,7 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
     await deletePath(pathId);
     setOptimisticPaths(prev => prev.filter(p => p.id !== pathId));
     setDeletingPathId(null);
+    toast.success('Path deleted');
   };
 
   return (
@@ -116,6 +127,22 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                   {sortedSteps.map((step, i) => {
                     const isCompleted = step.status === 'completed';
                     const isVideo = step.resources?.format === 'video';
+                    const stepVideoId = step.resources ? extractYouTubeId(step.resources.url) : null;
+                    const stepPlaylistId = step.resources ? extractYouTubePlaylistId(step.resources.url) : null;
+                    // Built with URLSearchParams rather than string-concatenating
+                    // "?autoplay=1&..." onto the base - the playlist embed already
+                    // has its own "?list=" query string, so appending a second "?"
+                    // instead of "&" produced a malformed URL YouTube couldn't parse.
+                    const embedSrc = (() => {
+                      if (!stepVideoId && !stepPlaylistId) return null;
+                      const url = stepVideoId
+                        ? new URL(`https://www.youtube.com/embed/${stepVideoId}`)
+                        : new URL('https://www.youtube.com/embed/videoseries');
+                      if (stepPlaylistId) url.searchParams.set('list', stepPlaylistId);
+                      url.searchParams.set('autoplay', '1');
+                      if (typeof window !== 'undefined') url.searchParams.set('origin', window.location.origin);
+                      return url.toString();
+                    })();
 
                     return (
                       <m.div
@@ -152,7 +179,29 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                                   {step.resources?.title}
                                   <PlayCircle className="w-3.5 h-3.5 opacity-70" />
                                 </button>
-                              ) : (
+                              ) : null}
+                              {isVideo && extractYouTubeId(step.resources?.url) && (
+                                <button
+                                  onClick={() =>
+                                    handleTakeNotes(
+                                      path.subject_id,
+                                      step.id,
+                                      step.resources.title,
+                                      extractYouTubeId(step.resources.url)!
+                                    )
+                                  }
+                                  disabled={takingNotesStepId === step.id}
+                                  className="text-xs text-gray-500 hover:text-accent transition-colors flex items-center gap-1 disabled:opacity-50"
+                                >
+                                  {takingNotesStepId === step.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <NotebookPen className="w-3 h-3" />
+                                  )}
+                                  Take notes
+                                </button>
+                              )}
+                              {!isVideo && (
                                 <a
                                   href={step.resources?.url}
                                   target="_blank"
@@ -195,13 +244,14 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                                     <XCircle className="w-5 h-5" />
                                   </button>
                                 </div>
-                                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-white/10 bg-black">
-                                  {getYouTubeId(step.resources?.url) ? (
+                                <div className="relative w-full aspect-video min-h-[250px] md:min-h-[360px] rounded-xl overflow-hidden border border-white/10 bg-black shadow-lg">
+                                  {embedSrc ? (
                                     <iframe
-                                      src={`https://www.youtube.com/embed/${getYouTubeId(step.resources!.url)}?autoplay=1`}
-                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      src={embedSrc}
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                       allowFullScreen
-                                      className="absolute inset-0 w-full h-full"
+                                      title={step.resources?.title || "YouTube Video"}
+                                      className="absolute top-0 left-0 w-full h-full border-0"
                                     ></iframe>
                                   ) : (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 p-6 text-center">
@@ -218,7 +268,7 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                                     </div>
                                   )}
                                 </div>
-                                {getYouTubeId(step.resources?.url) && (
+                                {embedSrc && (
                                   <div className="mt-3 px-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                     <p className="text-xs text-gray-500 font-medium">Video showing as unavailable?</p>
                                     <a

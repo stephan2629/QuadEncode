@@ -23,25 +23,28 @@ Nothing in the interface, the copy, or the data model may assume a certification
 
 Web first. A mobile app comes later, so avoid anything that would block wrapping this in Capacitor.
 
-**Search works signed out.** The subject search on the public home page (an LLM interprets the free-text query into a subject and a ranked path) is usable without an account. Everything past search (saving a path, creating a subject/note, taking quizzes, reviewing cards) requires signing in. Don't gate the search box itself behind auth.
+**Search works signed out.** The subject search on the public home page (an LLM interprets the free-text query into a subject and a ranked path) is usable without an account. 
+- **Public Search & Example Chips:** The public search bar must feature quick-fill example chips (*"CompTIA Security+"*, *"Spanish Vocab"*, *"Music Theory"*). 
+- Saving paths or opening notes triggers a sign-in modal. Don't gate the search box itself behind auth.
+- **Live Interactive Demo:** Feature an interactive 0ms instant-reveal flashcard widget on the landing page so prospective users experience the core recall flow immediately.
+
+**Core Capabilities:**
+- **Embedded Video Split-View & Live Note Editor:** 
+  - Users can launch a **Split View workspace** when working through a video resource (e.g., an embedded YouTube video from a learning path).
+  - The embedded video occupies one side of the layout (e.g., 50–60% width on desktop) and is pinned sticky on the left/top panel while notes scroll independently on the right/bottom panel.
+  - Video controls include a "Capture Timestamp" action that automatically inserts clickable time-links (`cards.video_id` + `cards.t`) into the editor so clicking them later jumps to that exact second in the source video.
 
 ---
 
-## 2. The rule that governs every feature
+## 2. Answer handling
 
-**A user never sees an answer they did not write or attempt to retrieve themselves.**
+This project previously enforced a strict rule that a user could never see a pre-filled answer, on the theory that reading feels productive but retains almost nothing. That rule has been removed by product decision. Imports, screenshot parsing, and AI generation (including Vocabulary flashcards) may pre-fill answers directly. There is no requirement to leave `**Def:**` or other answer lines blank.
 
-Reading study material feels productive and retains almost nothing. Every decision in this app exists to force retrieval before recognition.
+What still stands, independent of that removed rule:
 
-In practice:
-
-- Imports, scrapes, screenshot parsing, and AI generation produce **prompts/questions only**. Never pre-filled answers.
-- Extracted source text or image excerpts may be stored as `source_excerpt` and shown behind a collapsed peek control. It must never pre-populate an answer field.
 - The answer reveal in review is instant. See section 13.
 - Progress is measured by cards reaching box 4, never by cards created.
-- **Multiple Choice & AI Quizzes:** Quizzes and multiple choice cards allow structured diagnostic evaluation. To maintain active recall principles, incorrect options (distractors) act as a secondary filter after the user attempts initial retrieval.
-
-If a request conflicts with this rule, stop and say so before writing code.
+- **Multiple Choice & AI Quizzes:** Quizzes and multiple choice cards allow structured diagnostic evaluation.
 
 ---
 
@@ -63,6 +66,12 @@ The same principle applies throughout. The interface grows as the user builds it
 
 Do not build "empty state" screens for features the user has not started using. Build the absence instead.
 
+**UI Layout Details:**
+- **Notes Overview Tab:**
+  - The Notes tab displays a structured list or card grid of the user's notes for the current subject.
+  - **Notes List Preview Cards:** Each note card displays a clean **2–3 sentence plain-text snippet** (`line-clamp-3`) of `body_md` (with markdown formatting stripped for the preview text) alongside title, section, and last updated time, plus badge counters for generated Vocab and Quiz counts.
+  - Clicking any note card opens it directly in the editor or launches the split-view player if a video link is associated with the note.
+
 ---
 
 ## 4. Two card tiers
@@ -82,12 +91,16 @@ Imported or AI-generated cards graduate to authored after two correct answers fo
 
 To keep API token usage under control and prevent quota exhaustion:
 
-1. **Strict 2 Quizzes Per Day Rule:** Each authenticated user is restricted to generating **2 AI quizzes per 24-hour period**.
-2. **Quota Tracking:** Track daily generations in Postgres (`ai_quiz_usage` table or columns on `profiles` tracking `quiz_count_today` and `last_quiz_reset_at`).
-3. **UI Rate Limit Feedback:** 
-   - Show a remaining daily count indicator on the "Generate Quiz" button (e.g., "Generate Quiz (2/2 left today)").
-   - When the limit is reached, gracefully disable the button and show an informative message: *"You've reached your daily limit of 2 AI quizzes. Your quota resets at midnight UTC."*
-4. **Fallback & Static Quizzes:** Users can still manually create flashcards or retake previously generated quizzes without consuming AI quota.
+- **Strict Quota:** Each authenticated user is restricted to **2 AI Generation runs per 24-hour period**.
+- **STRICT BATCH SIZE FIX: Exactly 10 Flashcards & 10 Quizzes:**
+  - The AI generation prompt and backend system MUST generate **exactly 10 Vocabulary Flashcards AND 10 Multiple Choice Quiz Questions** per generation pass. 
+  - **Override Previous Limits:** Fix any existing hardcoded limits or prompts that cap generation at 5 or 6 items. The LLM prompt template must strictly request 10 of each format.
+  - **Fallback Rule:** If the note content is extremely short, the AI must extract core concepts, definitions, and application scenarios from the available material to reach the full batch of **10 flashcards and 10 quizzes**.
+- **Quota Tracking & Feedback:**
+  - Track usage in Postgres (`ai_usage` or `profiles.quiz_count_today`).
+  - Button text indicator: *"Generate 10 Quizzes & 10 Cards (2/2 left today)"*.
+  - When limit is reached, disable the button with a message stating the count and how long until the rolling 24-hour window resets, e.g. *"Daily limit reached (2/2 AI generations used). More in about N hours."* Not a fixed midnight-UTC reset — the window opens 24 hours after the user's own first generation, per the 24-hour-period rule above, not at a shared wall-clock boundary.
+- **Fallback & Static Quizzes:** Users can still manually create flashcards or retake previously generated quizzes without consuming AI quota.
 
 ---
 
@@ -104,6 +117,10 @@ Flashcards generated from notes follow a strict **Front and Back Vocabulary** fo
   **Vocab:** Spaced Repetition
   **Def:** A learning technique that incorporates increasing intervals of time between subsequent review of previously learned material.
   ```
+
+Every AI generation pass MUST append **exactly 10 Flashcards** and **10 Quiz Questions** in Markdown at the bottom of the active note. See Section 9 for syntax details.
+
+Flashcards are always interactive, click-to-flip (`onClick`), never a static two-line display. In graded review (`ReviewSession.tsx`) the front is the term/question and the back is the definition/answer, per the Front/Back structure above. In Practice mode (`PracticeTab.tsx`) this is reversed: the front shows the answer/definition, the back shows the question/term.
 
 ---
 
@@ -124,6 +141,12 @@ Supabase over Firebase because the data is relational and row level security han
 **Never expose API keys to the browser.** All third party calls go through server-only code: Next.js Server Actions (`'use server'` files) today, or routes under `/app/api/` if a plain REST endpoint is ever needed. Nothing secret gets a `NEXT_PUBLIC_` prefix.
 
 **AI calls go through one shared function, not a provider SDK per call site.** `src/lib/ai.ts` exports `generateText({ prompt, image?, json? })`, which tries Gemini first (`GEMINI_API_KEY`, with `Gemini_API_Key2` as a second key and a couple of retries on transient 503s) and falls back to OpenAI (`OPENAI_API_KEY`) if Gemini fails for any reason: missing key, quota, or an outage. This is what keeps one flaky provider from taking down imports, quiz generation, or path search, and from failing the build if a key is briefly unset. Add a new provider by adding one entry to the `PROVIDERS` list in that file, not by touching the three call sites.
+
+**Live Editing While Watching:**
+- **Auto-Save & Uninterrupted Playback:**
+  - The markdown editor in Split View features background auto-save (debounced) so the user can type notes continuously without stopping video playback or triggering full-page re-renders.
+  - Inline syntax (e.g., `**Vocab:**` / `**Def:**` and `**Quiz:**` / `**A:**`) can be typed live while watching. 
+  - The Video player frame remains stable across note updates and route transitions within the subject workspace.
 
 ---
 
@@ -154,6 +177,9 @@ imports         id, subject_id, kind, raw_ref, status, created_at
 
 Notes are standard markdown. Recall prompts are marked inline using natural markdown prefixes. Section 6 retires the old standalone `**Q:**/**A:**` flashcard: vocabulary front/back and quiz are the only two flashcard formats.
 
+**Editor Quick Toolbar:**
+- Include quick-action buttons above the Markdown textarea to auto-insert `**Vocab:**` / `**Def:**` and `**Quiz:**` / `**A:**` templates.
+
 **Vocabulary (front/back flip):**
 ```markdown
 **Vocab:** Spaced Repetition
@@ -173,7 +199,20 @@ Add pipe `|` characters on the answer line to create multiple choice options. Th
 - Box 0 cards jump the queue and show Keep, Edit, Delete on first review, so the first retrieval doubles as quality control.
 - Cloze cards are made by selecting text and pressing Cmd+K. This is the fastest path to a card and should feel effortless.
 
-Imports generate these Markdown blocks and append them at the bottom of the note.
+Every AI generation pass MUST append **exactly 10 Flashcards** and **10 Quiz Questions** in Markdown at the bottom of the active note:
+
+```markdown
+<!-- FLASHCARDS (Exactly 10 items) -->
+**Vocab:** [Concept 1]
+**Def:** [Definition 1]
+... (Repeat up to item 10)
+
+<!-- QUIZZES (Exactly 10 items) -->
+**Quiz:** [Question 1]?
+**A:** [Correct Answer] | [Distractor 1] | [Distractor 2] | [Distractor 3]
+**Explain:** [Brief explanation of the correct answer]
+... (Repeat up to item 10)
+```
 
 ---
 
@@ -214,10 +253,14 @@ Sign up (with name), sign in, sign out, protected routes. Password reset. Google
 Blank parsing, cloze creation, box 0 promotion, review screen, Leitner scheduler, back pointer jump, session cap, completion screen. Review navigation appears only once a card exists. After this phase the app is genuinely usable for studying.
 
 **Phase 3, imports**
-Paste box first. Then PDF text extraction. Then screenshot import using a vision model to read questions from an image. All imports create imported tier cards or open prompts, never answers.
+Paste box first. Then PDF text extraction. Then screenshot import using a vision model to read questions from an image. Imports create imported-tier cards; answers may be pre-filled directly (section 2).
 
 **Phase 4, discovery and paths**
 LLM-interpreted subject search on the public home page, usable signed out. YouTube Data API for playlists and chapters, sorted by upload date rather than relevance so the newest matching video surfaces first for every subject, keeping results current. Web search API for everything else. A hand curated source registry per subject as the reliable backbone. Every candidate resource is checked for a live 200/301/302 response before it can be saved; broken links never reach a path. Free ranked above paid, enforced in code after generation rather than left to the model. Each resource gets a written description of what it covers and who it suits. Signed-out users can search and browse results; saving a path or acting on it prompts sign-in.
+- **Free-First Ranking Engine:** Free video courses (especially structured YouTube playlists) MUST always rank above paid platforms or generic article sites.
+- **Top Free Creator Priority (e.g., Professor Messer for CompTIA):** 
+  - For standard certifications/topics with well-known free educators (e.g., **Professor Messer** for CompTIA A+, Network+, Security+), the search pipeline must explicitly surface their free YouTube courses/playlists **as the #1 ranked path step**.
+  - YouTube Data API and Web Search results must filter and rank full playlist courses higher than fragmented blog posts, landing pages, or paid sites like Udemy/Coursera.
 
 **Phase 5, polish**
 Motion, SEO, accessibility audit, performance, error states.
@@ -369,6 +412,12 @@ No text in this product may read as AI written. This covers every string a user 
 
 Run the humanizer skill over all copy before it ships. It is a required step in every phase, not a final polish pass.
 
+- **Headline Copy:** Strictly plain language. The landing page headline focuses on retrieval-first learning ("Never see an answer you didn't try to retrieve yourself").
+- Lowercase standard UI: "Sign in", not "Sign In". "Create note", not "Create Note".
+- Don't use words like: vibrant, seamless, unlock, empower, revolutionize, supercharge, dive in, journey.
+- No em dashes. Use parentheses or start a new sentence.
+- Plain descriptions. A path description says "A 4-hour video course on React hooks" rather than "Unlock your potential with this seamless journey into React."
+
 Avoid:
 
 - Marketing inflation: vibrant, seamless, unlock, empower, revolutionize, in today's fast paced world
@@ -398,4 +447,4 @@ For AI generated resource descriptions in phase 4, put these constraints in the 
 - **No rich text editor.** Markdown textarea with preview. WYSIWYG is a multi-week sinkhole.
 - **Do not import from exam dump sites** or leaked question banks.
 - **Keep imported source text private** to the user who imported it.
-- **Enforce core rules:** If a request conflicts with section 2 (retrieval first) or section 3 (progressive disclosure), stop and say so before writing code.
+- **Enforce core rules:** If a request conflicts with section 3 (progressive disclosure), stop and say so before writing code.

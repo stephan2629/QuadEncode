@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { m, AnimatePresence } from "framer-motion";
-import { X, UploadCloud, FileText, Image as ImageIcon, Loader2, Bot } from 'lucide-react';
+import { X, UploadCloud, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { generatePromptsFromFile } from '@/app/notes/[id]/actions';
 
 interface ImportModalProps {
@@ -16,7 +16,6 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
   const [pastedText, setPastedText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [provider, setProvider] = useState<'auto' | 'gemini' | 'openai'>('auto');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,8 +31,30 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
     }
   };
 
+  const loadingMessages = [
+    "Uploading document...",
+    "Extracting text...",
+    "Analyzing content with AI...",
+    "Generating flashcards...",
+    "Formatting study notes...",
+    "Almost there..."
+  ];
+
+  const [loadingTextIndex, setLoadingTextIndex] = useState(0);
+
+  // Reset happens where loading actually starts (handleImport), not here -
+  // this effect only owns the timer subscription itself.
+  useEffect(() => {
+    if (!loading) return;
+    const interval = setInterval(() => {
+      setLoadingTextIndex((prev) => (prev < loadingMessages.length - 1 ? prev + 1 : prev));
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [loading, loadingMessages.length]);
+
   const handleImport = async () => {
     setLoading(true);
+    setLoadingTextIndex(0);
     setError(null);
     try {
       const formData = new FormData();
@@ -45,18 +66,17 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
         throw new Error('Please provide a file or paste some text.');
       }
       
-      formData.append('provider', provider);
+      formData.append('provider', 'auto');
 
       const markdown = await generatePromptsFromFile(noteId, formData);
       if (markdown.error || !markdown.text) {
-        throw new Error(markdown.error || 'Import produced no prompts.');
+        throw new Error(markdown.error || 'Import failed.');
       }
       onImportComplete(markdown.text, markdown.sourceText || undefined, markdown.pdfUrl);
       onClose();
       // Reset state
       setFile(null);
       setPastedText('');
-      setProvider('auto');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong during import.');
     } finally {
@@ -88,23 +108,6 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
             </button>
 
             <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Import Source Material</h2>
-
-            {/* AI Model Selection */}
-            <div className="mb-6">
-              <label className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                <Bot className="w-4 h-4" /> AI Model
-              </label>
-              <select
-                value={provider}
-                onChange={(e) => setProvider(e.target.value as 'auto' | 'gemini' | 'openai')}
-                className="w-full bg-[#14120f] border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accent/60 transition-colors appearance-none cursor-pointer"
-                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%236b7280\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em' }}
-              >
-                <option value="auto">Auto (Gemini, falls back to OpenAI)</option>
-                <option value="gemini">Gemini only</option>
-                <option value="openai">OpenAI only</option>
-              </select>
-            </div>
 
             {/* Toggle Tabs */}
             <div className="flex bg-black/40 p-1 rounded-xl mb-6 border border-white/5 relative">
@@ -191,10 +194,10 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Analyzing...
+                  {textMode ? "Uploading..." : loadingMessages[loadingTextIndex]}
                 </>
               ) : (
-                'Extract Flashcards'
+                'Upload Notes'
               )}
             </button>
           </div>

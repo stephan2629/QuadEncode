@@ -2,9 +2,10 @@ import { parseBlanks } from './parseBlanks';
 
 export interface QuizQuestion {
   id: string; // generated ID for tracking
+  type: 'quiz' | 'vocab';
   prompt: string;
   correct: string;
-  options: string[];
+  options?: string[]; // undefined for vocab
   explanation?: string;
   originalLine: number; // for back-linking
 }
@@ -42,6 +43,7 @@ export function parseLocalQuiz(markdown: string): QuizQuestion[] {
       
       questions.push({
         id: `quiz-${blank.line}`,
+        type: 'quiz',
         prompt: blank.prompt,
         correct,
         options,
@@ -52,24 +54,11 @@ export function parseLocalQuiz(markdown: string): QuizQuestion[] {
       const correct = blank.answer;
       if (!correct) continue;
       
-      // Get 3 other random definitions from this note
-      const otherDefs = vocabDefs.filter(def => def !== correct);
-      const distractors = shuffle(otherDefs).slice(0, 3);
-      
-      // Pad with fallbacks if there aren't enough vocab words in the note
-      let i = 0;
-      while (distractors.length < 3) {
-        distractors.push(FALLBACK_DISTRACTORS[i % FALLBACK_DISTRACTORS.length]);
-        i++;
-      }
-      
-      const options = shuffle([correct, ...distractors]);
-      
       questions.push({
         id: `vocab-${blank.line}`,
-        prompt: `What is the definition of "${blank.prompt}"?`,
+        type: 'vocab',
+        prompt: blank.prompt,
         correct,
-        options,
         explanation: blank.explanation,
         originalLine: blank.line,
       });

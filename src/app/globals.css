@@ -4,12 +4,13 @@
 :root {
   color-scheme: dark;
 
+  /* Colors */
   --background: #14120f; /* Warm near black. Paper at night, not a console. */
   --foreground: #f3f4f6;
-
   --accent: #f59e0b; /* Amber for active states */
   --accent-muted: #78350f;
   --muted: #6b7280;
+  --border: rgba(255, 255, 255, 0.1);
 }
 
 @theme inline {
@@ -18,22 +19,61 @@
   --color-accent: var(--accent);
   --color-accent-muted: var(--accent-muted);
   --color-muted: var(--muted);
+  --color-border: var(--border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer base {
+  /* 1. CSS Reset & Layout Boundaries */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  body {
+    color: var(--foreground);
+    background: var(--background);
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.5;
+  }
+
+  /* Media Safety */
+  img, svg, video, canvas, iframe {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Typography Safety */
+  h1, h2, h3, h4, h5, h6, p, a, span {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    line-height: 1.2;
+  }
+
+  /* Keyboard Accessibility */
   *:focus-visible {
     @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
   }
 }
 
+/* Typography Plugin Overrides */
+.prose pre {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -45,7 +85,7 @@ body {
   }
 }
 
-/* Entrance for server-rendered lists (search/path results) that can't reach for framer-motion */
+/* Entrance for server-rendered lists */
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -60,337 +100,26 @@ body {
   animation: fade-in-up 300ms ease-out both;
 }
 
-/* Custom Scrollbar for sleek, distraction-free aesthetic */
-.custom-scrollbar::-webkit-scrollbar {
+/* Custom Scrollbars */
+::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
+::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb, .custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 158, 11, 0.4); /* Accent color */
+::-webkit-scrollbar-thumb:hover, .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.4);
+}
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-}
-
-/* From Uiverse.io by anand_4957 (Adapted for Quad Encode Theme) */
-.book,
-.book__pg-shadow,
-.book__pg {
-  animation: cover 5s ease-in-out 1;
-}
-.book {
-  background-color: var(--accent);
-  border-radius: 0.25em;
-  box-shadow:
-    0 0.25em 0.5em hsla(0, 0%, 0%, 0.3),
-    0 0 0 0.25em var(--accent-muted) inset;
-  padding: 0.25em;
-  perspective: 37.5em;
-  position: relative;
-  width: 8em;
-  height: 6em;
-  transform: translate3d(0, 0, 0);
-  transform-style: preserve-3d;
-}
-.book__pg-shadow,
-.book__pg {
-  position: absolute;
-  left: 0.25em;
-  width: calc(50% - 0.25em);
-}
-.book__pg-shadow {
-  animation-name: shadow;
-  background-image: linear-gradient(
-    -45deg,
-    hsla(0, 0%, 0%, 0) 50%,
-    hsla(0, 0%, 0%, 0.5) 50%
-  );
-  filter: blur(0.25em);
-  top: calc(100% - 0.25em);
-  height: 3.75em;
-  transform: scaleY(0);
-  transform-origin: 100% 0%;
-}
-.book__pg {
-  animation-name: pg1;
-  background-color: #e5e7eb;
-  background-image: linear-gradient(
-    90deg,
-    hsla(0, 0%, 90%, 0) 87.5%,
-    #d1d5db
-  );
-  height: calc(100% - 0.5em);
-  transform-origin: 100% 50%;
-}
-.book__pg--2,
-.book__pg--3,
-.book__pg--4 {
-  background-image: repeating-linear-gradient(
-      hsla(0, 0%, 10%, 0.1) 0 0.125em,
-      hsla(0, 0%, 10%, 0) 0.125em 0.5em
-    ),
-    linear-gradient(90deg, hsla(0, 0%, 90%, 0) 87.5%, #d1d5db);
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size:
-    2.5em 4.125em,
-    100% 100%;
-}
-.book__pg--2 {
-  animation-name: pg2;
-}
-.book__pg--3 {
-  animation-name: pg3;
-}
-.book__pg--4 {
-  animation-name: pg4;
-}
-.book__pg--5 {
-  animation-name: pg5;
-}
-
-/* Animations */
-@keyframes cover {
-  from,
-  5%,
-  45%,
-  55%,
-  95%,
-  to {
-    animation-timing-function: ease-out;
-    background-color: var(--accent);
-  }
-  10%,
-  40%,
-  60%,
-  90% {
-    animation-timing-function: ease-in;
-    background-color: #d97706; /* Slightly darker amber */
-  }
-}
-@keyframes shadow {
-  from,
-  10.01%,
-  20.01%,
-  30.01%,
-  40.01% {
-    animation-timing-function: ease-in;
-    transform: translate3d(0, 0, 1px) scaleY(0) rotateY(0);
-  }
-  5%,
-  15%,
-  25%,
-  35%,
-  45%,
-  55%,
-  65%,
-  75%,
-  85%,
-  95% {
-    animation-timing-function: ease-out;
-    transform: translate3d(0, 0, 1px) scaleY(0.2) rotateY(90deg);
-  }
-  10%,
-  20%,
-  30%,
-  40%,
-  50%,
-  to {
-    animation-timing-function: ease-out;
-    transform: translate3d(0, 0, 1px) scaleY(0) rotateY(180deg);
-  }
-  50.01%,
-  60.01%,
-  70.01%,
-  80.01%,
-  90.01% {
-    animation-timing-function: ease-in;
-    transform: translate3d(0, 0, 1px) scaleY(0) rotateY(180deg);
-  }
-  60%,
-  70%,
-  80%,
-  90%,
-  to {
-    animation-timing-function: ease-out;
-    transform: translate3d(0, 0, 1px) scaleY(0) rotateY(0);
-  }
-}
-@keyframes pg1 {
-  from,
-  to {
-    animation-timing-function: ease-in-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(0.4deg);
-  }
-  10%,
-  15% {
-    animation-timing-function: ease-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(180deg);
-  }
-  20%,
-  80% {
-    animation-timing-function: ease-in;
-    background-color: #9ca3af;
-    transform: translate3d(0, 0, 1px) rotateY(180deg);
-  }
-  85%,
-  90% {
-    animation-timing-function: ease-in-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(180deg);
-  }
-}
-@keyframes pg2 {
-  from,
-  to {
-    animation-timing-function: ease-in;
-    background-color: #9ca3af;
-    transform: translate3d(0, 0, 1px) rotateY(0.3deg);
-  }
-  5%,
-  10% {
-    animation-timing-function: ease-in-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(0.3deg);
-  }
-  20%,
-  25% {
-    animation-timing-function: ease-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(179.9deg);
-  }
-  30%,
-  70% {
-    animation-timing-function: ease-in;
-    background-color: #9ca3af;
-    transform: translate3d(0, 0, 1px) rotateY(179.9deg);
-  }
-  75%,
-  80% {
-    animation-timing-function: ease-in-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(179.9deg);
-  }
-  90%,
-  95% {
-    animation-timing-function: ease-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(0.3deg);
-  }
-}
-@keyframes pg3 {
-  from,
-  10%,
-  90%,
-  to {
-    animation-timing-function: ease-in;
-    background-color: #9ca3af;
-    transform: translate3d(0, 0, 1px) rotateY(0.2deg);
-  }
-  15%,
-  20% {
-    animation-timing-function: ease-in-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(0.2deg);
-  }
-  30%,
-  35% {
-    animation-timing-function: ease-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(179.8deg);
-  }
-  40%,
-  60% {
-    animation-timing-function: ease-in;
-    background-color: #9ca3af;
-    transform: translate3d(0, 0, 1px) rotateY(179.8deg);
-  }
-  65%,
-  70% {
-    animation-timing-function: ease-in-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(179.8deg);
-  }
-  80%,
-  85% {
-    animation-timing-function: ease-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(0.2deg);
-  }
-}
-@keyframes pg4 {
-  from,
-  20%,
-  80%,
-  to {
-    animation-timing-function: ease-in;
-    background-color: #9ca3af;
-    transform: translate3d(0, 0, 1px) rotateY(0.1deg);
-  }
-  25%,
-  30% {
-    animation-timing-function: ease-in-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(0.1deg);
-  }
-  40%,
-  45% {
-    animation-timing-function: ease-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(179.7deg);
-  }
-  50% {
-    animation-timing-function: ease-in;
-    background-color: #9ca3af;
-    transform: translate3d(0, 0, 1px) rotateY(179.7deg);
-  }
-  55%,
-  60% {
-    animation-timing-function: ease-in-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(179.7deg);
-  }
-  70%,
-  75% {
-    animation-timing-function: ease-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(0.1deg);
-  }
-}
-@keyframes pg5 {
-  from,
-  30%,
-  70%,
-  to {
-    animation-timing-function: ease-in;
-    background-color: #9ca3af;
-    transform: translate3d(0, 0, 1px) rotateY(0);
-  }
-  35%,
-  40% {
-    animation-timing-function: ease-in-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(0deg);
-  }
-  50% {
-    animation-timing-function: ease-in-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(179.6deg);
-  }
-  60%,
-  65% {
-    animation-timing-function: ease-out;
-    background-color: #f3f4f6;
-    transform: translate3d(0, 0, 1px) rotateY(0);
-  }
 }

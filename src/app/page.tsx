@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BrainCircuit, PenTool, RefreshCw, MoveRight, FileText, FileDown, Image as ImageIcon, Video } from 'lucide-react';
+import { PenTool, BrainCircuit, RefreshCw, FileText, FileDown, Image as ImageIcon, Video, MoveRight } from 'lucide-react';
 import { m } from "framer-motion";
 import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
@@ -285,13 +285,13 @@ export default function Home() {
         
         {/* Hero Copy (Massive Typography) */}
         <m.h1 
-          className="text-[12vw] sm:text-[10vw] md:text-[90px] lg:text-[110px] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.05] text-white"
+          className="text-[clamp(1.75rem,7vw,90px)] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.15] md:leading-[1.05] text-white"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
-          What do you want <br className="hidden md:block"/>
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent via-yellow-400 to-accent">to learn?</span>
+          Never see an answer you <br className="hidden md:block"/>
+          didn&apos;t try to <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent via-yellow-400 to-accent">retrieve yourself.</span>
         </m.h1>
         
         <m.p 
@@ -300,7 +300,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          Search a topic, follow a curated path, take notes, and turn them into recall prompts.
+          Search a topic to build a learning path, take notes, and turn them into recall prompts.
         </m.p>
 
         {/* Search Bar Component */}
@@ -335,14 +335,66 @@ export default function Home() {
           <button onClick={handleSearch} className="md:hidden mt-4 flex items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-b from-accent to-yellow-600 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] w-full justify-center">
             Find the path <MoveRight className="w-4 h-4" />
           </button>
+
+          {/* Example Chips */}
+          <div className="flex flex-wrap justify-center gap-2 mt-6">
+            <span className="text-sm text-gray-500 mr-2 self-center">Try:</span>
+            {['CompTIA Security+', 'Spanish Vocab', 'Music Theory'].map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => setSearchQuery(chip)}
+                className="px-3 py-1 text-sm bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-all"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        </m.div>
+
+        {/* Live Interactive Demo Widget */}
+        <m.div
+          className="w-full relative z-30 mt-16 max-w-md mx-auto"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="bg-[#14120f] border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden group cursor-pointer" onClick={(e) => {
+            const el = e.currentTarget;
+            el.classList.toggle('flipped');
+          }}>
+            <div className="absolute top-0 left-0 w-full h-1 bg-accent/50 group-hover:bg-accent transition-colors"></div>
+            <div className="text-left">
+              <div className="text-xs font-bold text-accent uppercase tracking-wider mb-4">Try it instantly</div>
+              <p className="text-xl font-serif text-white mb-6">What is the core philosophy of Quad Encode?</p>
+              
+              <div className="relative h-20 perspective-1000">
+                <div className="w-full h-full transition-transform duration-0 transform-style-3d group-[.flipped]:rotate-x-180">
+                  <div className="absolute w-full h-full backface-hidden bg-white/5 border border-white/10 rounded-xl flex items-center justify-center p-4">
+                    <span className="text-gray-400 text-sm font-mono">Tap to reveal answer</span>
+                  </div>
+                  <div className="absolute w-full h-full backface-hidden bg-accent/10 border border-accent/50 rounded-xl flex items-center justify-center p-4 rotate-x-180">
+                    <span className="text-white text-base font-medium text-center">Never see an answer you didn&apos;t try to retrieve yourself.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Custom 3D CSS for the flip card demo */}
+            <style jsx>{`
+              .perspective-1000 { perspective: 1000px; }
+              .transform-style-3d { transform-style: preserve-3d; }
+              .backface-hidden { backface-visibility: hidden; }
+              .rotate-x-180 { transform: rotateX(180deg); }
+            `}</style>
+          </div>
         </m.div>
 
         {/* Obsidian-Style Mock App Window */}
         <m.div
-          className="w-full relative z-30"
+          className="w-full relative z-30 mt-16"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
           <MockAppWindow />
         </m.div>

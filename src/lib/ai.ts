@@ -54,7 +54,7 @@ async function callGemini(input: GenerateInput): Promise<string> {
   const keys = Object.keys(process.env)
     .filter(k => k.toUpperCase().startsWith('GEMINI_API_KEY'))
     .map(k => process.env[k])
-    .filter((k): k is string => Boolean(k));
+    .filter((k): k is string => !!k && !k.includes('your_'));
 
   if (keys.length === 0) throw new Error('Gemini API key is missing.')
 
@@ -70,7 +70,12 @@ async function callGemini(input: GenerateInput): Promise<string> {
       return await generateWithGeminiKey(key, input)
     } catch (err) {
       lastErr = err as Error
-      if (!isRetryable(lastErr.message || '')) throw lastErr
+      const errMsg = lastErr.message || '';
+      // If error is not retryable AND not an invalid key error, throw it immediately (e.g. bad prompt).
+      // Invalid keys should just be skipped so we try the next key.
+      if (!isRetryable(errMsg) && !errMsg.includes('API key not valid')) {
+        throw lastErr;
+      }
     }
   }
   throw lastErr

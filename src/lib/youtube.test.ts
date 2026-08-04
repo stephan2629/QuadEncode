@@ -1,5 +1,32 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { searchYouTube } from './youtube'
+import { searchYouTube, extractYouTubeId, extractYouTubePlaylistId } from './youtube'
+
+describe('extractYouTubeId', () => {
+  it('extracts the id from watch, embed, shorts, and youtu.be URLs', () => {
+    expect(extractYouTubeId('https://www.youtube.com/watch?v=abc123')).toBe('abc123')
+    expect(extractYouTubeId('https://youtu.be/abc123')).toBe('abc123')
+    expect(extractYouTubeId('https://www.youtube.com/embed/abc123')).toBe('abc123')
+    expect(extractYouTubeId('https://www.youtube.com/shorts/abc123')).toBe('abc123')
+  })
+
+  it('returns null for a playlist-only URL', () => {
+    expect(extractYouTubeId('https://www.youtube.com/playlist?list=PLxyz')).toBeNull()
+  })
+})
+
+describe('extractYouTubePlaylistId', () => {
+  it('extracts the list id from a playlist URL', () => {
+    expect(extractYouTubePlaylistId('https://www.youtube.com/playlist?list=PLxyz')).toBe('PLxyz')
+  })
+
+  it('extracts the list id from a watch URL that also carries a playlist', () => {
+    expect(extractYouTubePlaylistId('https://www.youtube.com/watch?v=abc123&list=PLxyz')).toBe('PLxyz')
+  })
+
+  it('returns null when there is no list param', () => {
+    expect(extractYouTubePlaylistId('https://www.youtube.com/watch?v=abc123')).toBeNull()
+  })
+})
 
 describe('searchYouTube', () => {
   afterEach(() => {

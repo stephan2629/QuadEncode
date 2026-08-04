@@ -12,6 +12,9 @@ import PendingPathSaver from './PendingPathSaver';
 import PathTracker, { type PathData } from './PathTracker';
 import NotesGrid from './NotesGrid';
 import SubjectNav from './SubjectNav';
+import StudyHeatmap from '@/components/ui/StudyHeatmap';
+import { DashboardHeroBanner } from '@/components/ui/DashboardHeroBanner';
+import { QuickStudyHub } from '@/components/ui/QuickStudyHub';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -33,7 +36,9 @@ export default async function DashboardPage() {
         id,
         title,
         section,
-        updated_at
+        body_md,
+        updated_at,
+        cards (type, answer)
       )
     `)
     .order('created_at', { ascending: false });
@@ -48,7 +53,15 @@ export default async function DashboardPage() {
     activeSubject = subjects[0];
   }
 
-  // Active Subject Stats
+  // Fetch 70 days of review history for heatmap
+  const seventyDaysAgo = new Date();
+  seventyDaysAgo.setDate(seventyDaysAgo.getDate() - 70);
+  const { data: reviewsData } = await supabase
+    .from('reviews')
+    .select('reviewed_at')
+    .gte('reviewed_at', seventyDaysAgo.toISOString());
+  const reviewDates = (reviewsData || []).map(r => r.reviewed_at);
+
   let totalCards = 0;
   let dueCount = 0;
   let importCount = 0;
@@ -81,20 +94,30 @@ export default async function DashboardPage() {
       .order('generated_at', { ascending: false });
     paths = pData as PathData[] | null;
 
-    // Total Cards for Subject
-    const { count: totalCountRaw } = await supabase
-      .from('cards')
-      .select('id, notes!inner(subject_id)', { count: 'exact', head: true })
-      .eq('notes.subject_id', activeSubject.id);
-    totalCards = totalCountRaw ?? 0;
+    // Resolved to a plain note-id list rather than filtering cards through an
+    // embedded `notes!inner(subject_id)` join - that dot-notation embedded
+    // filter is fragile (silently returns zero rows on some PostgREST/RLS
+    // combinations with no error surfaced) and a plain `.in()` is unambiguous.
+    const noteIds = (activeSubject.notes ?? []).map((n) => n.id);
 
-    // Due Cards for Subject
-    const { count: dueCountRaw } = await supabase
-      .from('cards')
-      .select('id, notes!inner(subject_id)', { count: 'exact', head: true })
-      .eq('notes.subject_id', activeSubject.id)
-      .or(`box.eq.0,and(box.gt.0,box.lt.5,due.lte.${new Date().toISOString()})`);
-    dueCount = dueCountRaw ?? 0;
+    if (noteIds.length > 0) {
+      // Total Cards for Subject
+      const { count: totalCountRaw, error: totalCardsError } = await supabase
+        .from('cards')
+        .select('id', { count: 'exact', head: true })
+        .in('note_id', noteIds);
+      if (totalCardsError) console.error('Error counting cards:', totalCardsError.message);
+      totalCards = totalCountRaw ?? 0;
+
+      // Due Cards for Subject
+      const { count: dueCountRaw, error: dueCardsError } = await supabase
+        .from('cards')
+        .select('id', { count: 'exact', head: true })
+        .in('note_id', noteIds)
+        .or(`box.eq.0,and(box.gt.0,box.lt.5,due.lte.${new Date().toISOString()})`);
+      if (dueCardsError) console.error('Error counting due cards:', dueCardsError.message);
+      dueCount = dueCountRaw ?? 0;
+    }
 
     // Imports for Subject
     const { count: importCountRaw } = await supabase
@@ -105,7 +128,8 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0908] text-white p-4 sm:p-6 md:p-12 max-w-6xl mx-auto">
+    <div className="h-dvh w-full bg-[#0a0908] text-white overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-y-auto w-full p-4 sm:p-6 md:p-12 max-w-6xl mx-auto custom-scrollbar">
       <PendingPathSaver />
       
       <header className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0 mb-10 md:mb-16">
@@ -124,16 +148,37 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
           <span className="text-gray-400 text-xs md:text-sm truncate max-w-[200px] sm:max-w-none">{user.email}</span>
           <form action={logout}>
-            <button className="p-3 sm:p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Logout">
+            <button
+              className="p-3 sm:p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+              title="Sign out of your account"
+              aria-label="Sign out of your account"
+            >
               <LogOut className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </form>
         </div>
       </header>
 
+      <DashboardHeroBanner
+        subjectName={activeSubject?.name}
+        totalCards={totalCards}
+        dueCount={dueCount}
+        noteCount={activeSubject?.notes?.length ?? 0}
+      />
+
+      <QuickStudyHub
+        activeSubjectId={activeSubject?.id}
+        dueCount={dueCount}
+      />
+
+      <div className="mb-12">
+        <StudyHeatmap reviewDates={reviewDates} />
+      </div>
+
+      <main>
       {!activeSubject ? (
         <div className="text-center py-20 border border-white/5 rounded-2xl bg-[#14120f] border-dashed">
-          <Book className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <Book className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-medium text-gray-300 mb-2">No subjects yet</h3>
           <p className="text-gray-500 mb-6">Create your first subject below to start taking notes.</p>
           <form action={createSubject} className="flex justify-center gap-2 max-w-md mx-auto">
@@ -200,7 +245,7 @@ export default async function DashboardPage() {
             
             <h2 className="text-xl font-bold font-serif text-white mb-6 relative z-10">Notes</h2>
 
-            <div className="flex-1 space-y-2 relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex-1 relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <NotesGrid notes={activeSubject.notes ?? []} />
             </div>
 
@@ -221,17 +266,19 @@ export default async function DashboardPage() {
           </div>
         </>
       )}
+      </main>
 
       <footer className="mt-20 pt-8 border-t border-white/5 text-center">
         <form action={deleteAccount}>
           <ConfirmButton
             confirmMessage="Delete your account? All subjects, notes, cards, and review history are permanently removed. This can't be undone."
-            className="text-xs text-gray-600 hover:text-red-400 transition-colors"
+            className="text-xs text-gray-400 hover:text-red-400 transition-colors"
           >
             Delete account
           </ConfirmButton>
         </form>
       </footer>
+      </div>
     </div>
   );
 }

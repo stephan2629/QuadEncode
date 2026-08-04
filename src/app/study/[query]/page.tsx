@@ -10,9 +10,18 @@ export async function generateMetadata({ params }: { params: Promise<{ query: st
   const resolvedParams = await params;
   const decodedQuery = decodeURIComponent(resolvedParams.query).replace(/-/g, ' ');
   const titleName = decodedQuery.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const title = `Study ${titleName} - Quad Encode Learning Path`;
+  const description = `Get a free, AI-curated learning path to study ${titleName}. Ranked resources, video courses, and more.`;
+
   return {
-    title: `Study ${titleName} - Quad Encode Learning Path`,
-    description: `Get a free, AI-curated learning path to study ${titleName}. Ranked resources, video courses, and more.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: `/study/${resolvedParams.query}`,
+    },
   };
 }
 

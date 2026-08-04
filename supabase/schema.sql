@@ -53,7 +53,8 @@ create table notes (
   title text,
   body_md text not null default '',
   updated_at timestamptz not null default now(),
-  pdf_path text
+  pdf_path text,
+  video_id text
 );
 
 create table cards (

@@ -15,6 +15,7 @@ export interface ParsedBlank {
   answer: string;
   explanation?: string;
   explanationLine?: number;
+  videoT?: number;
 }
 
 const PROMPT_PREFIXES: { prefix: string; kind: ParsedBlank['kind'] }[] = [
@@ -23,6 +24,7 @@ const PROMPT_PREFIXES: { prefix: string; kind: ParsedBlank['kind'] }[] = [
 ];
 const ANSWER_PREFIXES = ['**A:**', '**Def:**'];
 const EXPLAIN_PREFIX = '**Explain:**';
+const TIMESTAMP_PREFIX = '**At:**';
 
 function stripPrefix(line: string, prefixes: string[]): string | null {
   for (const prefix of prefixes) {
@@ -31,12 +33,40 @@ function stripPrefix(line: string, prefixes: string[]): string | null {
   return null;
 }
 
+// "2:22" -> 142, "1:02:03" -> 3723. Companion to formatTimestamp below -
+// together they own the **At:** marker's human-readable time format.
+export function parseTimestamp(text: string): number | null {
+  const parts = text.trim().split(':').map(Number);
+  if (parts.length < 2 || parts.length > 3 || parts.some((n) => !Number.isFinite(n) || n < 0)) return null;
+  return parts.reduce((total, part) => total * 60 + part, 0);
+}
+
+export function formatTimestamp(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
 export function parseBlanks(bodyMd: string): ParsedBlank[] {
   const lines = bodyMd.split('\n');
   const blanks: ParsedBlank[] = [];
+  // The nearest **At:** marker scanned so far, not yet claimed by a blank.
+  // Consumed (reset to null) the moment it attaches to one, so it can't also
+  // attach to some unrelated blank further down the note.
+  let pendingVideoT: number | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
+
+    if (trimmed.startsWith(TIMESTAMP_PREFIX)) {
+      const parsed = parseTimestamp(trimmed.slice(TIMESTAMP_PREFIX.length).trim());
+      if (parsed !== null) pendingVideoT = parsed;
+      continue;
+    }
+
     const match = PROMPT_PREFIXES.find((p) => trimmed.startsWith(p.prefix));
     if (!match) continue;
     const prompt = trimmed.slice(match.prefix.length).trim();
@@ -50,6 +80,10 @@ export function parseBlanks(bodyMd: string): ParsedBlank[] {
     if (answer === null) continue;
 
     const blank: ParsedBlank = { line: i, answerLine: j, kind: match.kind, prompt, answer };
+    if (pendingVideoT !== null) {
+      blank.videoT = pendingVideoT;
+      pendingVideoT = null;
+    }
 
     let k = j + 1;
     while (k < lines.length && lines[k].trim() === '') k++;

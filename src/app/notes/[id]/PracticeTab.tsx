@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { Check, X, ArrowRight, BookOpen, RotateCcw } from 'lucide-react';
-import { seededShuffle } from '@/lib/utils';
+import { Check, X, ArrowRight, ArrowLeft, BookOpen, RotateCcw } from 'lucide-react';
+import { parseLocalQuiz } from '@/lib/quiz-parser';
 
 interface NoteCard {
   id: string;
@@ -12,11 +12,45 @@ interface NoteCard {
   explanation?: string | null;
 }
 
-interface PracticeTabProps {
-  cards: NoteCard[];
+interface ClozeCard {
+  line: number;
+  prompt: string;
+  answer: string;
 }
 
-export default function PracticeTab({ cards }: PracticeTabProps) {
+interface PracticeTabProps {
+  noteId: string;
+  content: string;
+  clozeCards?: ClozeCard[];
+}
+
+export default function PracticeTab({ noteId, content, clozeCards = [] }: PracticeTabProps) {
+  // Cmd+K cloze cards live in separate component state, not the note body
+  // markdown, so parseLocalQuiz (which only reads **Vocab:**/**Quiz:**
+  // blanks) can't see them - merge them in here or they silently vanish
+  // from practice.
+  const cards = useMemo(() => {
+    const fromBlanks: NoteCard[] = parseLocalQuiz(content)
+      .filter(q => q.type === 'vocab')
+      .map(q => ({
+        id: q.id,
+        line: q.originalLine,
+        type: 'vocab',
+        prompt: q.prompt,
+        answer: q.correct,
+        explanation: q.explanation
+      }));
+    const fromCloze: NoteCard[] = clozeCards.map((c) => ({
+      id: `cloze-${c.line}`,
+      line: c.line,
+      type: 'cloze',
+      prompt: c.prompt,
+      answer: c.answer,
+      explanation: null,
+    }));
+    return [...fromBlanks, ...fromCloze];
+  }, [content, clozeCards]);
+
   const [sessionCards, setSessionCards] = useState<NoteCard[]>([]);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -26,20 +60,8 @@ export default function PracticeTab({ cards }: PracticeTabProps) {
   const currentCard = sessionCards[index];
   const isQuiz = !!currentCard?.answer.includes('|');
 
-  const options = useMemo(() => {
-    if (!isQuiz || !currentCard?.answer) return { options: [], correct: '' };
-    const parts = currentCard.answer.split('|').map(s => s.trim());
-    const correct = parts[0];
-    const shuffled = seededShuffle(parts, currentCard.id);
-    return {
-      options: shuffled,
-      correct,
-    };
-  }, [currentCard, isQuiz]);
+  const options = useMemo(() => ({ options: [] as string[], correct: '' }), []);
 
-  // These must run on every render, including the start/results screens
-  // below, whose early returns happen only after every hook has been
-  // called — see the identical fix in ReviewSession.tsx for why.
   const handleNext = useCallback(() => {
     if (index + 1 < sessionCards.length) {
       setRevealed(false);
@@ -49,6 +71,14 @@ export default function PracticeTab({ cards }: PracticeTabProps) {
       setStage('results');
     }
   }, [index, sessionCards.length]);
+
+  const handlePrevious = useCallback(() => {
+    if (index > 0) {
+      setRevealed(false);
+      setPicked(null);
+      setIndex(index - 1);
+    }
+  }, [index]);
 
   const handlePick = useCallback((option: string) => {
     if (revealed) return;
@@ -69,23 +99,27 @@ export default function PracticeTab({ cards }: PracticeTabProps) {
         return;
       }
       if (e.key === ' ' || e.code === 'Space') {
-        if (!isQuiz && !revealed) {
+        if (!revealed) {
           e.preventDefault();
           setRevealed(true);
         }
         return;
       }
-      if (isQuiz && !revealed && /^[1-9]$/.test(e.key)) {
-        const idx = parseInt(e.key, 10) - 1;
-        if (idx >= 0 && idx < options.options.length) {
-          handlePick(options.options[idx]);
-        }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrevious();
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNext();
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [stage, revealed, isQuiz, options, handleNext, handlePick]);
+  }, [stage, revealed, handleNext, handlePrevious, handlePick]);
 
   if (cards.length === 0) {
     return (
@@ -93,7 +127,7 @@ export default function PracticeTab({ cards }: PracticeTabProps) {
         <BookOpen className="w-12 h-12 text-gray-700 mb-4" aria-hidden="true" />
         <h3 className="text-xl font-serif text-gray-300 mb-2">No flashcards found</h3>
         <p className="text-gray-500 max-w-sm">
-          Add some <code>**Vocab:**</code> / <code>**Def:**</code> or <code>**Quiz:**</code> / <code>**A:**</code> blocks in your notes to start practicing.
+          Add some <code>**Vocab:**</code> / <code>**Def:**</code> blocks in your notes to start practicing.
         </p>
       </div>
     );
@@ -184,89 +218,52 @@ export default function PracticeTab({ cards }: PracticeTabProps) {
       </div>
 
       <div className="flex justify-center mb-6 shrink-0 mt-2">
-        <span className="text-[10px] font-bold tracking-wider text-gray-600 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
+        <span className="text-[10px] font-bold tracking-wider text-gray-400 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
           {index + 1} / {sessionCards.length}
         </span>
       </div>
 
       <div className="w-full max-w-2xl mx-auto flex-1 flex flex-col items-center">
-        {!isQuiz ? (
-          // 3D Flip Card for Vocab/Cloze
-          <div className="relative w-full aspect-[4/3] md:aspect-[21/9] mb-8" style={{ perspective: '1000px' }}>
-            <m.div
-              key={currentCard.id}
-              className="w-full h-full relative cursor-pointer"
-              style={{ transformStyle: 'preserve-3d' }}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0, rotateY: revealed ? 180 : 0 }}
-              transition={{ 
-                opacity: { duration: 0.2 },
-                y: { duration: 0.2 },
-                rotateY: { type: 'spring', stiffness: 200, damping: 20 }
-              }}
-              onClick={() => setRevealed(true)}
-            >
-              {/* Front */}
-              <div 
-                className="absolute inset-0 bg-[#0a0908] border border-white/10 p-8 md:p-12 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center"
-                style={{ backfaceVisibility: 'hidden' }}
-              >
-                <h2 className="text-xl md:text-3xl font-serif leading-relaxed text-white">{currentCard.prompt}</h2>
-                {!revealed && (
-                  <p className="absolute bottom-6 text-xs text-gray-600 font-mono tracking-widest uppercase">Click to flip</p>
-                )}
-              </div>
-              {/* Back */}
-              <div 
-                className="absolute inset-0 bg-[#14120f] border border-white/10 p-8 md:p-12 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center"
-                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-              >
-                <p className="text-lg md:text-2xl text-gray-300 leading-relaxed font-serif">{currentCard.answer}</p>
-              </div>
-            </m.div>
-          </div>
-        ) : (
-          // Standard Card for Quiz
+        <div className="relative w-full aspect-[4/3] md:aspect-[21/9] mb-8" style={{ perspective: '2000px' }}>
           <m.div
             key={currentCard.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.12, ease: 'easeOut' }}
-            className="w-full bg-[#0a0908] border border-white/10 p-8 md:p-12 rounded-3xl shadow-2xl mb-8"
+            role="button"
+            className="w-full h-full relative cursor-pointer"
+            style={{ transformStyle: 'preserve-3d' }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0, rotateY: revealed ? 180 : 0 }}
+            transition={{ 
+              opacity: { duration: 0.2 },
+              y: { duration: 0.2 },
+              rotateY: { type: 'spring', stiffness: 200, damping: 20 }
+            }}
+            onClick={() => setRevealed(true)}
           >
-            <h2 className="text-xl md:text-2xl font-serif leading-relaxed text-center text-white">{currentCard.prompt}</h2>
+            <div 
+              className="absolute inset-0 bg-white/5 backdrop-blur-md border border-white/10 p-12 md:p-16 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] transition-shadow duration-300"
+              style={{ backfaceVisibility: 'hidden' }}
+            >
+              <div className="overflow-y-auto w-full custom-scrollbar flex flex-col items-center justify-center h-full">
+                {currentCard.explanation && (
+                  <p className="text-sm md:text-base text-gray-400 font-serif italic mb-4 max-w-xl mx-auto">&quot;{currentCard.explanation}&quot;</p>
+                )}
+                <p className="text-xl md:text-3xl font-serif leading-relaxed text-white">{currentCard.prompt}</p>
+              </div>
+              {!revealed && (
+                <p className="absolute bottom-6 text-xs text-gray-600 font-mono tracking-widest uppercase">Click to flip</p>
+              )}
+            </div>
+            <div
+              className="absolute inset-0 bg-white/5 backdrop-blur-md border border-white/10 p-12 md:p-16 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] transition-shadow duration-300"
+              style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+            >
+              <p className="text-lg md:text-2xl text-gray-300 leading-relaxed font-serif">{currentCard.answer}</p>
+            </div>
           </m.div>
-        )}
-
-        {isQuiz && (
-          <div className="grid grid-cols-1 gap-3 w-full" role="group" aria-label="Answer options">
-            {options.options.map((option) => {
-              const isPicked = picked === option;
-              const isCorrectOption = option === options.correct;
-
-              let style = 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300';
-              if (revealed && isCorrectOption) style = 'bg-green-500/15 border-green-500/40 text-green-300';
-              else if (revealed && isPicked) style = 'bg-red-500/15 border-red-500/40 text-red-300';
-              else if (revealed) style = 'bg-white/5 border-white/10 text-gray-500';
-
-              return (
-                <button
-                  key={option}
-                  onClick={() => handlePick(option)}
-                  disabled={revealed}
-                  className={`w-full flex items-center justify-between gap-3 px-6 py-4 border rounded-xl text-left font-medium transition-colors disabled:cursor-default ${style}`}
-                >
-                  <span>{option}</span>
-                  {revealed && isCorrectOption && <Check className="w-4 h-4 flex-shrink-0" aria-hidden="true" />}
-                  {revealed && isPicked && !isCorrectOption && <X className="w-4 h-4 flex-shrink-0" aria-hidden="true" />}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        </div>
 
         <AnimatePresence>
-          {revealed && currentCard.explanation && (!isQuiz || !isCorrect) && (
+          {revealed && currentCard.explanation && (
             <m.p
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -279,24 +276,37 @@ export default function PracticeTab({ cards }: PracticeTabProps) {
           )}
         </AnimatePresence>
 
-        <div className="mt-8 flex flex-col items-center min-h-[5rem] gap-2">
+        <div className="mt-12 flex flex-col items-center min-h-[5rem] gap-2">
           {revealed ? (
             <>
-              <m.button
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.1 }}
-                onClick={handleNext}
-                className="px-12 py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold tracking-wide transition-all flex items-center gap-2"
-              >
-                {index + 1 < sessionCards.length ? 'Next card' : 'Finish'}
-                <ArrowRight className="w-4 h-4" aria-hidden="true" />
-              </m.button>
-              <div className="text-[10px] text-gray-600 font-mono tracking-widest uppercase">Press Enter</div>
+              <div className="flex gap-4">
+                <m.button
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.1 }}
+                  onClick={handlePrevious}
+                  disabled={index === 0}
+                  className="px-6 py-4 bg-white/5 hover:bg-white/10 rounded-xl font-bold tracking-wide transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                  Previous
+                </m.button>
+                <m.button
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.1 }}
+                  onClick={handleNext}
+                  className="px-12 py-4 bg-accent hover:bg-accent/90 text-[#0a0908] rounded-xl font-bold tracking-wide transition-all flex items-center gap-2"
+                >
+                  {index + 1 < sessionCards.length ? 'Next card' : 'Finish'}
+                  <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                </m.button>
+              </div>
+              <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-2">Arrow keys to navigate</div>
             </>
           ) : (
-            <div className="text-[10px] text-gray-600 font-mono tracking-widest uppercase mt-4">
-              {isQuiz ? 'Press 1-4 to pick an answer' : 'Press Space to flip'}
+            <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-4">
+              Press Space to flip
             </div>
           )}
         </div>

@@ -75,13 +75,18 @@ export async function generateAIQuizAction(noteId: string, content: string) {
       }
     }
 
-    const prompt = `You are an expert tutor creating a quiz based on the user's study notes.
-Generate AT LEAST 10 multiple-choice questions based on the provided text.
-CRITICAL RULES:
-1. Output ONLY raw text in the exact format below, with NO markdown wrappers or intro text.
-2. Format each question exactly like this:
-**Quiz:** [Question text]
-**A:** [Correct] | [Wrong 1] | [Wrong 2] | [Wrong 3]
+    const prompt = `You are a study assistant. Extract exactly 10 Vocabulary Flashcards and 10 Quiz Questions from the user's notes.
+
+OUTPUT SYNTAX:
+
+**Vocab:** [Concept 1]
+**Def:** [Definition 1]
+... (Repeat up to item 10)
+
+**Quiz:** [Question 1]?
+**A:** [Correct Answer] | [Distractor 1] | [Distractor 2] | [Distractor 3]
+**Explain:** [Brief explanation of the correct answer]
+... (Repeat up to item 10)
 
 TEXT CONTENT:
 ${content}
@@ -89,13 +94,14 @@ ${content}
 
     const generatedText = await generateText({ prompt });
     let cleaned = generatedText.replace(/```markdown/g, '').replace(/```/g, '').trim();
-    cleaned = cleaned.replace(/\*\*Quiz:\*\*/g, '\n\n**Quiz:**').trim();
+    cleaned = cleaned.replace(/<!--.*?-->/g, '').trim();
+    cleaned = cleaned.replace(/\*\*(Vocab|Quiz):\*\*/g, '\n\n**$1:**').trim();
 
-    if (!cleaned.includes('**Quiz:**')) {
+    if (!cleaned.includes('**Quiz:**') && !cleaned.includes('**Vocab:**')) {
       throw new Error("Invalid response format from AI");
     }
 
-    const newContent = content + '\n\n## Generated AI Quiz\n\n' + cleaned + '\n';
+    const newContent = content + '\n\n' + cleaned + '\n';
     await updateNoteContent(noteId, newContent);
 
     await supabase

@@ -25,6 +25,24 @@ export async function createSubject(formData: FormData) {
   revalidatePath('/dashboard')
 }
 
+// Unlike createNote (a bare form action), this returns the new note's id so
+// the caller can navigate straight into it - "Take notes" on a path's video
+// step needs to land on that note immediately, not just revalidate the list.
+export async function createNoteForVideo(subjectId: string, title: string, videoId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('notes')
+    .insert([{ subject_id: subjectId, title, section: '', body_md: '', video_id: videoId }])
+    .select('id')
+    .single()
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard')
+  return { id: data.id }
+}
+
 export async function createNote(formData: FormData) {
   const supabase = await createClient()
   const subjectId = formData.get('subjectId') as string
@@ -95,7 +113,33 @@ export async function saveGeneratedPath(pathData: GeneratedPath) {
     subject = newSubject
   }
 
-  // 2. Create the Path
+  // Switching now, ahead of the duplicate-path check below, so it happens
+  // whether this save creates a fresh path or finds one that already
+  // exists — either way the user just asked to see this subject.
+  const cookieStore = await cookies()
+  cookieStore.set('active_subject_id', subject.id, { path: '/' })
+
+  // 2. A subject only ever has one active path at a time - re-saving the
+  // same (or a freshly re-generated) path for a subject you already have
+  // would otherwise insert a second paths row plus a full duplicate set of
+  // resources/path_steps every time, since none of those are deduplicated
+  // by any unique constraint. Skip creation entirely and keep whatever
+  // progress already exists rather than silently doubling it.
+  // .limit(1) + array check rather than .maybeSingle(), which throws if more
+  // than one row comes back - subjects saved before this fix may already
+  // have duplicate paths sitting in the database.
+  const { data: existingPaths } = await supabase
+    .from('paths')
+    .select('id')
+    .eq('subject_id', subject.id)
+    .limit(1)
+
+  if (existingPaths && existingPaths.length > 0) {
+    revalidatePath('/dashboard')
+    return { alreadyExists: true, pathId: existingPaths[0].id }
+  }
+
+  // 3. Create the Path
   const { data: path, error: pathError } = await supabase
     .from('paths')
     .insert({
@@ -106,7 +150,7 @@ export async function saveGeneratedPath(pathData: GeneratedPath) {
     
   if (pathError) throw pathError
 
-  // 3. Create Resources and PathSteps
+  // 4. Create Resources and PathSteps
   for (let i = 0; i < pathData.resources.length; i++) {
     const r = pathData.resources[i];
     
@@ -141,10 +185,6 @@ export async function saveGeneratedPath(pathData: GeneratedPath) {
       
     if (stepError) throw stepError
   }
-
-  // Auto-switch to this newly created subject
-  const cookieStore = await cookies()
-  cookieStore.set('active_subject_id', subject.id, { path: '/' })
 }
 
 export async function updatePathStepStatus(stepId: string, status: 'unstarted' | 'completed') {

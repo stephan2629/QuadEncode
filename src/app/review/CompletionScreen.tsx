@@ -26,18 +26,21 @@ export default function CompletionScreen({ results = [] }: { results?: SessionRe
       <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent pointer-events-none"></div>
 
       <m.div 
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        initial={{ scale: 0.92, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="text-center max-w-xl w-full bg-[#14120f] border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl relative z-10"
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="text-center max-w-xl w-full bg-[#14120f]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative z-10 overflow-hidden"
       >
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-accent/15 blur-3xl pointer-events-none" />
+
         <m.div
           initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
           animate={{ scale: 1, opacity: 1, rotate: 0 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.1 }}
-          className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-accent/20 mb-8 border border-accent/30 relative"
+          transition={{ type: 'spring', stiffness: 220, damping: 18, delay: 0.15 }}
+          className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-accent/15 mb-8 border border-accent/30 relative shadow-[0_0_35px_rgba(245,158,11,0.25)]"
         >
           {graded && accuracy >= 80 ? (
-             <Trophy className="w-12 h-12 text-accent" aria-hidden="true" />
+             <Trophy className="w-12 h-12 text-accent animate-bounce" aria-hidden="true" />
           ) : (
              <CheckCircle2 className="w-12 h-12 text-accent" aria-hidden="true" />
           )}
@@ -47,14 +50,14 @@ export default function CompletionScreen({ results = [] }: { results?: SessionRe
           <>
             <h1 className="text-3xl md:text-4xl font-serif font-bold mb-4 text-white">Review Complete!</h1>
             
-            <div className="flex justify-center gap-6 mb-8 mt-6">
-              <div className="flex flex-col items-center bg-[#1a1815] p-4 rounded-2xl border border-white/5 w-32">
-                <span className="text-3xl font-serif text-accent mb-1">{accuracy}%</span>
-                <span className="text-xs uppercase tracking-wider text-gray-500 font-bold">Accuracy</span>
+            <div className="flex justify-center gap-4 sm:gap-6 mb-8 mt-6">
+              <div className="flex flex-col items-center bg-white/[0.04] p-4 rounded-2xl border border-white/10 w-32 backdrop-blur-md shadow-lg">
+                <span className="text-3xl font-serif font-bold text-accent mb-1">{accuracy}%</span>
+                <span className="text-xs uppercase tracking-wider text-gray-400 font-bold font-mono">Accuracy</span>
               </div>
-              <div className="flex flex-col items-center bg-[#1a1815] p-4 rounded-2xl border border-white/5 w-32">
-                <span className="text-3xl font-serif text-white mb-1">{correct}/{results.length}</span>
-                <span className="text-xs uppercase tracking-wider text-gray-500 font-bold">Score</span>
+              <div className="flex flex-col items-center bg-white/[0.04] p-4 rounded-2xl border border-white/10 w-32 backdrop-blur-md shadow-lg">
+                <span className="text-3xl font-serif font-bold text-white mb-1">{correct}/{results.length}</span>
+                <span className="text-xs uppercase tracking-wider text-gray-400 font-bold font-mono">Score</span>
               </div>
             </div>
 

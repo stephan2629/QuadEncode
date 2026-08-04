@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { Brain, Check, X, RotateCw, Sparkles, ArrowRight, Zap } from 'lucide-react';
-import { generateAIQuizAction, saveMissedQuestionsAction, type QuizQuotaInfo } from '@/app/actions/quiz-actions';
+import { saveMissedQuestionsAction } from '@/app/actions/quiz-actions';
 import { parseLocalQuiz, type QuizQuestion } from '@/lib/quiz-parser';
 
 interface AnsweredQuestion {
@@ -22,14 +22,11 @@ function hoursUntilReset(resetAtIso: string): number {
 export default function QuizTab({
   noteId,
   content,
-  quota: initialQuota,
 }: {
   noteId: string;
   content: string;
-  quota: QuizQuotaInfo;
 }) {
   const [stage, setStage] = useState<Stage>('idle');
-  const [quota, setQuota] = useState(initialQuota);
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [index, setIndex] = useState(0);
@@ -56,31 +53,35 @@ export default function QuizTab({
 
   const handleStartLocal = () => {
     setError(null);
-    startSession(parseLocalQuiz(content));
-  };
-
-  const handleGenerateAI = async () => {
-    if (!content || content.trim().length < 20) {
-      setError('Add some notes first so there is material to quiz you on.');
-      return;
+    const parsed = parseLocalQuiz(content);
+    
+    const explicitQuizzes = parsed.filter(q => q.type === 'quiz');
+    const vocabs = parsed.filter(q => q.type === 'vocab');
+    const vocabDefs = vocabs.map(v => v.correct);
+    
+    const vocabQuizzes: QuizQuestion[] = vocabs.map(v => {
+      const distractors = vocabDefs.filter(d => d !== v.correct).sort(() => 0.5 - Math.random()).slice(0, 3);
+      const fallback = ["Not enough context provided.", "None of the above.", "All of the above.", "A concept related to the current topic."];
+      let i = 0;
+      while (distractors.length < 3 && i < fallback.length) {
+        if (!distractors.includes(fallback[i]) && v.correct !== fallback[i]) {
+          distractors.push(fallback[i]);
+        }
+        i++;
+      }
+      return {
+        ...v,
+        type: 'quiz',
+        options: [v.correct, ...distractors].sort(() => 0.5 - Math.random())
+      };
+    });
+    
+    let allQuestions = [...explicitQuizzes, ...vocabQuizzes];
+    
+    if (allQuestions.length > 10) {
+      allQuestions = allQuestions.sort(() => 0.5 - Math.random()).slice(0, 10);
     }
-    setError(null);
-    setStage('loading');
-
-    const res = await generateAIQuizAction(noteId, content);
-    if (!res.success) {
-      setError(res.error || 'Failed to generate quiz');
-      setStage('idle');
-      return;
-    }
-
-    if (typeof res.remaining === 'number') {
-      setQuota((q) => ({ ...q, used: q.limit - res.remaining!, remaining: res.remaining! }));
-    }
-
-    const updatedContent = content + '\n\n' + res.appendedText;
-    const localQuestions = parseLocalQuiz(updatedContent);
-    startSession(localQuestions);
+    startSession(allQuestions);
   };
 
   const handlePick = useCallback((option: string) => {
@@ -113,7 +114,7 @@ export default function QuizTab({
       
       if (picked === null && /^[1-9]$/.test(e.key)) {
         const idx = parseInt(e.key, 10) - 1;
-        if (idx >= 0 && idx < current.options.length) {
+        if (current.options && idx >= 0 && idx < current.options.length) {
           handlePick(current.options[idx]);
         }
       }
@@ -165,63 +166,71 @@ export default function QuizTab({
         </div>
 
         <div className="flex justify-center mb-6 shrink-0 mt-2">
-          <span className="text-[10px] font-bold tracking-wider text-gray-600 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
+          <span className="text-[10px] font-bold tracking-wider text-gray-400 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
             {index + 1} / {questions.length}
           </span>
         </div>
 
-        <div className="w-full max-w-2xl mx-auto flex-1 flex flex-col justify-center">
-          <m.div
-            key={index}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.12, ease: 'easeOut' }}
-            className="bg-[#0a0908] border border-white/10 p-8 md:p-12 rounded-3xl shadow-2xl mb-8"
-          >
-            <h2 className="text-xl md:text-2xl font-serif leading-relaxed text-center text-white">{current.prompt}</h2>
-          </m.div>
+        {/* my-auto, not justify-center on the scroll container: centering via
+            flex justify-content on an overflowing container clips content at
+            the top with no way to scroll back up to it — a long question
+            plus its options can grow past both the top and bottom of the
+            viewport, taking the Next button with it. margin:auto centers
+            this block only while it fits; once it's taller than the
+            available space it falls back to a normal top-aligned flow that
+            the container's overflow-y-auto can always reach. */}
+        <div className="w-full max-w-2xl mx-auto my-auto flex flex-col items-center">
+            <m.div
+              key={current.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.12, ease: 'easeOut' }}
+              className="w-full bg-[#0a0908] border border-white/10 p-12 md:p-16 rounded-3xl shadow-2xl mb-8"
+            >
+              <h4 className="text-xl md:text-2xl font-serif leading-relaxed text-center text-white">{current.prompt}</h4>
+            </m.div>
 
-          <div className="grid grid-cols-1 gap-3" role="group" aria-label="Answer options">
-            {current.options.map((option) => {
-              const isPicked = picked === option;
-              const isCorrectOption = option === current.correct;
+            <div className="grid grid-cols-1 gap-3 w-full" role="group" aria-label="Answer options">
+              {current.options?.map((option) => {
+                const isPicked = picked === option;
+                const isCorrectOption = option === current.correct;
 
-              let style = 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300';
-              if (revealed && isCorrectOption) style = 'bg-green-500/15 border-green-500/40 text-green-300';
-              else if (revealed && isPicked) style = 'bg-red-500/15 border-red-500/40 text-red-300';
-              else if (revealed) style = 'bg-white/5 border-white/10 text-gray-500';
+                let style = 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300';
+                if (revealed && isCorrectOption) style = 'bg-green-500/15 border-green-500/40 text-green-300';
+                else if (revealed && isPicked) style = 'bg-red-500/15 border-red-500/40 text-red-300';
+                else if (revealed) style = 'bg-white/5 border-white/10 text-gray-500';
 
-              return (
-                <button
-                  key={option}
-                  onClick={() => handlePick(option)}
-                  disabled={revealed}
-                  className={`w-full flex items-center justify-between gap-3 px-6 py-4 border rounded-xl text-left font-medium transition-colors disabled:cursor-default ${style}`}
+                return (
+                  <button
+                    key={option}
+                    onClick={() => handlePick(option)}
+                    disabled={revealed}
+                    className={`w-full flex items-center justify-between gap-3 px-6 py-4 border rounded-xl text-left font-medium transition-colors disabled:cursor-default ${style}`}
+                  >
+                    <span>{option}</span>
+                    {revealed && isCorrectOption && <Check className="w-4 h-4 flex-shrink-0" aria-hidden="true" />}
+                    {revealed && isPicked && !isCorrectOption && <X className="w-4 h-4 flex-shrink-0" aria-hidden="true" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <AnimatePresence>
+              {revealed && current.explanation && !isCorrect && (
+                <m.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="w-full mt-4 bg-white/5 border border-white/10 p-4 rounded-xl text-gray-300 text-sm overflow-hidden"
                 >
-                  <span>{option}</span>
-                  {revealed && isCorrectOption && <Check className="w-4 h-4 flex-shrink-0" aria-hidden="true" />}
-                  {revealed && isPicked && !isCorrectOption && <X className="w-4 h-4 flex-shrink-0" aria-hidden="true" />}
-                </button>
-              );
-            })}
-          </div>
+                  <span className="font-bold text-accent mr-2">Explanation:</span>
+                  {current.explanation}
+                </m.div>
+              )}
+            </AnimatePresence>
 
-          <AnimatePresence>
-            {revealed && !isCorrect && current.explanation && (
-              <m.p
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="mt-4 text-sm text-gray-400 bg-white/5 border border-white/10 rounded-xl p-4"
-              >
-                {current.explanation}
-              </m.p>
-            )}
-          </AnimatePresence>
+          <div className="mt-12 flex flex-col items-center min-h-[5rem] gap-2">
 
-          <div className="mt-8 flex flex-col items-center min-h-[5rem] gap-2">
-            {revealed ? (
+            {revealed && (
               <>
                 <m.button
                   initial={{ opacity: 0, y: 5 }}
@@ -233,10 +242,11 @@ export default function QuizTab({
                   {index + 1 < questions.length ? 'Next question' : 'See results'}
                   <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </m.button>
-                <div className="text-[10px] text-gray-600 font-mono tracking-widest uppercase">Press Enter</div>
+                <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase">Press Enter</div>
               </>
-            ) : (
-              <div className="text-[10px] text-gray-600 font-mono tracking-widest uppercase mt-4">Press 1-{current.options.length} to pick an answer</div>
+            )}
+            {!revealed && current.type === 'quiz' && (
+              <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-4">Press 1-{current.options?.length} to pick an answer</div>
             )}
           </div>
         </div>
@@ -324,8 +334,7 @@ export default function QuizTab({
     );
   }
 
-  const quotaExhausted = quota.remaining <= 0;
-  const localQuestionsCount = parseLocalQuiz(content).length;
+  const localQuestionsCount = Math.min(parseLocalQuiz(content).length, 10);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-12 text-center h-full">
@@ -334,7 +343,7 @@ export default function QuizTab({
       </div>
       <h2 className="text-3xl font-bold font-serif text-white mb-4">Quiz yourself</h2>
       <p className="text-gray-400 max-w-md mx-auto mb-8 text-sm">
-        Start a zero-token local quiz directly from your notes, or generate a fresh AI quiz.
+        Start a quiz directly from your notes.
       </p>
 
       {error && (
@@ -343,39 +352,14 @@ export default function QuizTab({
         </div>
       )}
 
-      {quotaExhausted && (
-        <div className="bg-white/5 border border-white/10 text-gray-400 px-4 py-3 rounded-xl mb-6 max-w-md text-sm">
-          You&apos;ve used both AI quizzes for today. More in about {hoursUntilReset(quota.resetAt)}{' '}
-          {hoursUntilReset(quota.resetAt) === 1 ? 'hour' : 'hours'}.
-        </div>
-      )}
-
       <div className="flex flex-col items-center gap-4 w-full max-w-sm">
         <button
           onClick={handleStartLocal}
-          className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-4 rounded-xl active:scale-95 transition-all"
+          className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent/90 text-[#0a0908] font-bold px-8 py-4 rounded-xl active:scale-95 transition-all"
         >
-          <Zap className="w-5 h-5 text-yellow-400" aria-hidden="true" />
-          Start Local Quiz ({localQuestionsCount} questions)
+          <Zap className="w-5 h-5" aria-hidden="true" />
+          Start Quiz ({localQuestionsCount} questions)
         </button>
-        
-        <div className="w-full relative flex items-center py-2">
-          <div className="flex-grow border-t border-white/10"></div>
-          <span className="flex-shrink-0 mx-4 text-gray-500 text-xs font-bold uppercase tracking-widest">or</span>
-          <div className="flex-grow border-t border-white/10"></div>
-        </div>
-
-        <button
-          onClick={handleGenerateAI}
-          disabled={quotaExhausted}
-          className="w-full flex items-center justify-center gap-2 bg-accent text-[#0a0908] font-bold px-8 py-4 rounded-xl hover:bg-accent/90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
-        >
-          <Sparkles className="w-5 h-5" aria-hidden="true" />
-          Generate AI Quiz
-        </button>
-        <div className="text-xs text-gray-500 mt-1">
-          <span className="font-bold text-gray-300">{quota.remaining}/{quota.limit}</span> AI Quizzes available today
-        </div>
       </div>
     </div>
   );

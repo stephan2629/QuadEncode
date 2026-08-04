@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { generateText } from '@/lib/ai'
 import { parseBlanks } from '@/lib/parseBlanks'
+import { YoutubeTranscript } from 'youtube-transcript'
 
 function friendlyAIError(e: Error): string {
   const msg = e.message || 'Something went wrong generating that.'
@@ -19,7 +20,7 @@ function friendlyAIError(e: Error): string {
   return msg
 }
 
-async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClient>>, noteId: string, bodyMd: string) {
+async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClient>>, noteId: string, bodyMd: string, videoId: string | null) {
   const blanks = parseBlanks(bodyMd).filter((b) => b.answer !== '')
   if (blanks.length === 0) return
 
@@ -38,13 +39,13 @@ async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClien
     // stays 'basic' since its multiple-choice-ness is already detected from
     // the pipe-separated answer, not the type column.
     const type = blank.kind === 'vocab' ? 'vocab' : 'basic'
-    // A vocab card's answer can't exist until the user personally types the
-    // definition into the blank (section 9), so it's authored by definition.
-    // A quiz block's options are always written in full at the time the
-    // `**Quiz:**/**A:**` text is created — by an AI import or by the user
-    // typing distractors themselves — so per section 4's two-tier model it's
-    // diagnostic, not mastery, until it graduates.
-    const tier = blank.kind === 'vocab' ? 'authored' : 'imported'
+    // Since section 2 no longer requires answers to be user-written, a
+    // Vocab/Def pair can arrive pre-filled by AI just as easily as a Quiz
+    // block can — there's no way to tell provenance from the text alone for
+    // either kind. Every new card starts 'imported' (diagnostic) and
+    // graduates to 'authored' via the section 4 mechanic (two correct
+    // answers, then the user re-explains it in their own words).
+    const tier = 'imported'
     if (!current) {
       await supabase.from('cards').insert([
         {
@@ -55,6 +56,10 @@ async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClien
           prompt: blank.prompt,
           answer: blank.answer,
           explanation,
+          // The video back-pointer only makes sense alongside a captured
+          // moment - a blank with no preceding **At:** marker gets neither.
+          video_id: blank.videoT != null ? videoId : null,
+          t: blank.videoT ?? null,
           box: 0,
           due: new Date().toISOString(),
         },
@@ -97,17 +102,19 @@ export async function getNote(id: string) {
 export async function updateNoteContent(id: string, body_md: string) {
   const supabase = await createClient()
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('notes')
     .update({ body_md, updated_at: new Date().toISOString() })
     .eq('id', id)
+    .select('video_id')
+    .single()
 
   if (error) {
     console.error('Error updating note:', error)
     return { error: error.message }
   }
 
-  await syncCardsFromNote(supabase, id, body_md)
+  await syncCardsFromNote(supabase, id, body_md, data?.video_id ?? null)
 
   // We do not revalidate path aggressively here to prevent
   // interrupting the user's typing experience in the client.
@@ -134,6 +141,7 @@ export async function createClozeCard(noteId: string, line: number, prompt: stri
   }
 
   revalidatePath(`/notes/${noteId}`)
+  revalidatePath('/dashboard')
   return { success: true }
 }
 
@@ -145,7 +153,7 @@ export async function generatePromptsFromFile(noteId: string, formData: FormData
 
     const file = formData.get('file') as File | null
     const text = formData.get('text') as string | null
-    const provider = (formData.get('provider') as 'auto' | 'gemini' | 'openai') || 'auto'
+    const provider = (formData.get('provider') as 'auto' | 'gemini' | 'openai' | 'local') || 'auto'
 
     if (!file && !text) {
       throw new Error('No file or text provided')
@@ -157,17 +165,20 @@ export async function generatePromptsFromFile(noteId: string, formData: FormData
 
     const promptText = `
 You are an expert tutor extracting key concepts from study material.
-You must generate exactly 12 flashcards across 2 categories.
+You must generate exactly 20 flashcards across 2 categories.
 CRITICAL RULES:
-1. DO NOT include introductory text, markdown wrappers, or explanations. Only output the raw text in the exact formats below.
+1. DO NOT include introductory text, markdown wrappers, or explanations (other than the required Explain field). Only output the raw text in the exact formats below.
+2. If the material is short, extract additional core concepts, definitions, and application scenarios from it so you still reach the full count below - do not stop early.
 
-2. Generate exactly 6 Vocabulary flashcards (leave the definition blank so the student can fill it in):
+2. Generate exactly 10 Vocabulary flashcards, with the definition filled in:
 **Vocab:** [Word or concept]
-**Def:**
+**Def:** [Definition]
+**Explain:** [Quote the exact 1-2 sentences from the source material where this concept was found to provide context]
 
-3. Generate exactly 6 Multiple Choice quiz questions (YOU MUST PROVIDE THE OPTIONS, separated by the | character. The FIRST option must be the correct answer):
+3. Generate exactly 10 Multiple Choice quiz questions (YOU MUST PROVIDE THE OPTIONS, separated by the | character. The FIRST option must be the correct answer):
 **Quiz:** [Multiple choice question]
 **A:** [Correct Answer] | [Wrong Answer 1] | [Wrong Answer 2] | [Wrong Answer 3]
+**Explain:** [Quote the exact 1-2 sentences from the source material where this answer was found to provide context]
 `
 
     let generatedText = ''
@@ -212,12 +223,19 @@ CRITICAL RULES:
           pdfUrl = signed?.signedUrl ?? null
         }
 
-        generatedText = await generateText({
-          prompt: `Here is the extracted text from the document:\n\n${pdfText}\n\n${promptText}`,
-          provider,
-        })
+        if (provider === 'local') {
+          generatedText = `## Imported Raw Text\n\n${pdfText}`
+        } else {
+          generatedText = await generateText({
+            prompt: `Here is the extracted text from the document:\n\n${pdfText}\n\n${promptText}`,
+            provider,
+          })
+        }
       } else {
         // For images, we can safely use inline base64 data as they are usually small
+        if (provider === 'local') {
+          throw new Error('Local parsing is not supported for images. Please use an AI provider.')
+        }
         const base64Data = buffer.toString('base64')
 
         generatedText = await generateText({
@@ -227,11 +245,15 @@ CRITICAL RULES:
         })
       }
     } else if (text) {
-      generatedText = await generateText({
-        prompt: `${promptText}\n\nSource Material:\n${text}`,
-        provider,
-      })
       sourceText = text
+      if (provider === 'local') {
+        generatedText = `## Imported Raw Text\n\n${text}`
+      } else {
+        generatedText = await generateText({
+          prompt: `${promptText}\n\nSource Material:\n${text}`,
+          provider,
+        })
+      }
     }
 
     // Clean up the response to ensure it strictly follows the format.
@@ -264,6 +286,7 @@ CRITICAL RULES:
     }
 
     revalidatePath(`/notes/${noteId}`)
+    revalidatePath('/dashboard')
     return { success: true, text: finalPrompts, sourceText, pdfUrl }
   } catch (err: unknown) {
     const e = err as Error;
@@ -289,5 +312,34 @@ export async function updateNoteTitle(id: string, title: string) {
   revalidatePath(`/notes/${id}`)
   revalidatePath('/dashboard')
   return { success: true }
+}
+
+export async function fetchVideoTranscript(videoId: string) {
+  try {
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    return { success: true, data: transcript };
+  } catch (error: unknown) {
+    console.error('Failed to fetch transcript:', error);
+    return { success: false, error: 'Could not fetch transcript. The video may not have captions enabled.' };
+  }
+}
+
+export async function chatWithVideo(transcriptText: string, question: string) {
+  const prompt = `You are an AI study assistant. The user is watching a video and has asked a question.
+Here is the exact transcript of the video:
+<transcript>
+${transcriptText}
+</transcript>
+
+User Question: ${question}
+
+Answer the user's question concisely based strictly on the provided transcript. If the transcript does not contain the answer, say so, but do your best to be helpful. Do not use markdown headers. Keep it conversational.`;
+
+  try {
+    const responseText = await generateText({ prompt });
+    return { success: true, text: responseText };
+  } catch (e: unknown) {
+    return { success: false, error: friendlyAIError(e as Error) };
+  }
 }
 

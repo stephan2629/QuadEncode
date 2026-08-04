@@ -46,9 +46,12 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
 
     // 2. Fetch Video Results from YouTube. Real video/playlist ids and URLs
     // are extracted here in code (see src/lib/youtube.ts), not left for the
-    // model to guess, and results are sorted newest-first so the learner
-    // gets current information regardless of subject.
-    const ytCandidates = await searchYouTube(`${cleanQuery} full course tutorial`, youtubeKey);
+    // model to guess.
+    // To ensure top free creators (like Professor Messer) and structured courses surface,
+    // we fetch playlists by relevance, and standalone videos by upload date (to keep it fresh).
+    const ytPlaylists = await searchYouTube(`${cleanQuery} full course playlist`, youtubeKey, { type: 'playlist', order: 'relevance', maxResults: '4' });
+    const ytVideos = await searchYouTube(`${cleanQuery} full course tutorial`, youtubeKey, { type: 'video', order: 'date', maxResults: '4' });
+    const ytCandidates = [...ytPlaylists, ...ytVideos];
 
     const prompt = `
       You are an expert curriculum designer. A user wants to learn about: "${cleanQuery}".
@@ -67,11 +70,11 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
       the search results or YouTube candidates given to you.
 
       Ranking rules, in order:
-      1. The very first resource (Step 1) MUST be the best, most comprehensive YouTube video or playlist tutorial from the YouTube candidates.
-      2. Free resources (official docs, MDN-style references, GitHub repos, free YouTube videos)
-         come before any paid course. List every free resource first.
-      3. Within each tier, order beginner to advanced.
-      4. Prefer official documentation and well-known, reputable sources over unfamiliar blogs.
+      1. Free-First Ranking Engine: Free video courses (especially structured YouTube playlists) MUST always rank above paid platforms or generic article sites.
+      2. Top Free Creator Priority: For standard certifications/topics with well-known free educators (e.g., Professor Messer for CompTIA A+, Network+, Security+), you MUST explicitly surface their free YouTube courses/playlists as the absolute #1 ranked path step.
+      3. Full playlist courses (from YouTube Data API) must be ranked higher than fragmented blog posts, landing pages, or paid sites like Udemy/Coursera.
+      4. Within each tier, order beginner to advanced.
+      5. Prefer official documentation and well-known, reputable sources over unfamiliar blogs.
 
       Each "description" is 2-3 plain sentences stating exactly what the resource covers and who
       it suits. Write like a knowledgeable person, not a press release: no words like "vibrant",

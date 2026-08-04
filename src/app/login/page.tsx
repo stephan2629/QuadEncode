@@ -70,35 +70,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-        <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-accent/20 blur-[120px] rounded-full"></div>
-        <div className="absolute bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full"></div>
-      </div>
+    <div className="min-h-screen bg-[#0a0908] text-white flex flex-col justify-center items-center p-4 relative overflow-hidden">
+      {/* Ambient background glows */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent/15 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-10 right-10 w-72 h-72 bg-amber-600/10 blur-[100px] rounded-full pointer-events-none" />
 
       <m.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="w-full max-w-md relative z-10"
       >
-        <Link href="/" className="flex items-center justify-center gap-2 text-white mb-10 hover:opacity-80 transition-opacity">
-          <div className="bg-accent/10 p-1.5 rounded-xl border border-accent/20 flex items-center justify-center">
+        <Link href="/" className="flex items-center justify-center gap-2 text-white mb-10 hover:opacity-80 transition-opacity group">
+          <div className="bg-accent/10 p-2 rounded-2xl border border-accent/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
             <Image src="/logo.png" alt="Quad Encode Logo" width={32} height={32} className="w-8 h-8" />
           </div>
-          <span className="font-serif text-2xl font-bold tracking-tight">Quad Encode</span>
+          <span className="font-serif text-2xl font-bold tracking-tight text-white">Quad Encode</span>
         </Link>
 
-        <div className="bg-[#14120f]/80 backdrop-blur-xl border border-white/5 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
+        <div className="bg-[#14120f]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none"></div>
           
-          <h2 className="text-2xl font-bold text-white mb-2 relative z-10">
+          <h2 className="text-2xl font-bold font-serif text-white mb-2 relative z-10">
             {mode === 'login' && 'Welcome back'}
             {mode === 'signup' && 'Create an account'}
             {mode === 'reset' && 'Reset your password'}
           </h2>
-          <p className="text-gray-400 text-sm mb-8 relative z-10">
+          <p className="text-gray-400 text-sm mb-8 relative z-10 font-light">
             {mode === 'login' && 'Enter your details to access your learning paths.'}
             {mode === 'signup' && 'Sign up to start organizing your knowledge.'}
             {mode === 'reset' && "Enter your email and we'll send you a reset link."}

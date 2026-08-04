@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Claude Code skill scripts bundled in the repo, not app source.
     ".claude/**",
+    // Standalone Node admin/debug scripts, not part of the Next.js app -
+    // plain CommonJS require() is normal here.
+    "scripts/**",
   ]),
 ]);
 
