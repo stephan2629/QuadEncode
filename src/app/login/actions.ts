@@ -32,7 +32,7 @@ export async function signup(formData: FormData) {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -43,6 +43,14 @@ export async function signup(formData: FormData) {
 
   if (error) {
     return { error: humanizeAuthError(error.message) }
+  }
+
+  // With email confirmation on, signUp returns no session: the account exists
+  // but stays unusable until the link is clicked. Redirecting to /dashboard
+  // here would just bounce off the middleware back to /login with nothing
+  // explaining why, so say what happened instead.
+  if (!data.session) {
+    return { notice: 'Account created. Check your email for the confirmation link.' }
   }
 
   revalidatePath('/', 'layout')

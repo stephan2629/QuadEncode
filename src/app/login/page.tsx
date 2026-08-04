@@ -49,9 +49,13 @@ export default function LoginPage() {
     const action = isLogin ? login : signup;
     const res = await action(formData);
 
-    // If we reach here, it means there was an error (successful login redirects)
-    if (res?.error) {
+    // Reaching here means no redirect happened: either an error, or a signup
+    // that needs email confirmation before there's a session to redirect with.
+    if (res && 'error' in res && res.error) {
       setError(res.error);
+      setLoading(false);
+    } else if (res && 'notice' in res && res.notice) {
+      setNotice(res.notice);
       setLoading(false);
     }
   }
