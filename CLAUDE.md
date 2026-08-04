@@ -1,8 +1,8 @@
 @AGENTS.md
 
-# CLAUDE.md — Quad Encode
+# CLAUDE.md: Quad Encode
 
-Instructions for Claude Code working in this repository. Read this file before starting any task.
+Instructions for AI assistants and developers working in this repository. Read this file before starting any task.
 
 ---
 
@@ -23,22 +23,23 @@ Nothing in the interface, the copy, or the data model may assume a certification
 
 Web first. A mobile app comes later, so avoid anything that would block wrapping this in Capacitor.
 
-**Search works signed out.** The subject search on the public home page (an LLM interprets the free-text query into a subject and, later, a ranked path — see Phase 4) is usable without an account. Everything past search — saving a path, creating a subject or note, reviewing cards — requires signing in. Don't gate the search box itself behind auth.
+**Search works signed out.** The subject search on the public home page (an LLM interprets the free-text query into a subject and a ranked path) is usable without an account. Everything past search (saving a path, creating a subject/note, taking quizzes, reviewing cards) requires signing in. Don't gate the search box itself behind auth.
 
 ---
 
 ## 2. The rule that governs every feature
 
-**A user never sees an answer they did not write themselves.**
+**A user never sees an answer they did not write or attempt to retrieve themselves.**
 
 Reading study material feels productive and retains almost nothing. Every decision in this app exists to force retrieval before recognition.
 
 In practice:
 
-- Imports, scrapes, and AI generation produce **prompts only**. Never answers.
-- Extracted source text may be stored as `source_excerpt` and shown behind a collapsed peek control. It must never pre-populate an answer field.
-- The answer reveal is instant. See section 11.
+- Imports, scrapes, screenshot parsing, and AI generation produce **prompts/questions only**. Never pre-filled answers.
+- Extracted source text or image excerpts may be stored as `source_excerpt` and shown behind a collapsed peek control. It must never pre-populate an answer field.
+- The answer reveal in review is instant. See section 13.
 - Progress is measured by cards reaching box 4, never by cards created.
+- **Multiple Choice & AI Quizzes:** Quizzes and multiple choice cards allow structured diagnostic evaluation. To maintain active recall principles, incorrect options (distractors) act as a secondary filter after the user attempts initial retrieval.
 
 If a request conflicts with this rule, stop and say so before writing code.
 
@@ -46,17 +47,17 @@ If a request conflicts with this rule, stop and say so before writing code.
 
 ## 3. Progressive disclosure
 
-**Nothing card-related exists until the user creates a card.**
+**Nothing card- or quiz-related exists until the user creates a card or takes a quiz.**
 
-This is an absence, not an empty state. On first run there is no deck, no zero-cards-due counter, no disabled review button, no placeholder illustration explaining what cards are. The review section does not appear in navigation at all. It appears the moment the first card is made.
+This is an absence, not an empty state. On first run there is no deck, no zero-cards-due counter, no disabled review button, no placeholder illustration explaining what cards or quizzes are. The review/quiz section does not appear in navigation at all. It appears the moment the first card or note quiz is generated.
 
 The same principle applies throughout. The interface grows as the user builds it:
 
 | Feature appears when |
 |---|
 | Search and Notes: always |
-| Review: first card exists |
-| Progress and stats: five or more cards exist |
+| Review & Quizzes: first card or quiz exists |
+| Progress and stats: five or more cards/reviews exist |
 | Subject switcher: second subject exists |
 | Import history: first import completed |
 
@@ -66,18 +67,47 @@ Do not build "empty state" screens for features the user has not started using. 
 
 ## 4. Two card tiers
 
-| | Authored | Imported |
+| | Authored | Imported / AI-Generated |
 |---|---|---|
-| Answer written by | The user | The source |
+| Answer written by | The user | The source / AI |
 | Purpose | Mastery | Diagnostic |
 | Counts toward progress | Yes | No |
 | Visual treatment | Solid border | Dashed border, dimmed |
 
-Imported cards graduate to authored after two correct answers followed by the user re-explaining the concept in their own words. Store `tier` on every card.
+Imported or AI-generated cards graduate to authored after two correct answers followed by the user re-explaining the concept in their own words. Store `tier` on every card.
 
 ---
 
-## 5. Stack
+## 5. Token Protection & AI Rate Limiting (2 Quizzes / Day)
+
+To keep API token usage under control and prevent quota exhaustion:
+
+1. **Strict 2 Quizzes Per Day Rule:** Each authenticated user is restricted to generating **2 AI quizzes per 24-hour period**.
+2. **Quota Tracking:** Track daily generations in Postgres (`ai_quiz_usage` table or columns on `profiles` tracking `quiz_count_today` and `last_quiz_reset_at`).
+3. **UI Rate Limit Feedback:** 
+   - Show a remaining daily count indicator on the "Generate Quiz" button (e.g., "Generate Quiz (2/2 left today)").
+   - When the limit is reached, gracefully disable the button and show an informative message: *"You've reached your daily limit of 2 AI quizzes. Your quota resets at midnight UTC."*
+4. **Fallback & Static Quizzes:** Users can still manually create flashcards or retake previously generated quizzes without consuming AI quota.
+
+---
+
+## 6. Flashcard System: Vocabulary-Only (Front & Back)
+
+Flashcards generated from notes follow a strict **Front and Back Vocabulary** format:
+
+- **Structure:**
+  - **Front:** Vocabulary Word / Term / Concept
+  - **Back:** Concise Definition / Explanation
+- **Extraction from Notepad:** When a user writes notes in the markdown editor, vocabulary terms marked with the `**Vocab:**` syntax are automatically parsed into double-sided flashcards.
+- **Card Format Example:**
+  ```markdown
+  **Vocab:** Spaced Repetition
+  **Def:** A learning technique that incorporates increasing intervals of time between subsequent review of previously learned material.
+  ```
+
+---
+
+## 7. Stack
 
 | Layer | Choice |
 |---|---|
@@ -87,15 +117,17 @@ Imported cards graduate to authored after two correct answers followed by the us
 | Database, Auth, Storage | Supabase (Postgres) |
 | Deploy | Netlify with the official Next.js plugin |
 | Testing | Vitest for unit, Playwright for end to end |
-| External APIs | Claude API for subject search and resource descriptions, YouTube Data API v3, a web search API such as Brave or Serper |
+| External APIs | Gemini (primary) with an OpenAI fallback for subject search, resource descriptions, import parsing, and quiz generation; YouTube Data API v3; a web search API such as Brave or Serper |
 
 Supabase over Firebase because the data is relational and row level security handles per user isolation without a custom auth layer.
 
-**Never expose API keys to the browser.** All third party calls go through server routes under `/app/api/`. Nothing secret gets a `NEXT_PUBLIC_` prefix.
+**Never expose API keys to the browser.** All third party calls go through server-only code: Next.js Server Actions (`'use server'` files) today, or routes under `/app/api/` if a plain REST endpoint is ever needed. Nothing secret gets a `NEXT_PUBLIC_` prefix.
+
+**AI calls go through one shared function, not a provider SDK per call site.** `src/lib/ai.ts` exports `generateText({ prompt, image?, json? })`, which tries Gemini first (`GEMINI_API_KEY`, with `Gemini_API_Key2` as a second key and a couple of retries on transient 503s) and falls back to OpenAI (`OPENAI_API_KEY`) if Gemini fails for any reason: missing key, quota, or an outage. This is what keeps one flaky provider from taking down imports, quiz generation, or path search, and from failing the build if a key is briefly unset. Add a new provider by adding one entry to the `PROVIDERS` list in that file, not by touching the three call sites.
 
 ---
 
-## 6. Data model
+## 8. Data model
 
 ```sql
 profiles        id, user_id, display_name, created_at
@@ -118,27 +150,34 @@ imports         id, subject_id, kind, raw_ref, status, created_at
 
 ---
 
-## 7. Note syntax
+## 9. Note syntax
 
-Notes are markdown. Recall prompts are marked inline:
+Notes are standard markdown. Recall prompts are marked inline using natural markdown prefixes. Section 6 retires the old standalone `**Q:**/**A:**` flashcard: vocabulary front/back and quiz are the only two flashcard formats.
 
+**Vocabulary (front/back flip):**
+```markdown
+**Vocab:** Spaced Repetition
+**Def:** A learning technique that incorporates increasing intervals of time between subsequent review of previously learned material.
 ```
-?? What does a diminished chord sound like and when is it used?
->> Tense and unstable. Often a passing chord between two stable chords.
+
+**Multiple Choice (Quiz):**
+Add pipe `|` characters on the answer line to create multiple choice options. The **first** item is always the correct answer. The UI will randomize the order when testing the user. You can also optionally include an `**Explain:**` line below the answer line to show the user why the answer was correct (only shown if they miss it).
+```markdown
+**Quiz:** What is the specific IP address range reserved for APIPA?
+**A:** 169.254.0.0/16 | 192.168.0.0/16 | 10.0.0.0/8 | 172.16.0.0/12
+**Explain:** APIPA (Automatic Private IP Addressing) automatically assigns an IP in this block when a DHCP server is unreachable.
 ```
 
-- `??` is the prompt line, `>>` is the answer line.
-- An empty `>>` means the blank is open and shows as a todo in the note.
-- Filling a `>>` promotes it to a card in box 0 automatically. No separate button.
+- An empty answer (e.g. `**A:** `) means the blank is open and shows as a todo in the note.
+- Filling an empty answer promotes it to a card in box 0 automatically. No separate button.
 - Box 0 cards jump the queue and show Keep, Edit, Delete on first review, so the first retrieval doubles as quality control.
+- Cloze cards are made by selecting text and pressing Cmd+K. This is the fastest path to a card and should feel effortless.
 
-Cloze cards are made by selecting text and pressing Cmd+K. This is the fastest path to a card and should feel effortless.
-
-Imports append prompts under a `## Open questions` heading at the bottom of the note, capped at 12 per import, with the remainder in a collapsed tray.
+Imports generate these Markdown blocks and append them at the bottom of the note.
 
 ---
 
-## 8. Scheduling
+## 10. Scheduling
 
 Leitner boxes, not SM-2.
 
@@ -151,15 +190,15 @@ Leitner boxes, not SM-2.
 | 4 | 21 days |
 | 5 | Retired |
 
-Correct moves up one box. Wrong drops to box 1. Three failures spawn a new prompt in the source note reading "Explain this a different way."
+Correct moves up one box. Wrong drops to box 1. Three failures spawn a new Vocab/Def blank in the source note, term set to the failing prompt, so the user re-explains the concept in their own words.
 
-Sessions cap at 20 cards even when more are due and end with a real completion screen showing correct/wrong counts and the missed prompts with their back-pointer links. Practice modes covering one note, one subject, or weak cards do not write to the schedule.
+Sessions cap at 5 cards even when more are due and end with a real completion screen showing correct/wrong counts and the missed prompts with their back-pointer links. Practice modes covering one note, one subject, or weak cards do not write to the schedule.
 
-Multiple choice exists only as a practice mode (`/practice`), never as the graded review. It is recognition rather than recall, so per section 2 it cannot feed the Leitner schedule; distractors come from the user's own other cards, and the results screen states that practice doesn't change the schedule.
+Multiple choice formats are allowed in the graded review schedule. Distractors are defined via the pipe syntax (`**A:** Correct | Wrong1 | Wrong2`) and order is randomized upon render.
 
 ---
 
-## 9. Build phases
+## 11. Build phases
 
 Follow the software development life cycle. Each phase runs plan, design, build, test, document, deploy, then stop and check in. Do not build ahead.
 
@@ -178,7 +217,7 @@ Blank parsing, cloze creation, box 0 promotion, review screen, Leitner scheduler
 Paste box first. Then PDF text extraction. Then screenshot import using a vision model to read questions from an image. All imports create imported tier cards or open prompts, never answers.
 
 **Phase 4, discovery and paths**
-LLM-interpreted subject search on the public home page, usable signed out. YouTube Data API for playlists and chapters. Web search API for everything else. A hand curated source registry per subject as the reliable backbone. Free ranked above paid. Each resource gets a written description of what it covers and who it suits. Signed-out users can search and browse results; saving a path or acting on it prompts sign-in.
+LLM-interpreted subject search on the public home page, usable signed out. YouTube Data API for playlists and chapters, sorted by upload date rather than relevance so the newest matching video surfaces first for every subject, keeping results current. Web search API for everything else. A hand curated source registry per subject as the reliable backbone. Every candidate resource is checked for a live 200/301/302 response before it can be saved; broken links never reach a path. Free ranked above paid, enforced in code after generation rather than left to the model. Each resource gets a written description of what it covers and who it suits. Signed-out users can search and browse results; saving a path or acting on it prompts sign-in.
 
 **Phase 5, polish**
 Motion, SEO, accessibility audit, performance, error states.
@@ -188,7 +227,7 @@ Paid tiers, deeper AI assist, native mobile app, multi subject switcher.
 
 ---
 
-## 10. Design direction
+## 12. Design direction
 
 Aim for something that does not look like a template.
 
@@ -199,13 +238,13 @@ Aim for something that does not look like a template.
 - Rating buttons differentiated by position and label, never by color alone.
 - Accessibility is part of the build, not a later pass. WCAG AA contrast, visible focus states, real semantic HTML, keyboard first review.
 
-Copy on marketing surfaces must be verifiable. Don't present invented usage numbers (adoption counts, completion rates, retention percentages) as real statistics — this product has no user base yet. Describe what the product actually does (the box schedule, the `??`/`>>` syntax, free-ranked-first resources) rather than claiming outcomes nobody has measured.
+Copy on marketing surfaces must be verifiable. Don't present invented usage numbers (adoption counts, completion rates, retention percentages) as real statistics. This product has no user base yet. Describe what the product actually does (the box schedule, the note syntax, free-ranked-first resources) rather than claiming outcomes nobody has measured.
 
 Two alternative directions (sticker-book/bright-paper and arcade/dark-neon) were explored and rejected in favor of keeping this one. See `/docs/decisions/0001-landing-page-direction.md`.
 
 ---
 
-## 11. Motion
+## 13. Motion
 
 Animation makes the interface feel alive between moments of work. It must never interfere with recall.
 
@@ -232,9 +271,11 @@ Everything else:
 
 With `prefers-reduced-motion` enabled, every duration above becomes zero. No exceptions and no subtle fallbacks.
 
+Implement all of the above with Framer Motion (see section 7), wrapped once in `MotionConfig reducedMotion="user"` at the root layout so every component gets the reduced-motion behavior for free instead of re-implementing it per component. Plain CSS `transition`/`:hover` is fine for simple, non-list hover and focus states; reach for Framer Motion once there's a stagger, a spring, or a mount/unmount transition (`AnimatePresence`) involved.
+
 ---
 
-## 12. Design references
+## 14. Design references
 
 Study reference sites for patterns. Never copy their code, assets, or look.
 
@@ -272,9 +313,13 @@ Study reference sites for patterns. Never copy their code, assets, or look.
 
 Combining six sources produces something original. Copying one produces a clone.
 
+**ui-ux-pro-max skill.** This repo has the `ui-ux-pro-max` Claude Code skill installed (`.claude/skills/`), a searchable checklist covering accessibility, touch targets, animation timing, and layout patterns. Use it for `ux`-domain checks (contrast, focus states, heading hierarchy, reduced motion) and as a sanity check before shipping a page. Its `--design-system` output (color palettes, font pairings) is a generic template default and does not apply here: the palette, type system, and motion spec in sections 7, 12, and 13 of this document are already decided and take priority over anything the skill suggests.
+
+**frontend-design skill.** Use this skill when building a new page or component that needs real visual design work, not just markup and Tailwind classes: a distinctive hero, a deliberate type and layout plan, one signature element the surface is remembered by, restraint everywhere else, and copy treated as design material rather than decoration. The skill normally starts by pinning down a subject and brainstorming a palette and type system from scratch; here that step is already done. Sections 7, 12, and 13 are the brief: skip the generic-palette brainstorm and apply the decided warm-near-black background, serif/mono/sans type roles, and motion spec with the same discipline the skill asks for elsewhere, one real signature choice per surface, self-critique before shipping, never the cream-background or acid-green defaults it falls back to when nothing else is specified.
+
 ---
 
-## 13. Interaction principles
+## 15. Interaction principles
 
 - One screen, one job. Anything visible during review that is not the current prompt is an escape hatch from the hard part.
 - Sessions end. A visible finished state is a feature.
@@ -283,7 +328,7 @@ Combining six sources produces something original. Copying one produces a clone.
 
 ---
 
-## 14. SEO
+## 16. SEO
 
 The app sits behind auth and cannot rank. Public subject pages can.
 
@@ -295,7 +340,7 @@ The app sits behind auth and cannot rank. Public subject pages can.
 
 ---
 
-## 15. Testing
+## 17. Testing
 
 Write tests in the same phase as the feature, not after.
 
@@ -306,19 +351,19 @@ Write tests in the same phase as the feature, not after.
 
 ---
 
-## 16. Documentation
+## 18. Documentation
 
 Every phase updates:
 
 - `README.md` with setup and current feature state
 - `/docs/decisions/` with a short record per significant technical choice: context, decision, tradeoff accepted
 - `/docs/api.md` for every server route
-- `/docs/design/references.md` per section 12
+- `/docs/design/references.md` per section 14
 - Inline comments only where the reason is not obvious from the code
 
 ---
 
-## 17. Writing style for anything user facing
+## 19. Writing style for anything user facing
 
 No text in this product may read as AI written. This covers every string a user can see: landing pages, headings, button labels, empty states, error messages, tooltips, onboarding, resource descriptions, and any AI generated summary shipped to the user.
 
@@ -341,12 +386,16 @@ For AI generated resource descriptions in phase 4, put these constraints in the 
 
 ---
 
-## 18. Working agreements
+## 20. Working agreements & AI Workflow
 
-- Build one phase at a time. Ask before moving on.
-- Every phase ends deployed and working on Netlify.
-- Prefer the simplest thing that works. No abstraction until there are three cases.
-- No rich text editor. Markdown textarea with preview. WYSIWYG is a multi week sinkhole.
-- Do not import from exam dump sites or leaked question banks. Using real exam questions violates most certification candidate agreements and can get a credential revoked.
-- Keep imported source text private to the user who imported it.
-- If a request conflicts with section 2 or section 3, say so before writing code.
+- **Plan before coding (Spec -> Todo -> Code):** Never jump straight into code for large features. First define the goal, write constraints, create an implementation plan, and turn it into a TODO list. Only implement once the plan is clear and verified.
+- **Break work into small chunks:** Incremental tasks are easier to verify and reduce context bloat. Each chunk needs one clear objective, limited surface area, and an obvious stopping point.
+- **Clear context on task switches:** Keep threads to a single mission. When switching to unrelated tasks, clear the context to avoid pulling in irrelevant history and wasting token budgets.
+- **Keep context lean:** This document and other instructions are intentionally kept concise to optimize token limits and context usage. Do not repeat context unnecessarily.
+- **Build one phase at a time.** Ask before moving on.
+- **Every phase ends deployed and working on Netlify.**
+- **Prefer the simplest thing that works.** No abstraction until there are three cases.
+- **No rich text editor.** Markdown textarea with preview. WYSIWYG is a multi-week sinkhole.
+- **Do not import from exam dump sites** or leaked question banks.
+- **Keep imported source text private** to the user who imported it.
+- **Enforce core rules:** If a request conflicts with section 2 (retrieval first) or section 3 (progressive disclosure), stop and say so before writing code.

@@ -2,8 +2,9 @@
 
 import { Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { GeneratedPath } from './actions';
 
-export default function SavePathButton({ pathData }: { pathData: any }) {
+export default function SavePathButton({ pathData }: { pathData: GeneratedPath }) {
   const router = useRouter();
 
   const handleSave = () => {

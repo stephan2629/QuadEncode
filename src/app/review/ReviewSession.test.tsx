@@ -8,9 +8,10 @@ vi.mock('./actions', () => ({
   keepCard: vi.fn().mockResolvedValue({ success: true }),
   updateCard: vi.fn().mockResolvedValue({ success: true }),
   deleteCard: vi.fn().mockResolvedValue({ success: true }),
+  graduateCard: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-import { submitReview, keepCard } from './actions';
+import { submitReview, keepCard, graduateCard } from './actions';
 
 function makeCard(overrides: Partial<Parameters<typeof ReviewSession>[0]['initialQueue'][0]> = {}) {
   return {
@@ -52,6 +53,13 @@ describe('ReviewSession', () => {
     expect(submitReview).toHaveBeenCalledWith('card-42', true);
   });
 
+  it('shows the completion screen instead of crashing once the last card is answered', async () => {
+    render(<ReviewSession initialQueue={[makeCard({ box: 2 })]} />);
+    fireEvent.click(screen.getByText('Show Answer'));
+    fireEvent.click(screen.getByText('Correct'));
+    expect(await screen.findByText('Review Complete!')).toBeInTheDocument();
+  });
+
   it('shows Keep/Edit/Delete instead of Correct/Wrong for a box-0 card', () => {
     render(<ReviewSession initialQueue={[makeCard({ box: 0 })]} />);
     fireEvent.click(screen.getByText('Show Answer'));
@@ -75,5 +83,56 @@ describe('ReviewSession', () => {
     fireEvent.click(screen.getByText('Wrong'));
     const link = await screen.findByText('Jump to note');
     expect(link.closest('a')).toHaveAttribute('href', '/notes/note-99?line=7');
+  });
+
+  it('lets a multiple-choice card be picked and advanced to completion without crashing', async () => {
+    render(
+      <ReviewSession
+        initialQueue={[makeCard({ box: 2, answer: 'Correct opt | Wrong 1 | Wrong 2' })]}
+      />
+    );
+    fireEvent.click(screen.getByText('Correct opt'));
+    const next = await screen.findByText('Next question');
+    fireEvent.click(next);
+    expect(await screen.findByText('Review Complete!')).toBeInTheDocument();
+  });
+
+  it('prompts to re-explain instead of advancing when submitReview signals readyToGraduate, then graduates the card', async () => {
+    vi.mocked(submitReview).mockResolvedValueOnce({ success: true, readyToGraduate: true });
+    render(
+      <ReviewSession
+        initialQueue={[
+          makeCard({ id: 'card-9', tier: 'imported', box: 2, answer: 'Correct opt | Wrong 1 | Wrong 2' }),
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByText('Correct opt'));
+    const next = await screen.findByText('Next question');
+    fireEvent.click(next);
+
+    // Graduation intercepts the advance instead of going straight to the
+    // completion screen, even though this is the last card in the queue.
+    expect(await screen.findByText(/Explain it in your own words/)).toBeInTheDocument();
+    expect(screen.queryByText('Review Complete!')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/Explain this concept/), {
+      target: { value: 'It works because of X.' },
+    });
+    fireEvent.click(screen.getByText('Continue'));
+
+    await screen.findByText('Review Complete!');
+    expect(graduateCard).toHaveBeenCalledWith('card-9', 'It works because of X.');
+  });
+
+  it('flips a vocab card and advances it without crashing', async () => {
+    render(
+      <ReviewSession
+        initialQueue={[makeCard({ type: 'vocab', box: 2, prompt: 'Term', answer: 'Definition' })]}
+      />
+    );
+    fireEvent.click(screen.getByText('Term'));
+    expect(screen.getByText('Definition')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Correct'));
+    expect(await screen.findByText('Review Complete!')).toBeInTheDocument();
   });
 });

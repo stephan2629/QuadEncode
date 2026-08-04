@@ -9,7 +9,7 @@ export default function MarkdownPreview({ source }: { source: string }) {
       <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
         components={{
-          blockquote: ({ node, children, ...props }) => (
+          blockquote: ({ children }) => (
             <div className="relative my-8 p-6 rounded-2xl bg-[#14120f] border border-white/10 backdrop-blur-md overflow-hidden group shadow-lg">
               <div className="absolute top-0 left-0 w-1 h-full bg-accent/80 group-hover:bg-accent transition-colors duration-300" />
               <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

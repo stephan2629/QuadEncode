@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Dumbbell } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { m } from "framer-motion";
 import type { PracticeQuestion } from '@/lib/practice';
 
 interface PracticeResult {
@@ -44,14 +44,14 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
     return (
       <div className="min-h-screen bg-[#0a0908] text-white flex flex-col items-center justify-center p-6">
         <div className="text-center max-w-md w-full">
-          <motion.div
+          <m.div
             initial={{ scale: 0.85, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 20 }}
             className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-accent/10 mb-8 border border-accent/20"
           >
             <Dumbbell className="w-12 h-12 text-accent" aria-hidden="true" />
-          </motion.div>
+          </m.div>
           <h1 className="text-4xl font-serif font-bold mb-4">Practice complete</h1>
           <p className="text-gray-400 mb-2 text-lg">
             {correct} of {results.length} correct
@@ -105,15 +105,15 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
 
       <main className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-2xl">
-          <motion.div
+          <m.div
             key={question.card.id}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.12, ease: 'easeOut' }}
             className="bg-[#14120f] border border-white/10 p-8 md:p-12 rounded-3xl shadow-2xl mb-8"
           >
-            <h2 className="text-2xl md:text-3xl font-serif leading-relaxed text-center">{question.card.prompt}</h2>
-          </motion.div>
+            <h2 className="text-3xl md:text-4xl font-serif leading-relaxed text-center">{question.card.prompt}</h2>
+          </m.div>
 
           <div className="grid grid-cols-1 gap-3" role="group" aria-label="Answer options">
             {question.options.map((option) => {

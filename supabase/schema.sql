@@ -5,7 +5,9 @@ create table profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references auth.users(id) on delete cascade,
   display_name text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  quiz_count_today int not null default 0,
+  last_quiz_reset_at timestamptz not null default now()
 );
 
 create table subjects (
@@ -50,7 +52,8 @@ create table notes (
   section text,
   title text,
   body_md text not null default '',
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  pdf_path text
 );
 
 create table cards (
@@ -63,6 +66,7 @@ create table cards (
   answer text not null default '',
   confusable_with uuid[] not null default '{}',
   source_excerpt text,
+  explanation text,
   video_id text,
   t int,
   box int not null default 0 check (box between 0 and 5),
@@ -86,6 +90,16 @@ create table imports (
   created_at timestamptz not null default now()
 );
 
+-- Public registry of subjects that have been searched, decoupled from any
+-- one user's private `subjects` rows. Backs the /study/[slug] sitemap: those
+-- pages are public and searchable signed out, but `subjects` is per-user and
+-- RLS-locked, so it can never answer "what should the sitemap list."
+create table indexed_subjects (
+  slug text primary key,
+  name text not null,
+  first_searched_at timestamptz not null default now()
+);
+
 -- Row level security: every table, owned rows only.
 alter table profiles enable row level security;
 alter table subjects enable row level security;
@@ -96,6 +110,15 @@ alter table notes enable row level security;
 alter table cards enable row level security;
 alter table reviews enable row level security;
 alter table imports enable row level security;
+alter table indexed_subjects enable row level security;
+
+-- Anyone, signed in or not, can look up or register a searched slug —
+-- this table holds no user data, just what subjects exist to index.
+create policy "public read indexed subjects" on indexed_subjects
+  for select using (true);
+
+create policy "anyone can register a searched subject" on indexed_subjects
+  for insert with check (true);
 
 create policy "own profile" on profiles
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -152,6 +175,19 @@ create policy "own reviews" on reviews
 create policy "own imports" on imports
   for all using (exists (select 1 from subjects s where s.id = imports.subject_id and s.user_id = auth.uid()))
   with check (exists (select 1 from subjects s where s.id = imports.subject_id and s.user_id = auth.uid()));
+
+-- Storage bucket for the original PDF behind an import (notes.pdf_path),
+-- kept as a private file so the source stays visible only to the user who
+-- imported it (section 20). Objects are stored at {user_id}/{note_id}/{name}
+-- so the folder-prefix check below is the whole ownership rule; getNote()
+-- turns pdf_path into a short-lived signed URL rather than a public one.
+insert into storage.buckets (id, name, public)
+values ('note-pdfs', 'note-pdfs', false)
+on conflict (id) do nothing;
+
+create policy "own pdf uploads" on storage.objects
+  for all using (bucket_id = 'note-pdfs' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'note-pdfs' and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Auto-create a profile row for every new auth user, covering both
 -- email/password signup and OAuth (Google) signup uniformly, since OAuth

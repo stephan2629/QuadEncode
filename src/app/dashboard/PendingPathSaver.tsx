@@ -5,31 +5,37 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { saveGeneratedPath } from './actions';
 
+// Lazy-initialized from sessionStorage so the "saving" state is derived up
+// front instead of flipped on synchronously inside the effect body.
+function hasPendingPath() {
+  return typeof window !== 'undefined' && !!sessionStorage.getItem('pendingPathSave');
+}
+
 export default function PendingPathSaver() {
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(hasPendingPath);
   const router = useRouter();
 
   useEffect(() => {
     const pendingData = sessionStorage.getItem('pendingPathSave');
-    if (pendingData) {
-      setSaving(true);
-      try {
-        const pathData = JSON.parse(pendingData);
-        // We only try saving once
-        sessionStorage.removeItem('pendingPathSave');
-        
-        saveGeneratedPath(pathData).then(() => {
-          setSaving(false);
-          router.refresh();
-        }).catch(err => {
-          console.error("Failed to save path:", err);
-          setSaving(false);
-        });
-      } catch (err) {
+    if (!pendingData) return;
+
+    // We only try saving once
+    sessionStorage.removeItem('pendingPathSave');
+
+    // Single promise chain so a malformed-JSON error and a save error both
+    // land in the same .catch, keeping every setState call inside an async
+    // callback rather than synchronously in the effect body.
+    Promise.resolve()
+      .then(() => JSON.parse(pendingData))
+      .then(saveGeneratedPath)
+      .then(() => {
         setSaving(false);
-        sessionStorage.removeItem('pendingPathSave');
-      }
-    }
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error("Failed to save path:", err);
+        setSaving(false);
+      });
   }, [router]);
 
   if (!saving) return null;

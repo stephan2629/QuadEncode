@@ -3,16 +3,119 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, BrainCircuit, PenTool, Layout } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { BrainCircuit, PenTool, RefreshCw, MoveRight, FileText, FileDown, Image as ImageIcon, Video } from 'lucide-react';
+import { m } from "framer-motion";
+import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import dynamic from 'next/dynamic';
+import SearchCharCount from '@/components/ui/SearchCharCount';
+
+const SubjectWall = dynamic(() => import('@/components/ui/SubjectWall'), { ssr: false });
+const TiltCard = dynamic(() => import('@/components/ui/TiltCard'), { ssr: false });
+const FlipCardDemo = dynamic(() => import('@/components/ui/FlipCardDemo'), { ssr: false });
+
+const MockAppWindow = () => (
+  <div className="w-full max-w-5xl mx-auto mt-16 md:mt-24 h-[400px] md:h-[600px] relative p-[1px] rounded-2xl overflow-hidden shadow-[0_0_80px_rgba(245,158,11,0.08)] transform-gpu hover:scale-[1.01] transition-transform duration-700">
+    {/* Uiverse-Style Spinning Border Beam */}
+    <div className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0_340deg,#f59e0b_360deg)] animate-[spin_4s_linear_infinite] opacity-60 z-0"></div>
+    
+    {/* Actual App Window */}
+    <div className="relative z-10 bg-[#0f0e0c] w-full h-full rounded-2xl flex flex-col text-left overflow-hidden">
+      {/* Titlebar */}
+      <div className="h-10 border-b border-white/10 flex items-center px-4 bg-[#14120f]">
+        <div className="flex gap-2">
+          <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50"></div>
+          <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
+          <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50"></div>
+        </div>
+        <div className="mx-auto text-xs font-mono text-gray-500">Quad Encode - Study Session</div>
+      </div>
+      {/* App Body */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-48 border-r border-white/10 hidden md:flex flex-col p-4 gap-2 bg-[#0a0908]">
+          <div className="text-xs font-bold text-gray-500 mb-2 tracking-widest">PATHS</div>
+          <div className="text-sm text-gray-300 py-1.5 px-3 bg-white/5 rounded-md border border-white/5">Music Theory</div>
+          <div className="text-sm text-gray-500 py-1.5 px-3 hover:text-gray-300 transition-colors cursor-default">Spanish</div>
+          <div className="text-sm text-gray-500 py-1.5 px-3 hover:text-gray-300 transition-colors cursor-default">Computer Science</div>
+          <div className="text-sm text-gray-500 py-1.5 px-3 hover:text-gray-300 transition-colors cursor-default">History</div>
+        </div>
+        {/* Main Editor/Review */}
+        <div className="flex-1 p-6 md:p-12 bg-[#14120f] flex flex-col justify-center items-center relative overflow-hidden">
+          {/* Subtle background glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-accent/5 rounded-full blur-[120px] pointer-events-none"></div>
+          
+          <div className="w-full max-w-lg z-10">
+            <div className="flex items-center gap-2 mb-6">
+              <span className="text-xs font-mono text-accent bg-accent/10 px-2 py-1 rounded uppercase tracking-widest">Review</span>
+              <span className="text-xs font-mono text-gray-500">Music Theory</span>
+            </div>
+            <div className="text-2xl md:text-4xl font-serif font-bold text-white mb-8 leading-tight">What is the relative minor of G major?</div>
+            
+            <div className="w-full h-32 border border-white/10 rounded-xl bg-[#0a0908] p-4 font-mono text-gray-500 flex flex-col justify-between group hover:border-white/20 transition-colors">
+              <span>Type your answer...</span>
+              <div className="w-3 h-5 bg-accent/50 animate-pulse"></div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <div className="px-6 py-2 bg-gradient-to-b from-accent to-yellow-600 text-[#0a0908] font-bold rounded-lg text-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_15px_rgba(245,158,11,0.4)]">Submit</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const SEARCH_SUGGESTIONS = [
+  "What do you want to learn?",
+  "Try 'Python Programming'",
+  "Try 'World War II'",
+  "Try 'Quantum Physics'",
+  "Try 'Machine Learning'",
+  "Try 'French Revolution'"
+];
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<User | null>(null);
+
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [currentPlaceholder, setCurrentPlaceholder] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // While focused or mid-query the placeholder is a fixed value, not the
+  // typewriter animation - derived directly at render time rather than
+  // synced through an effect + setState, which would trigger an extra
+  // render every time isFocused/searchQuery changes.
+  const displayPlaceholder = isFocused || searchQuery.length > 0 ? SEARCH_SUGGESTIONS[0] : currentPlaceholder;
+
+  useEffect(() => {
+    if (isFocused || searchQuery.length > 0) return;
+
+    const currentFullText = SEARCH_SUGGESTIONS[placeholderIndex];
+
+    const timer = setTimeout(() => {
+      if (!isDeleting) {
+        if (currentPlaceholder.length < currentFullText.length) {
+          setCurrentPlaceholder(currentFullText.slice(0, currentPlaceholder.length + 1));
+        } else {
+          setTimeout(() => setIsDeleting(true), 2500);
+        }
+      } else {
+        if (currentPlaceholder.length > 0) {
+          setCurrentPlaceholder(currentFullText.slice(0, currentPlaceholder.length - 1));
+        } else {
+          setIsDeleting(false);
+          setPlaceholderIndex((prev) => (prev + 1) % SEARCH_SUGGESTIONS.length);
+        }
+      }
+    }, isDeleting ? 25 : 50);
+
+    return () => clearTimeout(timer);
+  }, [currentPlaceholder, isDeleting, placeholderIndex, isFocused, searchQuery]);
 
   const router = useRouter();
   
@@ -37,38 +140,122 @@ export default function Home() {
 
   const features = [
     {
-      icon: Search,
-      title: "Discover Paths",
-      description: "Find curated learning paths with the best free and paid resources ranked for you. No noise, just the best path forward."
+      icon: BrainCircuit,
+      title: "Retrieval beats rereading",
+      description: "Rereading feels fluent and predicts almost nothing. Producing the answer from memory is what leaves a trace. Roediger & Karpicke, 2006."
+    },
+    {
+      icon: RefreshCw,
+      title: "Spacing beats massing",
+      description: "The same minutes spread across days outperform the same minutes in one sitting, and the advantage grows with the delay. Cepeda et al., 2006."
     },
     {
       icon: PenTool,
-      title: "Active Note-Taking",
-      description: "Take notes in our distraction-free markdown editor. Type ?? and >> to define what you want to master."
-    },
-    {
-      icon: BrainCircuit,
-      title: "Master by Recall",
-      description: "Review exactly what you need, exactly when you need it, based on a scientifically proven spaced repetition schedule."
+      title: "Generation beats provision",
+      description: "A word you generate is remembered better than the same word handed to you. Which is why the app will not write your answers."
     }
   ];
+
+  const loopSteps = [
+    {
+      n: '01',
+      title: 'Find the material',
+      body: 'Type in the subject. Quad Encode ranks the strongest material on the open web and orders it into a path. Free resources come first, each with a plain description of what it covers and who it is actually for.',
+      cta: 'See a real path',
+      href: '/study/spanish',
+    },
+    {
+      n: '02',
+      title: 'Write it down as prompts',
+      body: 'Take notes in the editor, or bring in notes you already have. Write **Vocab:** and **Def:** around a term and it becomes a flip card. Nothing else to learn.',
+      cta: 'Try the editor',
+      href: '/dashboard',
+    },
+    {
+      n: '03',
+      title: 'Answer before you are told',
+      body: 'Review is a blank field, not a flashcard back. You write the answer, then compare it with the one you wrote when you understood it. What you keep missing returns sooner; what has stuck moves out of the way.',
+      cta: 'Run a session',
+      href: '/dashboard',
+    },
+  ];
+
+  const importMethods = [
+    {
+      icon: FileText,
+      title: 'Paste',
+      body: 'Markdown, a wall of text, or a page out of a doc. Headings become sections; your **Vocab:** lines are picked up on arrival.',
+    },
+    {
+      icon: FileDown,
+      title: 'PDF',
+      body: 'Lecture slides, a textbook chapter, an exam guide. Page numbers are kept, so the jump-back lands on the page you read it on.',
+    },
+    {
+      icon: ImageIcon,
+      title: 'Screenshot',
+      body: 'A slide, a diagram, a paused video frame. The text is read out of the image and the frame stays attached to the note.',
+    },
+    {
+      icon: Video,
+      title: 'Video',
+      body: 'Write a note while a video plays and the timestamp is stored with it. Blank on the prompt later and you land on the second it was explained.',
+    },
+  ];
+
+
+
+  // Reveal-on-scroll: children stagger in as a group enters the viewport.
+  // Every motion the landing page does is either this (scroll caused it) or
+  // hover/tap feedback — never a free-running loop, per CLAUDE.md section 11.
+  const staggerContainer = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.04 } },
+  };
+  const fadeUpItem = {
+    hidden: { opacity: 0, y: 8 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.12, ease: 'easeOut' as const } },
+  };
 
   return (
     <div className="relative min-h-screen bg-[#0a0908] overflow-hidden selection:bg-accent/30 text-white font-sans">
       
+      {/* Uiverse-Style Dotted Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none -z-20 [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_100%)] opacity-70"></div>
+
       {/* Background Orbs */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+      <m.div
+        className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.2 }}
+      >
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-accent/10 blur-[150px] rounded-full mix-blend-screen"></div>
         <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[150px] rounded-full mix-blend-screen"></div>
-      </div>
+      </m.div>
+
+      {/* Subject wall: the app's own material, tilted into a 3D drift tied to scroll position */}
+      <m.div
+        className="hidden lg:block absolute top-24 right-[-160px] -z-10 opacity-40 pointer-events-none"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.4 }}
+        transition={{ duration: 1, delay: 0.6 }}
+      >
+        <SubjectWall />
+      </m.div>
 
       {/* Navbar */}
-      <nav className="absolute top-0 w-full p-4 md:p-10 flex justify-between items-center z-50">
+      <m.nav
+        className="absolute top-0 w-full p-4 md:p-10 flex justify-between items-center z-50"
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         <div className="flex items-center gap-2">
-          <BrainCircuit className="w-5 h-5 md:w-6 md:h-6 text-accent" />
+          <Image src="/logo.png" alt="Quad Encode Logo" width={28} height={28} className="w-5 h-5 md:w-7 md:h-7" />
           <span className="font-serif font-bold text-lg md:text-xl tracking-tight">Quad Encode</span>
         </div>
-        
+
         {user ? (
           <Link href="/dashboard" className="flex items-center gap-3 group bg-white/5 hover:bg-white/10 px-3 py-1.5 md:py-2 rounded-full border border-white/10 transition-colors">
             <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-accent/20 border border-accent overflow-hidden flex items-center justify-center">
@@ -84,106 +271,231 @@ export default function Home() {
             </span>
           </Link>
         ) : (
-          <Link 
+          <Link
             href="/dashboard"
-            className="text-xs md:text-sm font-semibold text-accent hover:text-[#0a0908] bg-accent/10 hover:bg-accent border border-accent/20 px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all duration-300"
+            className="text-xs md:text-sm font-semibold text-accent hover:text-[#0a0908] bg-[#14120f] hover:bg-gradient-to-b hover:from-accent hover:to-yellow-600 border border-white/10 hover:border-accent/0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all duration-300 inline-block active:scale-95"
           >
             Sign In
           </Link>
         )}
-      </nav>
+      </m.nav>
 
       {/* Main Hero Section */}
-      <main className="relative pt-32 md:pt-40 pb-16 md:pb-20 px-4 md:px-6 max-w-6xl mx-auto flex flex-col items-center justify-center text-center">
+      <main className="relative pt-32 md:pt-48 pb-16 md:pb-24 px-4 md:px-6 max-w-7xl mx-auto flex flex-col items-center justify-center text-center">
         
-        {/* The Book Animation */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="mb-12 md:mb-16 relative transform scale-75 md:scale-100"
-        >
-          <div className="absolute inset-0 bg-accent/20 blur-[40px] md:blur-[60px] rounded-full scale-125 md:scale-150"></div>
-          <div className="book relative z-10">
-            <div className="book__pg-shadow"></div>
-            <div className="book__pg"></div>
-            <div className="book__pg book__pg--2"></div>
-            <div className="book__pg book__pg--3"></div>
-            <div className="book__pg book__pg--4"></div>
-            <div className="book__pg book__pg--5"></div>
-          </div>
-        </motion.div>
-
-        {/* Hero Copy */}
-        <motion.h1 
-          className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-4 md:mb-6 font-serif bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 px-2"
+        {/* Hero Copy (Massive Typography) */}
+        <m.h1 
+          className="text-[12vw] sm:text-[10vw] md:text-[90px] lg:text-[110px] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.05] text-white"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
+          transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
-          What do you want to learn?
-        </motion.h1>
+          What do you want <br className="hidden md:block"/>
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent via-yellow-400 to-accent">to learn?</span>
+        </m.h1>
         
-        <motion.p 
-          className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 md:mb-12 max-w-2xl font-light px-4"
+        <m.p 
+          className="text-lg sm:text-xl md:text-2xl text-gray-400 mb-12 md:mb-16 max-w-3xl mx-auto font-light px-4 leading-relaxed tracking-wide"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
+          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          A universal platform for structured study. Search a topic, follow a curated path, take notes, and turn them into recall prompts.
-        </motion.p>
+          Search a topic, follow a curated path, take notes, and turn them into recall prompts.
+        </m.p>
 
         {/* Search Bar Component */}
-        <motion.div 
-          className="relative w-full max-w-2xl z-40"
+        <m.div 
+          className="relative w-full max-w-2xl z-40 flex flex-col items-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
+          <div className="text-sm font-bold text-accent uppercase tracking-widest mb-3">Start here</div>
           <form 
             onSubmit={handleSearch}
-            className={`relative transition-all duration-500 rounded-2xl border ${isFocused ? 'border-accent shadow-[0_0_40px_rgba(245,158,11,0.2)] bg-[#14120f]/90' : 'border-white/10 bg-[#14120f]/60'} backdrop-blur-xl overflow-hidden`}
+            className={`w-full relative transition-all duration-500 rounded-2xl overflow-hidden bg-[#14120f]/80 backdrop-blur-xl ${isFocused ? 'shadow-[0_0_0_2px_#f59e0b,0_0_40px_rgba(245,158,11,0.3)]' : 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_0_0_1px_rgba(255,255,255,0.1)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_0_0_1px_rgba(245,158,11,0.5)]'}`}
           >
-            <div className="flex items-center px-4 md:px-6 py-3 md:py-4">
-              <Search className={`h-5 w-5 md:h-6 md:w-6 transition-colors duration-300 ${isFocused ? 'text-accent' : 'text-gray-500'}`} />
+            <div className="flex items-center px-2 py-2">
               <input
                 ref={searchInputRef}
                 type="text"
-                className="w-full bg-transparent border-none outline-none text-white text-base md:text-lg px-3 md:px-4 placeholder-gray-500 font-medium"
-                placeholder="e.g. AWS Solutions..."
+                className="w-full bg-transparent border-none outline-none text-white text-base md:text-lg px-4 md:px-5 placeholder-gray-500 font-medium"
+                placeholder={displayPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setTimeout(() => setIsFocused(false), 200)}
               />
-              <button type="submit" className="hidden md:flex items-center gap-1 text-xs text-gray-500 hover:text-white hover:bg-white/10 bg-white/5 px-3 py-1.5 rounded-md border border-white/5 transition-colors cursor-pointer">
-                Search <kbd className="ml-1 font-sans">↵</kbd>
+              <SearchCharCount length={searchQuery.length} />
+              <button type="submit" className="hidden md:flex flex-shrink-0 items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-b from-accent to-yellow-600 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] hover:brightness-110 px-6 py-3 rounded-xl transition-all cursor-pointer active:scale-95 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]">
+                Find the path <MoveRight className="w-4 h-4" />
               </button>
             </div>
           </form>
-        </motion.div>
+          <button onClick={handleSearch} className="md:hidden mt-4 flex items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-b from-accent to-yellow-600 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] w-full justify-center">
+            Find the path <MoveRight className="w-4 h-4" />
+          </button>
+        </m.div>
 
-        {/* Feature Grid */}
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-20 md:mt-32 w-full text-left"
+        {/* Obsidian-Style Mock App Window */}
+        <m.div
+          className="w-full relative z-30"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <MockAppWindow />
+        </m.div>
+
+        {/* Feature Grid (Bento) */}
+        <m.div
+          className="mt-24 md:mt-32 w-full text-center"
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
+          <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-12 md:mb-20 tracking-tight">Why it is built this way</h2>
+          <m.div
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+          >
           {features.map((feature, idx) => (
-            <div key={idx} className="relative group bg-[#14120f]/40 backdrop-blur-sm border border-white/5 hover:border-white/10 rounded-3xl p-6 md:p-8 transition-all duration-500 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="bg-accent/10 w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center text-accent mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
-                <feature.icon className="w-5 h-5 md:w-6 md:h-6" />
-              </div>
-              <h3 className="text-lg md:text-xl font-bold font-serif mb-2 md:mb-3 text-white">{feature.title}</h3>
-              <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
-                {feature.description}
-              </p>
-            </div>
+            <m.div key={idx} variants={fadeUpItem} className={idx === 0 ? "md:col-span-2 md:row-span-2" : "col-span-1"}>
+              <TiltCard tiltAmount={4} className="relative group bg-[#14120f]/60 backdrop-blur-md border border-white/10 hover:border-white/20 rounded-3xl p-8 md:p-10 transition-colors overflow-hidden h-full flex flex-col justify-center">
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                <div className="bg-accent/10 w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-accent mb-6 md:mb-8 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                  <feature.icon className="w-6 h-6 md:w-8 md:h-8" />
+                </div>
+                <h3 className="text-2xl md:text-3xl font-bold font-serif mb-4 text-white transform-gpu translate-z-10">{feature.title}</h3>
+                <p className="text-gray-400 text-sm md:text-lg leading-relaxed transform-gpu translate-z-10 font-light">
+                  {feature.description}
+                </p>
+              </TiltCard>
+            </m.div>
           ))}
-        </motion.div>
+          </m.div>
+        </m.div>
+
+        {/* The Loop */}
+        <m.div
+          className="mt-24 md:mt-32 w-full text-left"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+        >
+          <h2 className="text-3xl font-serif font-bold text-white mb-10 md:mb-16 text-center">The loop</h2>
+          <m.div
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+          >
+            {loopSteps.map((step) => (
+              <m.div key={step.n} variants={fadeUpItem}>
+                <div className="font-mono text-sm text-accent mb-4">{step.n}</div>
+                <h3 className="text-xl font-bold font-serif mb-3 text-white">{step.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-4">{step.body}</p>
+                <Link href={step.href} className="group/cta text-sm font-semibold text-accent hover:text-accent/80 transition-colors inline-flex items-center gap-1.5">
+                  {step.cta} <MoveRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover/cta:translate-x-1" />
+                </Link>
+              </m.div>
+            ))}
+          </m.div>
+          
+          <div className="mt-16 w-full max-w-4xl mx-auto rounded-3xl overflow-hidden border border-white/10 relative h-64 md:h-96">
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0908] via-transparent to-transparent z-10"></div>
+            <Image
+              src="/study-notes.png"
+              alt="Handwritten study notes alongside a tablet"
+              fill
+              sizes="(min-width: 768px) 896px, 100vw"
+              className="object-cover opacity-70"
+            />
+          </div>
+        </m.div>
+
+        {/* Manifesto statement */}
+        <m.div
+          className="mt-24 md:mt-32 w-full max-w-3xl mx-auto text-center"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+        >
+          <p className="text-2xl md:text-4xl font-serif font-bold text-white leading-tight mb-8">
+            Reading feels productive. <br className="hidden md:block" />It is the cheapest thing you can do <br className="hidden md:block" />with an hour.
+          </p>
+          <p className="text-gray-400 text-base md:text-lg leading-relaxed max-w-xl mx-auto">
+            Every other tool will happily show you the answer. That is the moment the work stops. Quad Encode holds the answer back until you have produced one, and then shows you your own words, not a stranger&apos;s.
+          </p>
+
+          <div className="mt-16 md:mt-24 flex flex-col md:flex-row flex-wrap justify-center gap-8 perspective-1000">
+            <FlipCardDemo 
+              kind="Music Theory" 
+              prompt="What is the relative minor of G major?"
+              answer="E minor"
+            />
+            <FlipCardDemo 
+              kind="Computer Science" 
+              prompt="What is the time complexity of binary search?"
+              answer="O(log n)"
+            />
+            <FlipCardDemo 
+              kind="Spanish" 
+              prompt="Translate: 'To develop'"
+              answer="Desarrollar"
+            />
+          </div>
+        </m.div>
+
+        {/* Bring what you have */}
+        <m.div
+          className="mt-24 md:mt-32 w-full text-left"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+        >
+          <div className="text-center mb-16 md:mb-24">
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-4 tracking-tight">Bring what you have</h2>
+            <p className="text-gray-400 text-lg">Four apps of notes, one import</p>
+            <p className="text-gray-400 text-base max-w-2xl mx-auto mt-4 font-light">
+              Paste text, upload a PDF, or drop in a screenshot of a slide or a whiteboard. Quad Encode keeps the source alongside the note, so a prompt can always take you back to where it came from.
+            </p>
+          </div>
+
+          <m.div
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+          >
+            {importMethods.map((method, idx) => {
+              // Bento styling: first and last items span 2 columns, middle two span 1 column
+              const isLarge = idx === 0 || idx === 3;
+              return (
+                <m.div key={method.title} variants={fadeUpItem} className={isLarge ? "md:col-span-2" : "col-span-1"}>
+                  <TiltCard tiltAmount={isLarge ? 3 : 5} className="group bg-[#14120f]/60 backdrop-blur-md border border-white/10 hover:border-white/20 rounded-3xl p-8 md:p-10 h-full transition-colors flex flex-col justify-center">
+                    <div className="bg-accent/10 w-12 h-12 rounded-2xl flex items-center justify-center text-accent mb-6 transition-transform duration-500 group-hover:scale-110 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                      <method.icon className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-2xl font-bold font-serif mb-3 text-white transform-gpu translate-z-10">{method.title}</h3>
+                    <p className="text-gray-400 text-sm md:text-base leading-relaxed transform-gpu translate-z-10 font-light">{method.body}</p>
+                  </TiltCard>
+                </m.div>
+              );
+            })}
+          </m.div>
+        </m.div>
+
+
 
       </main>
     </div>

@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { m } from "framer-motion";
 import { createClient } from '@/utils/supabase/client';
-import { BrainCircuit, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -31,15 +32,15 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
         className="w-full max-w-md"
       >
         <div className="flex items-center justify-center gap-2 text-white mb-10">
-          <div className="bg-accent/20 p-2 rounded-xl text-accent border border-accent/20">
-            <BrainCircuit className="w-6 h-6" aria-hidden="true" />
+          <div className="bg-accent/10 p-1.5 rounded-xl border border-accent/20 flex items-center justify-center">
+            <Image src="/logo.png" alt="Quad Encode Logo" width={32} height={32} className="w-8 h-8" />
           </div>
           <span className="font-serif text-2xl font-bold tracking-tight">Quad Encode</span>
         </div>
@@ -64,7 +65,7 @@ export default function ResetPasswordPage() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#1a1815] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                className="w-full bg-[#1a1815] border border-white/10 rounded-xl px-4 py-3 text-base md:text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
               />
             </div>
 
@@ -83,7 +84,7 @@ export default function ResetPasswordPage() {
             </button>
           </form>
         </div>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

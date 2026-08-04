@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, UploadCloud, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { m, AnimatePresence } from "framer-motion";
+import { X, UploadCloud, FileText, Image as ImageIcon, Loader2, Bot } from 'lucide-react';
 import { generatePromptsFromFile } from '@/app/notes/[id]/actions';
 
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImportComplete: (generatedPrompts: string) => void;
+  onImportComplete: (generatedPrompts: string, sourceText?: string, pdfUrl?: string | null) => void;
   noteId: string;
 }
 
@@ -16,6 +16,7 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
   const [pastedText, setPastedText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [provider, setProvider] = useState<'auto' | 'gemini' | 'openai'>('auto');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,17 +44,19 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
       } else {
         throw new Error('Please provide a file or paste some text.');
       }
+      
+      formData.append('provider', provider);
 
       const markdown = await generatePromptsFromFile(noteId, formData);
       if (markdown.error || !markdown.text) {
         throw new Error(markdown.error || 'Import produced no prompts.');
       }
-
-      onImportComplete(markdown.text);
+      onImportComplete(markdown.text, markdown.sourceText || undefined, markdown.pdfUrl);
       onClose();
       // Reset state
       setFile(null);
       setPastedText('');
+      setProvider('auto');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong during import.');
     } finally {
@@ -66,7 +69,7 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-lg">
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -78,12 +81,30 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
           <div className="relative z-10">
             <button
               onClick={onClose}
+              aria-label="Close import modal"
               className="absolute -top-2 -right-2 text-gray-500 hover:text-white bg-white/5 hover:bg-white/10 rounded-full p-2 transition-all"
             >
               <X className="w-4 h-4" />
             </button>
 
             <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Import Source Material</h2>
+
+            {/* AI Model Selection */}
+            <div className="mb-6">
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                <Bot className="w-4 h-4" /> AI Model
+              </label>
+              <select
+                value={provider}
+                onChange={(e) => setProvider(e.target.value as 'auto' | 'gemini' | 'openai')}
+                className="w-full bg-[#14120f] border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accent/60 transition-colors appearance-none cursor-pointer"
+                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%236b7280\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em' }}
+              >
+                <option value="auto">Auto (Gemini, falls back to OpenAI)</option>
+                <option value="gemini">Gemini only</option>
+                <option value="openai">OpenAI only</option>
+              </select>
+            </div>
 
             {/* Toggle Tabs */}
             <div className="flex bg-black/40 p-1 rounded-xl mb-6 border border-white/5 relative">
@@ -150,7 +171,7 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
                 value={pastedText}
                 onChange={(e) => setPastedText(e.target.value)}
                 placeholder="Paste your article, notes, or raw text here..."
-                className="w-full h-48 bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-accent/60 resize-none custom-scrollbar transition-colors shadow-inner"
+                className="w-full h-48 bg-black/40 border border-white/10 rounded-2xl p-5 text-base md:text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-accent/60 resize-none custom-scrollbar transition-colors shadow-inner"
               />
             )}
           </div>
@@ -177,7 +198,7 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
               )}
             </button>
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </AnimatePresence>
   );
