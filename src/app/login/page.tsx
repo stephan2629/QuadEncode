@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { m } from "framer-motion";
 import { login, signup } from './actions';
 import { createClient } from '@/utils/supabase/client';
-import { humanizeAuthError } from '@/lib/auth-errors';
+import { humanizeAuthError, humanizeCallbackError } from '@/lib/auth-errors';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -24,6 +24,20 @@ export default function LoginPage() {
     setError(null);
     setNotice(null);
   }
+
+  // /auth/callback redirects here with ?error=... when a password-reset
+  // link's code exchange fails (commonly: opened in a different browser
+  // than the one that requested it, or expired/already used) - land the
+  // user on the reset form with an explanation instead of a silent /login.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('error');
+    const message = humanizeCallbackError(code);
+    if (message) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMode('reset');
+      setError(message);
+    }
+  }, []);
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);

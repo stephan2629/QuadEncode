@@ -16,5 +16,12 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Recovery links are commonly opened in a different browser/app than the
+  // one that requested them, which fails PKCE code exchange silently.
+  // Tell the user what happened instead of bouncing to a blank login form.
+  if (target === '/auth/reset-password') {
+    return NextResponse.redirect(`${origin}/login?error=reset_link_invalid`)
+  }
+
   return NextResponse.redirect(`${origin}/login`)
 }

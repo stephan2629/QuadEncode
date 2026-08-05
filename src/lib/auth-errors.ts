@@ -41,3 +41,12 @@ export function humanizeAuthError(message: unknown): string {
 
   return raw;
 }
+
+// Synthetic codes set by /auth/callback on redirect (not raw Supabase
+// error strings, so this stays separate from humanizeAuthError above).
+export function humanizeCallbackError(code: string | null): string | null {
+  if (code === 'reset_link_invalid') {
+    return 'That reset link expired or was already used. Request a new one below.';
+  }
+  return null;
+}

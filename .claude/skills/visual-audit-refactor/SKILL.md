@@ -87,6 +87,21 @@ component was adapted from 21st.dev/shadcn rather than built in-house)
 - Motion: no long/complex layout transitions or shimmering skeletons
   carried over; flashcard/quiz reveals still instant per section 13?
 
+**mobile-responsive-audit skill standards**
+- Capture both a phone (`--viewport=390x844`) and a tablet-width
+  (`--viewport=768x1024`, iPad portrait) shot, not desktop only - this is
+  the skill's actual breakpoint table (mobile base, `sm:` 640px, `md:` 768px
+  tablet, `lg:` 1024px, `xl:` 1280px).
+- Touch targets: interactive elements at least 44x44px, `gap-2` or more
+  between adjacent tappable elements.
+- Primary CTAs full-width on mobile (`w-full sm:w-auto`), not a cramped
+  fixed-width button.
+- No horizontal scrollbars or content overflowing the viewport at any of
+  the breakpoints above.
+- When applying a fix, use this project's actual `accent` color token (see
+  design-system check above), not the skill's generic `amber-500` example
+  snippets - those are illustrative, not this app's palette.
+
 ### Step 3: code refactoring
 
 1. Identify the exact React/Next.js component(s) in `src/` producing the
