@@ -4,7 +4,12 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { generateText } from '@/lib/ai'
 import { parseBlanks } from '@/lib/parseBlanks'
-import { YoutubeTranscript } from 'youtube-transcript'
+import {
+  YoutubeTranscript,
+  YoutubeTranscriptTooManyRequestError,
+  YoutubeTranscriptDisabledError,
+  YoutubeTranscriptVideoUnavailableError,
+} from 'youtube-transcript'
 
 function friendlyAIError(e: Error): string {
   const msg = e.message || 'Something went wrong generating that.'
@@ -320,6 +325,20 @@ export async function fetchVideoTranscript(videoId: string) {
     return { success: true, data: transcript };
   } catch (error: unknown) {
     console.error('Failed to fetch transcript:', error);
+    // YouTube fingerprints and rate-limits datacenter egress IPs (Netlify
+    // Functions run on AWS) harder than residential ones, so this specific
+    // error is common in production and rare locally. Surfacing which case
+    // it is (instead of one generic string) saves a redeploy-and-guess loop
+    // next time this fires.
+    if (error instanceof YoutubeTranscriptTooManyRequestError) {
+      return { success: false, error: 'YouTube is rate-limiting this server right now. Try again in a few minutes.' };
+    }
+    if (error instanceof YoutubeTranscriptDisabledError) {
+      return { success: false, error: 'Captions are disabled on this video.' };
+    }
+    if (error instanceof YoutubeTranscriptVideoUnavailableError) {
+      return { success: false, error: 'This video is unavailable.' };
+    }
     return { success: false, error: 'Could not fetch transcript. The video may not have captions enabled.' };
   }
 }
