@@ -194,8 +194,12 @@ export default function LoginPage() {
                     name="password"
                     type="password"
                     autoComplete={isLogin ? 'current-password' : 'new-password'}
-                    placeholder="••••••••"
+                    placeholder={isLogin ? '••••••••' : 'At least 8 characters'}
                     required
+                    // Only gate signup: an existing account's password
+                    // predates whatever the project's minimum is today, so
+                    // sign-in must never reject it client-side.
+                    minLength={isLogin ? undefined : 8}
                     className="w-full bg-[#0a0908] border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-sans"
                   />
                 </div>

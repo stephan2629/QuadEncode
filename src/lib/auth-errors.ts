@@ -26,7 +26,12 @@ export function humanizeAuthError(message: unknown): string {
     return 'Confirm your email first. Check your inbox for the link.';
   }
   if (m.includes('password should be at least')) {
-    return 'Password needs at least 6 characters.';
+    // Pull the actual required length out of Supabase's message instead of
+    // hardcoding a number: the project's minimum password length is a
+    // dashboard setting (currently 8, previously 6) and a hardcoded digit
+    // here just drifts out of sync with it again the next time it changes.
+    const chars = raw.match(/at least (\d+)/i)?.[1];
+    return chars ? `Password needs at least ${chars} characters.` : 'Password is too short.';
   }
   if (m.includes('unable to validate email address')) {
     return 'Enter a valid email address.';
