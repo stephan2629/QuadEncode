@@ -75,6 +75,10 @@ export default function LoginPage() {
       setError(res.error);
       setLoading(false);
     } else if (res && 'notice' in res && res.notice) {
+      // Signup with email confirmation on returns here instead of redirecting
+      // (no session yet). Land on the sign-in form with the success notice
+      // rather than leaving the user stuck looking at the signup form again.
+      if (mode === 'signup') setMode('login');
       setNotice(res.notice);
       setLoading(false);
     }
