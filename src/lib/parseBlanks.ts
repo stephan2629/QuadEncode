@@ -61,7 +61,14 @@ export function parseBlanks(bodyMd: string): ParsedBlank[] {
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
 
-    if (trimmed.startsWith(TIMESTAMP_PREFIX)) {
+    const timestampUrlMatch = trimmed.match(/timestamp:\/\/[^?)]+\?t=(\d+)/) || trimmed.match(/#t=(\d+)/);
+    if (timestampUrlMatch) {
+      pendingVideoT = parseInt(timestampUrlMatch[1], 10);
+      if (trimmed.startsWith('[') && trimmed.endsWith(')')) {
+        // If it's a standalone link on its own line, consume it and continue
+        continue;
+      }
+    } else if (trimmed.startsWith(TIMESTAMP_PREFIX)) {
       const parsed = parseTimestamp(trimmed.slice(TIMESTAMP_PREFIX.length).trim());
       if (parsed !== null) pendingVideoT = parsed;
       continue;

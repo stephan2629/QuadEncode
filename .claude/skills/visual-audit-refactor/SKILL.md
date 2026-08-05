@@ -26,8 +26,13 @@ node scripts/capture-screenshot.js http://localhost:3000 current-state.png
 ```
 
 If checking a specific page or live preview, replace `http://localhost:3000`
-with the target URL, e.g. `https://quadencode.netlify.app/study/aws`. Pass
-`--viewport=390x844` as a third argument to check a mobile breakpoint.
+with the target URL, e.g. `https://quadencode.netlify.app/study/aws`.
+
+Pass device viewports or presets to audit across screen sizes (from small 4.7" phones to 13" tablets):
+- **iPhone SE / Small Phone (375x667):** `node scripts/capture-screenshot.js http://localhost:3000 iphone-se.png --device=iphone-se`
+- **Standard Mobile (390x844):** `node scripts/capture-screenshot.js http://localhost:3000 mobile.png --device=iphone-pro`
+- **Mid-size Tablet (768x1024):** `node scripts/capture-screenshot.js http://localhost:3000 tablet-mini.png --device=ipad-mini`
+- **13-inch Large Tablet (1024x1366):** `node scripts/capture-screenshot.js http://localhost:3000 tablet-13.png --device=ipad-13`
 
 The script (`scripts/capture-screenshot.js`) uses `@playwright/test`, already
 a project dependency (CLAUDE.md §22), rather than a new headless-browser lib.
@@ -101,6 +106,19 @@ component was adapted from 21st.dev/shadcn rather than built in-house)
 - When applying a fix, use this project's actual `accent` color token (see
   design-system check above), not the skill's generic `amber-500` example
   snippets - those are illustrative, not this app's palette.
+
+**Auth flow: password reset**
+`/login` covers sign-in and sign-up by default, but the reset flow has its
+own two states worth capturing separately:
+- `/login` → "Forgot password?" → reset-request form (email field, "Send
+  reset link" button, `notice` banner on success).
+- `/login?error=reset_link_invalid` - the state a user lands on when a
+  recovery link's code exchange fails (expired, already used, or opened in
+  a different browser than the one that requested it). Confirm the reset
+  form renders directly with the red `role="alert"` banner, not a dead-end
+  bare login screen (see `src/app/auth/callback/route.ts` and
+  `humanizeCallbackError` in `src/lib/auth-errors.ts` - this was a real bug
+  fixed in this repo, worth a regression check on future audits).
 
 ### Step 3: code refactoring
 

@@ -429,7 +429,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                 >
                   Show Answer
                 </button>
-                <span className="text-[10px] text-gray-400 font-mono tracking-widest uppercase">Press Space</span>
+                <span className="text-[10px] text-gray-400 font-mono tracking-widest uppercase hidden md:block">Press Space</span>
               </div>
             )}
 
@@ -447,7 +447,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                 >
                   Next question <ArrowRight className="w-4 h-4" />
                 </m.button>
-                <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase">Press Enter</div>
+                <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase hidden md:block">Press Enter</div>
               </div>
             )}
 

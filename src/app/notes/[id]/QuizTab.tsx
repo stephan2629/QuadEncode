@@ -317,11 +317,11 @@ export default function QuizTab({
                   {index + 1 < questions.length ? 'Next question' : 'See results'}
                   <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </m.button>
-                <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase">Press Enter</div>
+                <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase hidden md:block">Press Enter</div>
               </>
             )}
             {!revealed && current.type === 'quiz' && (
-              <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-4">Press 1-{current.options?.length} to pick an answer</div>
+              <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-4 hidden md:block">Press 1-{current.options?.length} to pick an answer</div>
             )}
           </div>
         </div>

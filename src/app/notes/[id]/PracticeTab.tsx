@@ -130,6 +130,15 @@ export default function PracticeTab({ content, clozeCards = [], noteId = 'unknow
   };
 
   const currentCard = sessionCards[index];
+  // Section 6: graded review shows term-then-definition, but Practice mode
+  // is deliberately reversed - definition first, term on the back - so
+  // recall is tested by "what's this called" rather than "what's the
+  // definition of X" (the same card asked the other, less useful way for
+  // practice). Cloze cards have no term/definition shape to reverse, so
+  // only vocab cards flip.
+  const isVocabCard = currentCard?.type === 'vocab';
+  const frontText = isVocabCard ? currentCard.answer : currentCard?.prompt;
+  const backText = isVocabCard ? currentCard.prompt : currentCard?.answer;
 
   const handleNext = useCallback(() => {
     if (index + 1 < sessionCards.length) {
@@ -311,7 +320,7 @@ export default function PracticeTab({ content, clozeCards = [], noteId = 'unknow
                 {currentCard.explanation && (
                   <p className="text-sm md:text-base text-gray-400 font-serif italic mb-4 max-w-xl mx-auto">&quot;{currentCard.explanation}&quot;</p>
                 )}
-                <p className="text-xl md:text-3xl font-serif leading-relaxed text-white">{currentCard.prompt}</p>
+                <p className="text-xl md:text-3xl font-serif leading-relaxed text-white">{frontText}</p>
               </div>
               {!revealed && (
                 <p className="absolute bottom-6 text-xs text-gray-600 font-mono tracking-widest uppercase">Click to flip</p>
@@ -321,7 +330,7 @@ export default function PracticeTab({ content, clozeCards = [], noteId = 'unknow
               className="absolute inset-0 bg-white/5 backdrop-blur-md border border-white/10 p-12 md:p-16 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] transition-shadow duration-300"
               style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
             >
-              <p className="text-lg md:text-2xl text-gray-300 leading-relaxed font-serif">{currentCard.answer}</p>
+              <p className="text-lg md:text-2xl text-gray-300 leading-relaxed font-serif">{backText}</p>
             </div>
           </m.div>
         </div>
@@ -366,10 +375,10 @@ export default function PracticeTab({ content, clozeCards = [], noteId = 'unknow
                   <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </m.button>
               </div>
-              <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-2">Arrow keys to navigate</div>
+              <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-2 hidden md:block">Arrow keys to navigate</div>
             </>
           ) : (
-            <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-4">
+            <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-4 hidden md:block">
               Press Space to flip
             </div>
           )}

@@ -324,22 +324,3 @@ export async function fetchVideoTranscript(videoId: string) {
   }
 }
 
-export async function chatWithVideo(transcriptText: string, question: string) {
-  const prompt = `You are an AI study assistant. The user is watching a video and has asked a question.
-Here is the exact transcript of the video:
-<transcript>
-${transcriptText}
-</transcript>
-
-User Question: ${question}
-
-Answer the user's question concisely based strictly on the provided transcript. If the transcript does not contain the answer, say so, but do your best to be helpful. Do not use markdown headers. Keep it conversational.`;
-
-  try {
-    const responseText = await generateText({ prompt });
-    return { success: true, text: responseText };
-  } catch (e: unknown) {
-    return { success: false, error: friendlyAIError(e as Error) };
-  }
-}
-

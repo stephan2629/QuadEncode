@@ -19,8 +19,23 @@ export default function MarkdownPreview({
         components={{
           // Styled links (including video timestamp links)
           a: ({ href, children, ...props }) => {
-            if (href?.startsWith('#t=') && onTimestampClick) {
-              const time = parseInt(href.split('=')[1], 10);
+            const isTimestampUrl = href?.startsWith('timestamp://');
+            const isLegacyHash = href?.startsWith('#t=');
+            if ((isTimestampUrl || isLegacyHash) && onTimestampClick) {
+              let time = NaN;
+              if (isLegacyHash && href) {
+                time = parseInt(href.split('=')[1], 10);
+              } else if (isTimestampUrl && href) {
+                try {
+                  const url = new URL(href);
+                  const tParam = url.searchParams.get('t');
+                  if (tParam) time = parseInt(tParam, 10);
+                } catch {
+                  const match = href.match(/[?&]t=(\d+)/);
+                  if (match) time = parseInt(match[1], 10);
+                }
+              }
+
               return (
                 <button
                   {...(props as ComponentProps<'button'>)}

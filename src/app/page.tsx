@@ -328,7 +328,7 @@ export default function Home() {
                   key={chip}
                   type="button"
                   onClick={() => setSearchQuery(chip)}
-                  className="px-3.5 py-1.5 text-xs bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-all font-medium active:scale-95"
+                  className="px-3.5 py-3 sm:py-1.5 min-h-[44px] sm:min-h-0 text-xs bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-all font-medium active:scale-95"
                 >
                   {chip}
                 </button>

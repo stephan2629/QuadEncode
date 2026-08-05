@@ -13,12 +13,27 @@ async function main() {
   const positional = args.filter((a) => !a.startsWith('--'));
   const [url, outputName = 'current-state.png'] = positional;
   const viewportArg = args.find((a) => a.startsWith('--viewport='));
+  const deviceArg = args.find((a) => a.startsWith('--device='));
   if (!url) {
-    console.error('Usage: node scripts/capture-screenshot.js <url> <output-filename> [--viewport=WxH] [--auth-state=path.json]');
+    console.error('Usage: node scripts/capture-screenshot.js <url> <output-filename> [--viewport=WxH] [--device=iphone-se|iphone-pro|ipad-mini|ipad-13] [--auth-state=path.json]');
     process.exit(1);
   }
 
   let viewport = { width: 1440, height: 900 };
+  const devicePresets = {
+    'iphone-se': { width: 375, height: 667 },
+    'iphone-pro': { width: 390, height: 844 },
+    'ipad-mini': { width: 768, height: 1024 },
+    'ipad-13': { width: 1024, height: 1366 },
+  };
+
+  if (deviceArg) {
+    const presetName = deviceArg.slice('--device='.length).toLowerCase();
+    if (devicePresets[presetName]) {
+      viewport = devicePresets[presetName];
+    }
+  }
+
   const vp = viewportArg?.match(/^--viewport=(\d+)x(\d+)$/);
   if (vp) viewport = { width: Number(vp[1]), height: Number(vp[2]) };
 

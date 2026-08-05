@@ -31,12 +31,12 @@ export default async function StudyPage({ params }: { params: Promise<{ query: s
   return (
     <div className="min-h-screen bg-[#0a0908] text-white">
       <header className="sticky top-0 z-50 bg-[#0a0908]/80 backdrop-blur-xl border-b border-white/10 px-4 md:px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-gray-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-full">
+        <div className="flex items-center gap-4 min-w-0 flex-1">
+          <Link href="/" className="text-gray-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-full shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div className="hidden md:block w-px h-6 bg-white/10" />
-          <h1 className="font-serif font-bold text-lg md:text-xl truncate text-gray-200">
+          <div className="hidden md:block w-px h-6 bg-white/10 shrink-0" />
+          <h1 className="font-serif font-bold text-lg md:text-xl truncate text-gray-200 min-w-0">
             Curating path for: <span className="text-accent ml-2 capitalize">{query.replace(/-/g, ' ')}</span>
           </h1>
         </div>

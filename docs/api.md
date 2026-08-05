@@ -14,6 +14,10 @@ Every AI text-generation call in the app goes through `generateText({ prompt, im
 
 `searchYouTube(query, apiKey): Promise<YouTubeCandidate[]>` — wraps the YouTube Data API v3 search endpoint, extracting the real `videoId`/`playlistId` into a `watch?v=`/`playlist?list=` URL in code rather than leaving URL construction to the model. Results are requested with `order=date` (not `relevance`) for every subject, so the newest upload that still matches the query sorts first — the prompt in `generatePath` then prefers the freshest candidate. Also just a helper, no `'use server'`.
 
+`extractYouTubeId(url)` / `extractYouTubePlaylistId(url)` — pull a bare video or playlist id out of any watch/embed/shorts/youtu.be/playlist URL shape. Shared between the path tracker's inline video preview and the note split-view video pane so both agree on one parsing rule.
+
+`resolveFirstPlaylistVideoId(playlistId, apiKey): Promise<string | null>` — a curated resource is just as often a full playlist as a single video (the top-free-creator rule ranks these #1 often), which has no single embeddable video id of its own. Resolves the playlist's first item via the `playlistItems` endpoint so split-view notes and the transcript fetch, which both operate on one specific video, have something to point at.
+
 ## `src/app/login/actions.ts`
 
 | Action | Signature | Behavior |
@@ -41,6 +45,8 @@ Password reset doesn't need a server action: the login page calls `supabase.auth
 | `updatePathStepStatus` | `(stepId: string, status: 'unstarted' \| 'completed')` | Toggled from the dashboard's path tracker checklist. |
 | `deletePath` | `(pathId: string)` | Removes a saved path; RLS scopes it to the owner. |
 | `setActiveSubject` | `(formData: FormData)` | Sets the `active_subject_id` cookie used to default `/review` and the dashboard to the last-viewed subject. |
+| `createNoteForVideo` | `(subjectId: string, title: string, videoId: string)` | "Take notes" on a path's video step. Creates an empty note pre-linked to that `video_id` and returns its id so the caller can navigate straight into split view. |
+| `createNoteForPlaylist` | `(subjectId: string, title: string, playlistId: string)` | Same, for a step whose resource is a full YouTube playlist rather than a single video (the top-free-creator rule ranks these #1 often, per `certification-path-ranking`). Resolves the playlist's first video server-side via `resolveFirstPlaylistVideoId` (keeps `YOUTUBE_API_KEY` off the client), then delegates to `createNoteForVideo`. Returns `{ error }` if the key is missing or the playlist has no resolvable video. |
 
 ## `src/app/notes/[id]/actions.ts`
 
@@ -51,6 +57,7 @@ Password reset doesn't need a server action: the login page calls `supabase.auth
 | `updateNoteTitle` | `(id: string, title: string)` | Called on blur, not debounced. Revalidates `/notes/[id]` and `/dashboard`. |
 | `createClozeCard` | `(noteId: string, line: number, prompt: string, answer: string)` | Triggered by selecting text and pressing Cmd/Ctrl+K in the editor. Creates a box-0 `cloze` card directly — does not modify the note body. |
 | `generatePromptsFromFile` | `(noteId: string, formData: FormData)` | Phase 3 import. Accepts a `file` (PDF or image) or pasted `text`, plus an optional `provider` override. PDFs are text-extracted locally with `pdf-parse` and the original file is uploaded to the private `note-pdfs` Storage bucket for later viewing. Content goes through `generateText` with a prompts-only system prompt per section 2 — 6 Vocab blanks (empty `**Def:**`) plus 6 Quiz blocks with full options, landing under `## Open questions`. Records a row in `imports`. |
+| `fetchVideoTranscript` | `(videoId: string)` | Wraps `youtube-transcript`'s `fetchTranscript`. Returns `{ success: false, error }` rather than throwing if the video has no captions, so `VideoPlayer` can show that state inline instead of an error boundary. |
 
 ## `src/app/actions/quiz-actions.ts`
 
