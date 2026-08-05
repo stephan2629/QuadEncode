@@ -16,7 +16,7 @@ Every AI text-generation call in the app goes through `generateText({ prompt, im
 
 `extractYouTubeId(url)` / `extractYouTubePlaylistId(url)` — pull a bare video or playlist id out of any watch/embed/shorts/youtu.be/playlist URL shape. Shared between the path tracker's inline video preview and the note split-view video pane so both agree on one parsing rule.
 
-`resolveFirstPlaylistVideoId(playlistId, apiKey): Promise<string | null>` — a curated resource is just as often a full playlist as a single video (the top-free-creator rule ranks these #1 often), which has no single embeddable video id of its own. Resolves the playlist's first item via the `playlistItems` endpoint so split-view notes and the transcript fetch, which both operate on one specific video, have something to point at.
+`resolveFirstPlaylistVideoId(playlistId, apiKey): Promise<string | null>` — a curated resource is just as often a full playlist as a single video (the top-free-creator rule ranks these #1 often), which has no single embeddable video id of its own. Resolves the playlist's first item via the `playlistItems` endpoint so split-view notes, which operate on one specific video, have something to point at.
 
 ## `src/app/login/actions.ts`
 
@@ -57,7 +57,6 @@ Password reset doesn't need a server action: the login page calls `supabase.auth
 | `updateNoteTitle` | `(id: string, title: string)` | Called on blur, not debounced. Revalidates `/notes/[id]` and `/dashboard`. |
 | `createClozeCard` | `(noteId: string, line: number, prompt: string, answer: string)` | Triggered by selecting text and pressing Cmd/Ctrl+K in the editor. Creates a box-0 `cloze` card directly — does not modify the note body. |
 | `generatePromptsFromFile` | `(noteId: string, formData: FormData)` | Phase 3 import. Accepts a `file` (PDF or image) or pasted `text`, plus an optional `provider` override. PDFs are text-extracted locally with `pdf-parse` and the original file is uploaded to the private `note-pdfs` Storage bucket for later viewing. Content goes through `generateText` with a prompts-only system prompt per section 2 — 6 Vocab blanks (empty `**Def:**`) plus 6 Quiz blocks with full options, landing under `## Open questions`. Records a row in `imports`. |
-| `fetchVideoTranscript` | `(videoId: string)` | Wraps `youtube-transcript`'s `fetchTranscript`. Returns `{ success: false, error }` rather than throwing if the video has no captions, so `VideoPlayer` can show that state inline instead of an error boundary. |
 
 ## `src/app/actions/quiz-actions.ts`
 

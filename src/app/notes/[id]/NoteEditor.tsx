@@ -181,17 +181,6 @@ export default function NoteEditor({
     insertTemplate(`[${formatTimestamp(seconds)}](timestamp://${videoId ?? ''}?t=${seconds})`);
   };
 
-  // Copies a transcript line into the note, prefixed with the same **At:**
-  // marker as a manual capture so the pasted text stays linked to its
-  // moment in the video.
-  const handleInsertTranscript = (text: string, seconds: number) => {
-    insertTemplate(`> "${text}" — [${formatTimestamp(seconds)}](timestamp://${videoId ?? ''}?t=${seconds})`);
-    // Mobile shows the video and note editor as separate toggled panels, not
-    // side by side, so there's nothing on screen confirming the insert
-    // landed - without this it silently updates a note the user can't see.
-    toast.success('Copied to note');
-  };
-
   // Auto-save logic for content
   useEffect(() => {
     if (content === initialData.body_md) return;
@@ -459,11 +448,11 @@ export default function NoteEditor({
                   by the mobile toggle; at lg and up it's always the pinned 55%
                   column regardless of that toggle. A separate desktop/mobile
                   block here used to mount two <VideoPlayer>s at once (one just
-                  CSS-hidden, not unmounted), which meant two YouTube embeds and
-                  two competing transcript fetches on every note with a video. */}
+                  CSS-hidden, not unmounted), which meant two YouTube embeds
+                  running on every note with a video. */}
               {videoId && (
                 <div className={`${showVideoOnMobile ? 'flex' : 'hidden'} flex-col h-full overflow-hidden p-4 pb-8 lg:flex lg:w-[55%] lg:shrink-0 lg:border-r lg:border-white/5`}>
-                  <VideoPlayer videoId={videoId} seekToSeconds={seekToSeconds} onCapture={handleCaptureTimestamp} onInsertTranscript={handleInsertTranscript} />
+                  <VideoPlayer videoId={videoId} seekToSeconds={seekToSeconds} onCapture={handleCaptureTimestamp} />
                 </div>
               )}
 

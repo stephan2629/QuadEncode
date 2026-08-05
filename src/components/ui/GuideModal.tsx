@@ -1,7 +1,7 @@
 'use client';
 
 import { m, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Video, Keyboard, ClipboardPlus, List, PlaySquare } from 'lucide-react';
+import { X, Sparkles, Video, Keyboard, Clock, Link2, PlaySquare } from 'lucide-react';
 
 interface GuideModalProps {
   isOpen: boolean;
@@ -54,21 +54,21 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                 {/* Video Features */}
                 <section>
                   <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-widest text-gray-400">
-                    <Video className="w-4 h-4 text-accent" /> Video & transcript
+                    <Video className="w-4 h-4 text-accent" /> Video notes
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5">
-                      <List className="w-5 h-5 text-gray-300 mb-2" />
-                      <h4 className="text-sm font-semibold text-white mb-1">Interactive transcript</h4>
+                      <Clock className="w-5 h-5 text-gray-300 mb-2" />
+                      <h4 className="text-sm font-semibold text-white mb-1">Capture timestamp</h4>
                       <p className="text-xs text-gray-400 leading-relaxed">
-                        The transcript panel loads the spoken words from the video. Click any line to jump the player to that moment.
+                        Click Capture Timestamp while watching to drop a time-linked marker into your note at the cursor.
                       </p>
                     </div>
                     <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5">
-                      <ClipboardPlus className="w-5 h-5 text-gray-300 mb-2" />
-                      <h4 className="text-sm font-semibold text-white mb-1">Copy lines into your note</h4>
+                      <Link2 className="w-5 h-5 text-gray-300 mb-2" />
+                      <h4 className="text-sm font-semibold text-white mb-1">Jump back to that moment</h4>
                       <p className="text-xs text-gray-400 leading-relaxed">
-                        Hover a transcript line and click the copy icon to drop it into your note with a timestamp link back to that moment.
+                        Click a captured timestamp link in your note to seek the video straight back to that second.
                       </p>
                     </div>
                   </div>
