@@ -240,7 +240,7 @@ export default function QuizTab({
           </span>
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-500 hover:text-gray-300 uppercase transition-colors"
+            className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-400 hover:text-gray-300 uppercase transition-colors"
           >
             <RotateCcw className="w-3 h-3" aria-hidden="true" /> Start over
           </button>
@@ -347,16 +347,16 @@ export default function QuizTab({
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-[#0a0908] p-4 rounded-2xl border border-white/5">
               <div className="text-3xl font-mono text-accent font-bold mb-1">{score}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">Correct</div>
+              <div className="text-xs text-gray-400 uppercase tracking-wider font-bold">Correct</div>
             </div>
             <div className="bg-[#0a0908] p-4 rounded-2xl border border-white/5">
               <div className="text-3xl font-mono text-red-400 font-bold mb-1">{total - score}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">Missed</div>
+              <div className="text-xs text-gray-400 uppercase tracking-wider font-bold">Missed</div>
             </div>
           </div>
 
           <div className="text-left bg-[#14120f] border border-white/10 rounded-2xl p-5 mb-8 space-y-3 max-h-64 overflow-y-auto custom-scrollbar">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Every question</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Every question</h3>
             {answered.map((a, i) => (
               <div key={i} className="border-b border-white/5 last:border-0 pb-3 last:pb-0">
                 <div className="flex items-start justify-between gap-3">

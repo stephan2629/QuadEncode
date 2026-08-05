@@ -5,6 +5,7 @@ import { m } from "framer-motion";
 import { login, signup } from './actions';
 import { createClient } from '@/utils/supabase/client';
 import { humanizeAuthError, humanizeCallbackError } from '@/lib/auth-errors';
+import { validatePassword, PASSWORD_HINT } from '@/lib/password';
 import { Loader2, Mail, Lock, User, AlertCircle, CheckCircle2, ArrowLeft, Key } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -64,6 +65,15 @@ export default function LoginPage() {
         setNotice('Check your email for a reset link.');
       }
       return;
+    }
+
+    if (mode === 'signup') {
+      const passwordError = validatePassword(formData.get('password') as string);
+      if (passwordError) {
+        setError(passwordError);
+        setLoading(false);
+        return;
+      }
     }
 
     const action = isLogin ? login : signup;
@@ -194,12 +204,13 @@ export default function LoginPage() {
                     name="password"
                     type="password"
                     autoComplete={isLogin ? 'current-password' : 'new-password'}
-                    placeholder={isLogin ? '••••••••' : 'At least 8 characters'}
+                    placeholder={isLogin ? '••••••••' : PASSWORD_HINT}
                     required
                     // Only gate signup: an existing account's password
                     // predates whatever the project's minimum is today, so
                     // sign-in must never reject it client-side.
                     minLength={isLogin ? undefined : 8}
+                    maxLength={isLogin ? undefined : 32}
                     className="w-full bg-[#0a0908] border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-sans"
                   />
                 </div>
@@ -256,7 +267,7 @@ export default function LoginPage() {
           {mode !== 'reset' && (
             <div className="flex items-center gap-3 my-6 relative z-10">
               <div className="h-px flex-1 bg-white/10" />
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest font-mono">Or</span>
+              <span className="text-[10px] text-gray-400 uppercase tracking-widest font-mono">Or</span>
               <div className="h-px flex-1 bg-white/10" />
             </div>
           )}

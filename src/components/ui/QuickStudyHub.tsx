@@ -10,9 +10,15 @@ interface QuickStudyHubProps {
   activeSubjectId?: string;
   dueCount: number;
   hasCards: boolean;
+  pathCount: number;
 }
 
-export function QuickStudyHub({ activeSubjectId, dueCount, hasCards }: QuickStudyHubProps) {
+// Matches the limit saveGeneratedPath enforces server-side (3 active paths
+// total, across every subject) - see src/app/dashboard/actions.ts.
+const PATH_LIMIT = 3;
+
+export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }: QuickStudyHubProps) {
+  const atPathLimit = pathCount >= PATH_LIMIT;
   return (
     <m.div
       initial={{ opacity: 0, y: 15 }}
@@ -81,15 +87,17 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards }: QuickStud
                 <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform duration-300">
                   <Compass className="w-6 h-6" />
                 </div>
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-400">
-                  AI curated
+                <span className={`text-[10px] font-mono font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border ${atPathLimit ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-white/5 border-white/10 text-gray-400'}`}>
+                  {atPathLimit ? `${pathCount}/${PATH_LIMIT} paths` : 'AI curated'}
                 </span>
               </div>
               <h4 className="text-lg font-bold font-serif text-white group-hover:text-amber-400 transition-colors">
                 Discover learning paths
               </h4>
               <p className="text-xs text-gray-400 mt-1 leading-relaxed font-light">
-                Type any subject to instantly curate top-rated video courses and documentation.
+                {atPathLimit
+                  ? `You're at the ${PATH_LIMIT}-path limit. Delete a path below before saving a new one.`
+                  : 'Type any subject to instantly curate top-rated video courses and documentation.'}
               </p>
             </div>
 

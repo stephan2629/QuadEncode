@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { m } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
 import { humanizeAuthError } from '@/lib/auth-errors';
+import { validatePassword, PASSWORD_HINT } from '@/lib/password';
 import { Loader2, Eye, EyeOff, CheckCircle2, Lock } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -22,8 +23,9 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -111,9 +113,10 @@ export default function ResetPasswordPage() {
                       id="new-password"
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="new-password"
-                      placeholder="At least 8 characters"
+                      placeholder={PASSWORD_HINT}
                       required
                       minLength={8}
+                      maxLength={32}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full bg-[#0a0908] border border-white/10 rounded-xl px-4 py-3.5 pr-12 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-sans"
@@ -121,7 +124,7 @@ export default function ResetPasswordPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors p-1"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -141,6 +144,7 @@ export default function ResetPasswordPage() {
                     placeholder="Re-enter new password"
                     required
                     minLength={8}
+                    maxLength={32}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="w-full bg-[#0a0908] border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-sans"
@@ -175,6 +179,13 @@ export default function ResetPasswordPage() {
                     'Save New Password'
                   )}
                 </button>
+
+                <Link
+                  href="/login"
+                  className="block text-center text-sm text-gray-400 hover:text-gray-300 transition-colors py-2"
+                >
+                  Cancel
+                </Link>
               </form>
             </>
           )}

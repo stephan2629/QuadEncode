@@ -3,11 +3,12 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Book, Plus, LogOut, Trash2 } from 'lucide-react';
+import { Book, Plus, Trash2 } from 'lucide-react';
 import { createSubject, createNote, deleteSubject } from './actions';
-import { logout, deleteAccount } from '../login/actions';
+import { logout } from '../login/actions';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { SubjectSwitcher } from '@/components/ui/SubjectSwitcher';
+import AccountMenu from '@/components/ui/AccountMenu';
 import PendingPathSaver from './PendingPathSaver';
 import PathTracker, { type PathData } from './PathTracker';
 import NotesGrid from './NotesGrid';
@@ -61,6 +62,12 @@ export default async function DashboardPage() {
     .select('reviewed_at')
     .gte('reviewed_at', seventyDaysAgo.toISOString());
   const reviewDates = (reviewsData || []).map(r => r.reviewed_at);
+
+  // Global across all subjects, matching the limit saveGeneratedPath enforces
+  // in src/app/dashboard/actions.ts (3 active paths total, not per subject).
+  const { count: pathCount } = await supabase
+    .from('paths')
+    .select('id', { count: 'exact', head: true });
 
   let totalCards = 0;
   let dueCount = 0;
@@ -141,7 +148,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="h-dvh w-full bg-[#0a0908] text-white overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-y-auto w-full p-4 sm:p-6 md:p-12 max-w-6xl mx-auto custom-scrollbar">
+      <div data-dashboard-scroll className="flex-1 overflow-y-auto w-full p-4 sm:p-6 md:p-12 max-w-6xl mx-auto custom-scrollbar">
       <PendingPathSaver />
       
       <header className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0 mb-10 md:mb-16">
@@ -157,17 +164,12 @@ export default async function DashboardPage() {
           )}
         </div>
         
-        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-          <span className="text-gray-400 text-xs md:text-sm truncate max-w-[200px] sm:max-w-none">{user.email}</span>
-          <form action={logout}>
-            <button
-              className="p-3 sm:p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-              title="Sign out of your account"
-              aria-label="Sign out of your account"
-            >
-              <LogOut className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-          </form>
+        <div className="flex items-center w-full sm:w-auto justify-end">
+          <AccountMenu
+            email={user.email ?? ''}
+            name={user.user_metadata?.name || user.user_metadata?.full_name || null}
+            onLogout={logout}
+          />
         </div>
       </header>
 
@@ -182,6 +184,7 @@ export default async function DashboardPage() {
         activeSubjectId={activeSubject?.id}
         dueCount={dueCount}
         hasCards={totalCards > 0}
+        pathCount={pathCount ?? 0}
       />
 
       {/* Progress and stats appear only once there's enough to show, per
@@ -220,6 +223,7 @@ export default async function DashboardPage() {
                 <form action={deleteSubject}>
                   <input type="hidden" name="id" value={activeSubject.id} />
                   <ConfirmButton
+                    confirmTitle="Delete subject?"
                     confirmMessage={`Delete "${activeSubject.name}" and all its notes? This can't be undone.`}
                     aria-label={`Delete ${activeSubject.name}`}
                     className="text-gray-500 hover:text-red-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -284,17 +288,6 @@ export default async function DashboardPage() {
         </>
       )}
       </main>
-
-      <footer className="mt-20 pt-8 border-t border-white/5 text-center">
-        <form action={deleteAccount}>
-          <ConfirmButton
-            confirmMessage="Delete your account? All subjects, notes, cards, and review history are permanently removed. This can't be undone."
-            className="text-xs text-gray-400 hover:text-red-400 transition-colors"
-          >
-            Delete account
-          </ConfirmButton>
-        </form>
-      </footer>
       </div>
     </div>
   );

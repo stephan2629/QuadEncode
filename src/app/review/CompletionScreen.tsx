@@ -63,7 +63,7 @@ export default function CompletionScreen({ results = [] }: { results?: SessionRe
 
             {missed.length > 0 && (
               <div className="text-left bg-[#1a1815] border border-white/5 rounded-2xl p-6 mb-10 shadow-inner">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4 flex items-center gap-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-red-500/50"></span>
                   Needs more review
                 </h2>

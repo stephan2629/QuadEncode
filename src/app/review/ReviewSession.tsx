@@ -271,7 +271,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                         You got this right twice in a row. Explain it in your own words to turn it into a card of your own.
                       </p>
                       <div>
-                        <label htmlFor="re-explain" className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
+                        <label htmlFor="re-explain" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
                           {displayPrompt}
                         </label>
                         <textarea
@@ -288,7 +288,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                   ) : stage === 'editing' ? (
                     <div className="w-full text-left space-y-4">
                       <div>
-                        <label htmlFor="edit-prompt" className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
+                        <label htmlFor="edit-prompt" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
                           Prompt
                         </label>
                         <textarea
@@ -300,7 +300,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                         />
                       </div>
                       <div>
-                        <label htmlFor="edit-answer" className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
+                        <label htmlFor="edit-answer" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
                           Answer
                         </label>
                         <textarea

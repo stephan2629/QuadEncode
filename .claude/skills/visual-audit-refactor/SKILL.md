@@ -38,10 +38,50 @@ The script (`scripts/capture-screenshot.js`) uses `@playwright/test`, already
 a project dependency (CLAUDE.md §22), rather than a new headless-browser lib.
 Output lands in `.claude/screenshots/` (gitignored).
 
+### Step 1b: auditing a screenshot the user took themselves
+
+Sometimes the image to audit isn't one this skill captured - it's a phone or
+browser screenshot the user already has (their own device, a state this
+script can't reach like a native share sheet or an OAuth consent screen).
+Pasting it inline in a long chat can get rejected once a session's image
+budget is spent, and there's no local file for Read to fall back to.
+
+Have the user save it into `.claude/screenshots/inbox/` (same gitignored
+directory as captured shots, kept in its own subfolder so inbox files never
+collide with `current-state.png`-style script output) and give you the
+filename, instead of pasting it into the chat. Read it from that path like
+any other screenshot in this skill - Step 2's checklist applies identically,
+it doesn't matter whether Playwright or the user's phone produced the file.
+
 ### Step 2: visual inspection & checklist evaluation
+
+**If Read on a screenshot comes back "rejected by API" / media removed:**
+that's the conversation's image budget, exhausted from earlier screenshots
+in a long session, not a bad file. Don't keep retrying the same path. Either
+resume the audit in a fresh conversation (full budget), or fall back to a
+DOM-based check with Playwright (`page.locator(...).count()` /
+`textContent()` against the specific rule you're verifying) instead of a
+screenshot - that still confirms the fix without needing to view an image.
 
 Read and inspect `.claude/screenshots/<output-filename>`. Evaluate the
 rendered UI against these reference pillars:
+
+**Caveat: scroll-linked (not scroll-triggered-once) animations can render
+mid-transition in the screenshot.** The capture script scrolls through the
+page in steps to fire `whileInView` animations, then resets to the top
+before shooting - that reliably settles a one-time `whileInView` trigger,
+but a component wired to *live* scroll position via `useScroll`/
+`useTransform` (e.g. `ContainerScrollAnimation.tsx`) can be left stuck at
+whatever value the last synthetic scroll step computed, showing as
+washed-out/faded text that has nothing wrong with it. Before treating a
+faded or oddly-positioned element as a defect, check whether it sits inside
+a `useTransform(scrollYProgress, ...)` binding - if so, verify live instead
+of trusting the screenshot: `mcp__chrome-devtools__evaluate_script` to read
+`getComputedStyle(el).opacity` at `scrollTop=0` (its correct pre-scroll
+state, often legitimately `0`) and again after
+`el.scrollIntoView({block:'center'})` (should reach `1`). Only flag it if
+the *scrolled-to* state is wrong - the resting state being faded is by
+design for a scroll-reveal effect.
 
 **QuadEncode design spec (CLAUDE.md §12–13)**
 - Background palette: warm near-black (`#14120F`). Paper-at-night feel, no
@@ -127,5 +167,13 @@ own two states worth capturing separately:
 2. Refactor the Tailwind CSS, markup, or layout styles to fix the issue,
    reusing existing values/patterns from `src/` per the design-system check
    above rather than introducing new ones.
-3. Re-run the screenshot script (Step 1) against the same URL to verify the
+3. Apply the `ponytail` skill's discipline to the fix itself: the smallest
+   diff that resolves the flagged defect, not a rewrite of the surrounding
+   component. Reuse an existing utility class, pattern, or nearby component
+   before writing new markup (ponytail's ladder, step 2) - a design defect
+   is a styling bug, not license to restructure. Skip any abstraction
+   (a new shared component, a config option, a variant prop) unless the
+   same defect already recurs in three or more places; note that as a
+   one-line `skipped: X, add when Y` rather than building it preemptively.
+4. Re-run the screenshot script (Step 1) against the same URL to verify the
    fix before reporting it done.

@@ -55,7 +55,7 @@ export function ContainerScrollAnimation() {
               else in the app (kicker badge, "AI curated", "Due review") -
               not a fake window chrome borrowed from a generic SaaS template. */}
           <div className="flex items-center justify-between pb-6 mb-6 border-b border-white/10">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-500">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-400">
               The mechanic
             </span>
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-full">

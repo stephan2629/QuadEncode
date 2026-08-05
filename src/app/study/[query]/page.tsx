@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { generatePath } from './actions';
 import SavePathButton from './SavePathButton';
 import PathTimeline from '@/components/ui/PathTimeline';
+import WordCycleLoader from '@/components/ui/WordCycleLoader';
 
 export async function generateMetadata({ params }: { params: Promise<{ query: string }> }): Promise<Metadata> {
   const resolvedParams = await params;
@@ -50,11 +51,9 @@ export default async function StudyPage({ params }: { params: Promise<{ query: s
               <Loader2 className="w-12 h-12 text-accent animate-spin relative z-10" />
             </div>
             <h2 className="text-2xl font-serif font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500">
-              Analyzing the best resources...
+              Finding best sources
             </h2>
-            <p className="text-gray-400 max-w-md mx-auto text-sm">
-              We are interpreting your query, fetching top-rated YouTube courses and web documentation, and using AI to curate the optimal learning path for you. This takes about 10 seconds.
-            </p>
+            <WordCycleLoader />
           </div>
         }>
           <PathRenderer query={query} />

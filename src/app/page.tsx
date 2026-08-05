@@ -441,7 +441,7 @@ export default function Home() {
                   </p>
                   {feature.citation && (
                     <div className="mt-6 pt-4 border-t border-white/5 transform-gpu translate-z-10">
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-500">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-400">
                         {feature.citation}
                       </span>
                     </div>

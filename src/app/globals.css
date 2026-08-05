@@ -98,6 +98,40 @@
   animation: fade-in-up 300ms ease-out both;
 }
 
+/* Word-cycle loader (adapted from a UIverse.io component by kennyotsu) used
+   by WordCycleLoader.tsx. Timed for exactly 5 stacked words where the 5th
+   repeats the 1st, so the loop back to the top reads as seamless - not a
+   generic N-word animation, the word count is fixed to this timing. */
+.word-loader-words {
+  overflow: hidden;
+  position: relative;
+}
+.word-loader-words::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    var(--background) 10%,
+    transparent 30%,
+    transparent 70%,
+    var(--background) 90%
+  );
+}
+.word-loader-word {
+  display: block;
+  animation: word-cycle 4s infinite;
+}
+@keyframes word-cycle {
+  10% { transform: translateY(-102%); }
+  25% { transform: translateY(-100%); }
+  35% { transform: translateY(-202%); }
+  50% { transform: translateY(-200%); }
+  60% { transform: translateY(-302%); }
+  75% { transform: translateY(-300%); }
+  85% { transform: translateY(-402%); }
+  100% { transform: translateY(-400%); }
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
