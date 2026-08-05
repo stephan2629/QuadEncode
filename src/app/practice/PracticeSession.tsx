@@ -135,7 +135,7 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
 
           {missed.length > 0 && (
             <div className="text-left bg-[#14120f] border border-white/10 rounded-2xl p-5 mb-10">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Worth another look</h2>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Worth another look</h2>
               <ul className="space-y-2">
                 {missed.map((r, i) => (
                   <li key={i}>
@@ -177,7 +177,7 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
           </div>
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-500 hover:text-gray-300 uppercase transition-colors"
+            className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-400 hover:text-gray-300 uppercase transition-colors"
           >
             <RotateCcw className="w-3 h-3" aria-hidden="true" /> Start over
           </button>

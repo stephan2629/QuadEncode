@@ -30,7 +30,7 @@ export default function FlipCardDemo({ kind, prompt, answer, options }: FlipCard
           className="absolute inset-0 bg-[#14120f] border border-white/10 rounded-2xl p-6 flex flex-col justify-between"
           style={{ backfaceVisibility: 'hidden' }}
         >
-          <span className="font-mono text-[10px] uppercase tracking-widest text-gray-500">{kind}</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-gray-400">{kind}</span>
           <p className="font-serif text-lg text-white leading-snug">{prompt}</p>
           <span className="flex items-center gap-1.5 text-xs text-gray-500">
             <RotateCw className="w-3 h-3" aria-hidden="true" /> Click to flip

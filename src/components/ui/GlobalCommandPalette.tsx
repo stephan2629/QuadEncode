@@ -70,7 +70,7 @@ export function GlobalCommandPalette() {
         <Command.List className="max-h-[300px] overflow-y-auto p-2 custom-scrollbar">
           <Command.Empty className="py-6 text-center text-sm text-gray-400 font-serif italic">No results found.</Command.Empty>
 
-          <Command.Group heading="Navigation" className="text-xs font-semibold text-gray-500 uppercase tracking-wider p-2">
+          <Command.Group heading="Navigation" className="text-xs font-semibold text-gray-400 uppercase tracking-wider p-2">
             <Command.Item 
               onSelect={() => { setOpen(false); router.push('/dashboard'); }}
               className="flex items-center px-4 py-3 mt-1 rounded-lg text-sm text-gray-200 cursor-pointer aria-selected:bg-white/10 aria-selected:text-white"
@@ -88,7 +88,7 @@ export function GlobalCommandPalette() {
           </Command.Group>
 
           {subjects.length > 0 && (
-            <Command.Group heading="Subjects" className="text-xs font-semibold text-gray-500 uppercase tracking-wider p-2 mt-2">
+            <Command.Group heading="Subjects" className="text-xs font-semibold text-gray-400 uppercase tracking-wider p-2 mt-2">
               {subjects.map((s) => (
                 <Command.Item 
                   key={s.id}
@@ -107,7 +107,7 @@ export function GlobalCommandPalette() {
             </Command.Group>
           )}
 
-          <Command.Group heading="Account" className="text-xs font-semibold text-gray-500 uppercase tracking-wider p-2 mt-2">
+          <Command.Group heading="Account" className="text-xs font-semibold text-gray-400 uppercase tracking-wider p-2 mt-2">
             <Command.Item 
               onSelect={() => { 
                 setOpen(false); 

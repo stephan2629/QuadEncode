@@ -110,6 +110,7 @@ export default function NotesGrid({ notes }: { notes: Note[] }) {
                 <form action={deleteNote}>
                   <input type="hidden" name="id" value={note.id} />
                   <ConfirmButton
+                    confirmTitle="Delete note?"
                     confirmMessage={`Delete "${note.title}"? This can't be undone.`}
                     aria-label="Delete note"
                     className="text-gray-400 hover:text-red-400 p-2 md:p-1 rounded-lg hover:bg-white/5 transition-colors opacity-100 md:opacity-0 md:group-hover/note:opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center focus:opacity-100 shrink-0"

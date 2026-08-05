@@ -45,6 +45,12 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
   const [loadingStepId, setLoadingStepId] = useState<string | null>(null);
   const [deletingPathId, setDeletingPathId] = useState<string | null>(null);
   const [activeVideoStepId, setActiveVideoStepId] = useState<string | null>(null);
+  // The panel's height animates 0 -> auto (see the m.div below); mounting
+  // the YouTube iframe immediately makes it load and paint its first frame
+  // while the container is still being resized, which the browser renders
+  // as a blurry, scaled bitmap instead of the sharp thumbnail. Waiting for
+  // the expand animation to finish before mounting the iframe fixes it.
+  const [readyVideoStepId, setReadyVideoStepId] = useState<string | null>(null);
   const [takingNotesStepId, setTakingNotesStepId] = useState<string | null>(null);
 
   if (initialPaths !== prevInitialPaths) {
@@ -67,6 +73,21 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
     }
   };
 
+  // Both actions below call revalidatePath('/dashboard') server-side, which
+  // patches fresh RSC data into the page - that can reset the scroll
+  // position of the dashboard's custom overflow-y-auto container (deleting
+  // a card also shortens the page, which alone can force a scroll
+  // reset). Capturing and restoring scrollTop across the update fixes both
+  // causes regardless of which one is actually responsible.
+  const withScrollPreserved = async (action: () => Promise<void>) => {
+    const scrollEl = document.querySelector<HTMLElement>('[data-dashboard-scroll]');
+    const scrollTop = scrollEl?.scrollTop;
+    await action();
+    if (scrollEl && scrollTop != null) {
+      requestAnimationFrame(() => { scrollEl.scrollTop = scrollTop; });
+    }
+  };
+
   const handleToggle = async (pathId: string, stepId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'completed' ? 'unstarted' : 'completed';
     setLoadingStepId(stepId);
@@ -80,13 +101,13 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
       };
     }));
 
-    await updatePathStepStatus(stepId, newStatus);
+    await withScrollPreserved(() => updatePathStepStatus(stepId, newStatus));
     setLoadingStepId(null);
   };
 
   const handleDelete = async (pathId: string) => {
     setDeletingPathId(pathId);
-    await deletePath(pathId);
+    await withScrollPreserved(() => deletePath(pathId));
     setOptimisticPaths(prev => prev.filter(p => p.id !== pathId));
     setDeletingPathId(null);
     toast.success('Path deleted');
@@ -127,7 +148,8 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                     </div>
                   </div>
                   <ConfirmButton
-                    confirmMessage={`Delete the path for "${path.subjects.name}"?`}
+                    confirmTitle="Are you sure you want to delete?"
+                    confirmMessage=""
                     onClick={() => handleDelete(path.id)}
                     aria-label={`Delete path for ${path.subjects.name}`}
                     className="text-gray-500 hover:text-red-400 p-3.5 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
@@ -188,7 +210,10 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                               <span className="text-xs font-mono text-gray-500 shrink-0">{step.order}</span>
                               {isVideo ? (
                                 <button
-                                  onClick={() => setActiveVideoStepId(activeVideoStepId === step.id ? null : step.id)}
+                                  onClick={() => {
+                                    setActiveVideoStepId(activeVideoStepId === step.id ? null : step.id);
+                                    setReadyVideoStepId(null);
+                                  }}
                                   className={`font-medium transition-colors flex items-center gap-1.5 text-left ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-200 hover:text-accent'}`}
                                 >
                                   {step.resources?.title}
@@ -249,6 +274,9 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
+                              onAnimationComplete={() => {
+                                if (activeVideoStepId === step.id) setReadyVideoStepId(step.id);
+                              }}
                               className="w-full overflow-hidden"
                             >
                               <div className="pt-4 border-t border-white/10 mt-2 relative">
@@ -262,13 +290,19 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                                 </div>
                                 <div className="relative w-full aspect-video min-h-[250px] md:min-h-[360px] rounded-xl overflow-hidden border border-white/10 bg-black shadow-lg">
                                   {embedSrc ? (
-                                    <iframe
-                                      src={embedSrc}
-                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                      allowFullScreen
-                                      title={step.resources?.title || "YouTube Video"}
-                                      className="absolute top-0 left-0 w-full h-full border-0"
-                                    ></iframe>
+                                    readyVideoStepId === step.id ? (
+                                      <iframe
+                                        src={embedSrc}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        allowFullScreen
+                                        title={step.resources?.title || "YouTube Video"}
+                                        className="absolute top-0 left-0 w-full h-full border-0"
+                                      ></iframe>
+                                    ) : (
+                                      <div className="absolute inset-0 flex items-center justify-center">
+                                        <Loader2 className="w-6 h-6 text-gray-500 animate-spin" aria-hidden="true" />
+                                      </div>
+                                    )
                                   ) : (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 p-6 text-center">
                                       <ExternalLink className="w-8 h-8 mb-4 opacity-50" />
