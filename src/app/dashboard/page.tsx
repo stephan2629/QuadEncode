@@ -206,7 +206,7 @@ export default async function DashboardPage() {
               required
               className="flex-1 bg-[#1a1815] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-accent text-base md:text-sm"
             />
-            <button type="submit" className="bg-accent text-[#0a0908] hover:bg-accent/90 rounded-lg px-4 py-2 text-sm font-bold transition-colors flex items-center gap-2">
+            <button type="submit" className="bg-accent text-[#0a0908] hover:bg-accent/90 rounded-lg px-4 py-2 min-h-[44px] text-sm font-bold transition-colors flex items-center gap-2">
               <Plus className="w-4 h-4" /> Create
             </button>
           </form>
@@ -276,7 +276,7 @@ export default async function DashboardPage() {
                 required
                 className="bg-[#1a1815] border border-white/5 rounded-lg px-4 py-2 flex-1 text-base md:text-sm focus:outline-none focus:border-accent/50 text-white placeholder-gray-600"
               />
-              <button type="submit" aria-label="Add note" className="text-[#0a0908] bg-accent hover:bg-accent/90 px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-2 text-sm">
+              <button type="submit" aria-label="Add note" className="text-[#0a0908] bg-accent hover:bg-accent/90 px-4 py-2 min-h-[44px] rounded-lg transition-colors font-medium flex items-center gap-2 text-sm">
                 <Plus className="w-4 h-4" aria-hidden="true" /> Create note
               </button>
             </form>
