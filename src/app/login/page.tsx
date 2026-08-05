@@ -47,9 +47,15 @@ export default function LoginPage() {
     if (mode === 'reset') {
       const email = formData.get('email') as string;
       const supabase = createClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      // window.location.origin, not NEXT_PUBLIC_SITE_URL: that env var is a
+      // build-time constant baked to the production domain (netlify.toml),
+      // identical on every branch-preview and local build. The PKCE
+      // code_verifier this flow needs is a cookie scoped to whatever origin
+      // actually sent this request, so the reset link has to redirect back
+      // to that same origin or the code exchange fails every time on any
+      // non-production host. Matches the Google OAuth handler below.
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
       });
       setLoading(false);
       if (resetError) {
