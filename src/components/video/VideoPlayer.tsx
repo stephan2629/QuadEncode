@@ -3,6 +3,7 @@
 import { useRef, useEffect } from 'react';
 import YouTube, { type YouTubePlayer } from 'react-youtube';
 import { Clock } from 'lucide-react';
+import { useSessionStorage } from '@/hooks/useSessionStorage';
 
 interface VideoPlayerProps {
   videoId: string;
@@ -10,11 +11,20 @@ interface VideoPlayerProps {
   onCapture: (seconds: number) => void;
 }
 
+// Playback position is per-video, browser-local convenience state, not app
+// data - sessionStorage is enough, and it already survives a refresh or a
+// sign-out within the same tab, which is what was actually asked for.
+const YT_STATE_PLAYING = 1;
+
 export default function VideoPlayer({ videoId, seekToSeconds, onCapture }: VideoPlayerProps) {
   const playerRef = useRef<YouTubePlayer | null>(null);
   const videoContainerRef = useRef<HTMLDivElement | null>(null);
+  const positionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Seeks whenever a new target arrives
+  const [savedPosition, setSavedPosition] = useSessionStorage(`video-${videoId}-position`, 0);
+
+  // Seeks whenever a new target arrives (e.g. clicking a captured timestamp
+  // link elsewhere in the note)
   useEffect(() => {
     if (seekToSeconds != null) playerRef.current?.seekTo(seekToSeconds, true);
   }, [seekToSeconds]);
@@ -35,6 +45,28 @@ export default function VideoPlayer({ videoId, seekToSeconds, onCapture }: Video
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (positionIntervalRef.current) clearInterval(positionIntervalRef.current);
+    };
+  }, []);
+
+  const persistPosition = async () => {
+    if (!playerRef.current) return;
+    const seconds = await playerRef.current.getCurrentTime();
+    setSavedPosition(Math.floor(seconds));
+  };
+
+  const handleStateChange = (e: { data: number }) => {
+    if (e.data === YT_STATE_PLAYING) {
+      if (positionIntervalRef.current) clearInterval(positionIntervalRef.current);
+      positionIntervalRef.current = setInterval(persistPosition, 5000);
+    } else {
+      if (positionIntervalRef.current) clearInterval(positionIntervalRef.current);
+      persistPosition();
+    }
+  };
+
   const handleCapture = async () => {
     if (!playerRef.current) return;
     const seconds = Math.floor(await playerRef.current.getCurrentTime());
@@ -43,10 +75,6 @@ export default function VideoPlayer({ videoId, seekToSeconds, onCapture }: Video
 
   return (
     <div className="flex flex-col h-full bg-[#0a0908] rounded-xl border border-white/5 overflow-hidden">
-      {/* Video fills the panel - this used to share the column with a
-          transcript list below it (removed: YouTube suppresses caption
-          data for requests from Netlify's serverless IPs often enough that
-          the feature was unreliable, see docs/decisions/0003). */}
       <div ref={videoContainerRef} className="relative w-full flex-1 min-h-[320px] bg-black shadow-2xl">
         <YouTube
           videoId={videoId}
@@ -59,7 +87,20 @@ export default function VideoPlayer({ videoId, seekToSeconds, onCapture }: Video
           }}
           className="absolute inset-0 w-full h-full"
           iframeClassName="absolute inset-0 w-full h-full"
-          onReady={(e) => { playerRef.current = e.target; }}
+          onReady={(e) => {
+            playerRef.current = e.target;
+            // Only resume if nothing else (e.g. a clicked timestamp link)
+            // already asked for a specific position. savedPosition comes
+            // from sessionStorage via a post-mount effect in
+            // useSessionStorage - in practice that resolves well before the
+            // iframe finishes loading, but a very fast local cache could in
+            // theory race it and resume from 0 once. Not worth a loading
+            // gate for that edge case.
+            if (seekToSeconds == null && savedPosition > 5) {
+              e.target.seekTo(savedPosition, true);
+            }
+          }}
+          onStateChange={handleStateChange}
         />
       </div>
 
