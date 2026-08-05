@@ -93,6 +93,18 @@ describe('parseBlanks', () => {
     expect(blank.videoT).toBe(142);
   });
 
+  it('attaches a timestamp:// marker to the blank that follows it', () => {
+    const md = '[02:22](timestamp://abc?t=142)\n**Vocab:** Term\n**Def:** Definition';
+    const [blank] = parseBlanks(md);
+    expect(blank.videoT).toBe(142);
+  });
+
+  it('attaches a legacy hash #t= marker to the blank that follows it', () => {
+    const md = '[02:22](#t=142)\n**Vocab:** Term\n**Def:** Definition';
+    const [blank] = parseBlanks(md);
+    expect(blank.videoT).toBe(142);
+  });
+
   it('does not carry a marker over to a second, unrelated blank', () => {
     const md = ['**At:** 1:00', '**Vocab:** T1', '**Def:** D1', '**Vocab:** T2', '**Def:** D2'].join('\n');
     const [first, second] = parseBlanks(md);

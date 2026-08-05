@@ -14,6 +14,23 @@ export function extractYouTubePlaylistId(url: string): string | null {
   return match ? match[1] : null
 }
 
+// Playlist-only resources (the #1 ranked step for a lot of paths, per the
+// top-free-creator rule) have no single embeddable video id of their own.
+// Split-view notes and the transcript fetch both operate on one specific
+// video, so resolve the playlist's first item to stand in for "the video"
+// when a learner starts taking notes on it.
+export async function resolveFirstPlaylistVideoId(playlistId: string, apiKey: string): Promise<string | null> {
+  const params = new URLSearchParams({
+    part: 'snippet',
+    playlistId,
+    maxResults: '1',
+    key: apiKey,
+  })
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?${params.toString()}`)
+  const data = await res.json()
+  return data.items?.[0]?.snippet?.resourceId?.videoId ?? null
+}
+
 export interface YouTubeCandidate {
   title: string
   url: string

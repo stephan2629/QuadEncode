@@ -1,7 +1,7 @@
 'use client';
 
 import { m, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Video, Keyboard, MessageSquare, List, PlaySquare } from 'lucide-react';
+import { X, Sparkles, Video, Keyboard, ClipboardPlus, List, PlaySquare } from 'lucide-react';
 
 interface GuideModalProps {
   isOpen: boolean;
@@ -54,21 +54,21 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                 {/* Video Features */}
                 <section>
                   <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-widest text-gray-400">
-                    <Video className="w-4 h-4 text-accent" /> Video & AI Chat
+                    <Video className="w-4 h-4 text-accent" /> Video & transcript
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5">
                       <List className="w-5 h-5 text-gray-300 mb-2" />
-                      <h4 className="text-sm font-semibold text-white mb-1">Interactive transcripts</h4>
+                      <h4 className="text-sm font-semibold text-white mb-1">Interactive transcript</h4>
                       <p className="text-xs text-gray-400 leading-relaxed">
-                        The Transcript tab automatically loads the spoken words from the video. Click on any timestamp to instantly seek the video to that moment.
+                        The transcript panel loads the spoken words from the video. Click any line to jump the player to that moment.
                       </p>
                     </div>
                     <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5">
-                      <MessageSquare className="w-5 h-5 text-gray-300 mb-2" />
-                      <h4 className="text-sm font-semibold text-white mb-1">Chat with Video</h4>
+                      <ClipboardPlus className="w-5 h-5 text-gray-300 mb-2" />
+                      <h4 className="text-sm font-semibold text-white mb-1">Copy lines into your note</h4>
                       <p className="text-xs text-gray-400 leading-relaxed">
-                        Use the AI Chat tab to ask questions specifically about the video. The AI will strictly reference the transcript to find your answer.
+                        Hover a transcript line and click the copy icon to drop it into your note with a timestamp link back to that moment.
                       </p>
                     </div>
                   </div>

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useDeferredValue } from 'react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, FileDown, FileText, Brain, BookOpen, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Save, FileDown, FileText, Brain, BookOpen, HelpCircle, Bold, Italic, Heading2, List } from 'lucide-react';
 import { m, AnimatePresence } from "framer-motion";
 import dynamic from 'next/dynamic';
 import ImportModal from '@/components/ui/ImportModal';
@@ -100,7 +100,7 @@ export default function NoteEditor({
   // an effect + setState, which would trigger an extra render on mount for
   // no benefit - the value is only ever needed once, as VideoPlayer's
   // initial seek target.
-  const [seekToSeconds] = useState<number | undefined>(() => {
+  const [seekToSeconds, setSeekToSeconds] = useState<number | undefined>(() => {
     const tParam = searchParams.get('t');
     if (tParam === null) return undefined;
     const seconds = Number(tParam);
@@ -132,11 +132,64 @@ export default function NoteEditor({
     });
   };
 
+  // Formatting toolbar: inserts plain markdown syntax at the cursor/selection
+  // rather than a rich-text engine (CLAUDE.md section 20 - "No rich text
+  // editor... WYSIWYG is a multi-week sinkhole"). Deliberately generic
+  // (bold/italic/heading/list) - not the **Vocab:**/**Quiz:** template
+  // buttons section 23 explicitly forbids in this editor.
+  const wrapSelection = (marker: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = content.slice(start, end) || 'text';
+    const newText = content.slice(0, start) + marker + selected + marker + content.slice(end);
+    handleContentChange(newText);
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + marker.length, start + marker.length + selected.length);
+    });
+  };
+
+  const prefixLine = (prefix: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const pos = textarea.selectionStart;
+    const lineStart = content.lastIndexOf('\n', pos - 1) + 1;
+    const newText = content.slice(0, lineStart) + prefix + content.slice(lineStart);
+    handleContentChange(newText);
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const cursor = pos + prefix.length;
+      textarea.setSelectionRange(cursor, cursor);
+    });
+  };
+
+  const handleTimestampClick = (seconds: number) => {
+    setSeekToSeconds(seconds);
+    setTimeout(() => {
+      setSeekToSeconds(undefined);
+    }, 100);
+  };
+
   // The video's current position becomes a **At:** marker at the cursor -
   // just a third caller of insertTemplate, sourced from live player state
   // instead of a static string. syncCardsFromNote picks it up from there.
   const handleCaptureTimestamp = (seconds: number) => {
-    insertTemplate(`**At:** ${formatTimestamp(seconds)}`);
+    insertTemplate(`[${formatTimestamp(seconds)}](timestamp://${videoId ?? ''}?t=${seconds})`);
+  };
+
+  // Copies a transcript line into the note, prefixed with the same **At:**
+  // marker as a manual capture so the pasted text stays linked to its
+  // moment in the video.
+  const handleInsertTranscript = (text: string, seconds: number) => {
+    insertTemplate(`> "${text}" — [${formatTimestamp(seconds)}](timestamp://${videoId ?? ''}?t=${seconds})`);
+    // Mobile shows the video and note editor as separate toggled panels, not
+    // side by side, so there's nothing on screen confirming the insert
+    // landed - without this it silently updates a note the user can't see.
+    toast.success('Copied to note');
   };
 
   // Auto-save logic for content
@@ -243,10 +296,10 @@ export default function NoteEditor({
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-xs text-accent font-semibold uppercase tracking-wider">
+            <span className="text-xs text-accent font-semibold uppercase tracking-wider truncate">
               {initialData.subjects?.name || 'Subject'}
             </span>
-              <input
+            <input
               type="text"
               aria-label="Note title"
               value={title}
@@ -259,14 +312,18 @@ export default function NoteEditor({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <div className="text-xs flex items-center gap-1.5 text-gray-500 px-3 py-1.5 rounded-full bg-white/5" aria-live="polite">
+          {/* Visually mobile-only-hidden, not display:none - sr-only keeps
+              this aria-live save-status announcement reaching screen readers
+              at every width, since the space it frees up on a narrow header
+              isn't worth losing that for. */}
+          <div className="sr-only sm:not-sr-only sm:flex text-xs items-center gap-1.5 text-gray-500 px-3 py-1.5 rounded-full bg-white/5" aria-live="polite">
             <Save className={`w-3.5 h-3.5 ${saveStatus === 'saving' ? 'animate-pulse text-accent' : ''}`} aria-hidden="true" />
             <span className="hidden sm:inline">{saveStatus === 'saving' ? 'Saving…' : 'Saved'}</span>
           </div>
 
           <button
             onClick={() => setIsGuideModalOpen(true)}
-            className="px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm text-gray-400 hover:text-accent hover:bg-accent/10 active:scale-95"
+            className="px-2 sm:px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm text-gray-400 hover:text-accent hover:bg-accent/10 active:scale-95"
             title="Editor Guide"
             aria-label="Editor Guide"
           >
@@ -276,7 +333,7 @@ export default function NoteEditor({
 
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm text-gray-400 hover:text-accent hover:bg-accent/10 active:scale-95"
+            className="px-2 sm:px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm text-gray-400 hover:text-accent hover:bg-accent/10 active:scale-95"
             title="Import File"
             aria-label="Import File"
           >
@@ -366,7 +423,7 @@ export default function NoteEditor({
 
               {/* Desktop PDF Viewer */}
               {pdfUrl && (
-                <div className="hidden lg:flex w-1/2 border-r border-white/5 h-full p-4">
+                <div className="hidden lg:flex lg:w-[60%] xl:w-[62%] shrink-0 border-r border-white/5 h-full p-4">
                   <PDFViewer url={pdfUrl} />
                 </div>
               )}
@@ -398,17 +455,15 @@ export default function NoteEditor({
                 </div>
               )}
 
-              {/* Desktop Video Player */}
+              {/* Video Player - one instance, not two. Below lg it's shown/hidden
+                  by the mobile toggle; at lg and up it's always the pinned 55%
+                  column regardless of that toggle. A separate desktop/mobile
+                  block here used to mount two <VideoPlayer>s at once (one just
+                  CSS-hidden, not unmounted), which meant two YouTube embeds and
+                  two competing transcript fetches on every note with a video. */}
               {videoId && (
-                <div className="hidden lg:flex w-1/2 border-r border-white/5 h-full p-4">
-                  <VideoPlayer videoId={videoId} seekToSeconds={seekToSeconds} onCapture={handleCaptureTimestamp} />
-                </div>
-              )}
-
-              {/* Mobile Video Player */}
-              {videoId && showVideoOnMobile && (
-                <div className="flex-1 flex flex-col h-full overflow-hidden lg:hidden p-4">
-                  <VideoPlayer videoId={videoId} seekToSeconds={seekToSeconds} onCapture={handleCaptureTimestamp} />
+                <div className={`${showVideoOnMobile ? 'flex' : 'hidden'} flex-col h-full overflow-hidden p-4 pb-8 lg:flex lg:w-[55%] lg:shrink-0 lg:border-r lg:border-white/5`}>
+                  <VideoPlayer videoId={videoId} seekToSeconds={seekToSeconds} onCapture={handleCaptureTimestamp} onInsertTranscript={handleInsertTranscript} />
                 </div>
               )}
 
@@ -419,11 +474,52 @@ export default function NoteEditor({
                   transition={{ duration: 0.2, ease: 'easeInOut' }}
                   className={`flex-1 flex flex-col h-full ${showPreview ? 'hidden md:flex md:w-1/2 md:border-r md:border-white/5' : 'w-full max-w-3xl mx-auto'}`}
                 >
+                  {/* Formatting toolbar - inserts markdown at the cursor, not
+                      a rich-text engine. See wrapSelection/prefixLine above. */}
+                  <div className="flex items-center gap-1 px-8 md:px-12 pt-4 md:pt-6">
+                    <button
+                      type="button"
+                      onClick={() => wrapSelection('**')}
+                      className="p-3.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                      title="Bold"
+                      aria-label="Bold"
+                    >
+                      <Bold className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => wrapSelection('_')}
+                      className="p-3.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                      title="Italic"
+                      aria-label="Italic"
+                    >
+                      <Italic className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => prefixLine('## ')}
+                      className="p-3.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                      title="Heading"
+                      aria-label="Heading"
+                    >
+                      <Heading2 className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => prefixLine('- ')}
+                      className="p-3.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                      title="Bullet list"
+                      aria-label="Bullet list"
+                    >
+                      <List className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                  </div>
+
                   <m.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.12 }}
-                    className="relative flex-1 group mt-4 md:mt-6 mb-12 flex px-8 md:px-12"
+                    className="relative flex-1 group mt-1 md:mt-2 mb-12 flex px-8 md:px-12"
                   >
                     <textarea
                       ref={textareaRef}
@@ -447,7 +543,7 @@ export default function NoteEditor({
                       transition={{ duration: 0.15 }}
                       className="w-full md:w-1/2 h-full overflow-y-auto bg-[#0a0908] p-6 md:p-10 custom-scrollbar shadow-inner"
                     >
-                      <MarkdownPreview source={previewSource} />
+                      <MarkdownPreview source={previewSource} onTimestampClick={handleTimestampClick} />
                     </m.div>
                   )}
                 </AnimatePresence>
@@ -497,10 +593,10 @@ export default function NoteEditor({
         onImportComplete={handleImportComplete}
         noteId={noteId}
       />
-      
-      <GuideModal 
-        isOpen={isGuideModalOpen} 
-        onClose={() => setIsGuideModalOpen(false)} 
+
+      <GuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
       />
     </div>
   );

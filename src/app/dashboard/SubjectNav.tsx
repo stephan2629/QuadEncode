@@ -28,8 +28,8 @@ export default function SubjectNav({
             href={`/review?subject_id=${subjectId}`}
             className={
               dueCount > 0
-                ? 'text-sm md:text-base bg-accent text-[#0a0908] px-5 py-1.5 rounded-full font-bold hover:bg-accent/90 transition-colors'
-                : 'text-sm md:text-base text-gray-400 hover:text-white transition-colors'
+                ? 'text-sm md:text-base bg-accent text-[#0a0908] px-5 py-1.5 min-h-[44px] inline-flex items-center rounded-full font-bold hover:bg-accent/90 transition-colors'
+                : 'text-sm md:text-base text-gray-400 hover:text-white min-h-[44px] inline-flex items-center transition-colors'
             }
           >
             Review

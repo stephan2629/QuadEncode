@@ -125,11 +125,11 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards }: QuickStud
                 Command palette
               </h4>
               <p className="text-xs text-gray-300 mt-1 leading-relaxed font-light">
-                Press ⌘K anywhere to jump across subjects, notes, and instant study tools.
+                Tap or press ⌘K anywhere to jump across subjects, notes, and instant study tools.
               </p>
             </div>
 
-            <div className="relative z-10 mt-6 flex items-center text-xs font-mono text-gray-400">
+            <div className="relative z-10 mt-6 items-center text-xs font-mono text-gray-400 hidden md:flex">
               Press <kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/10 text-white mx-1">⌘K</kbd> to launch
             </div>
           </div>

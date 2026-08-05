@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@/utils/supabase/server'
 import type { GeneratedPath } from '@/app/study/[query]/actions'
+import { resolveFirstPlaylistVideoId } from '@/lib/youtube'
 
 export async function createSubject(formData: FormData) {
   const supabase = await createClient()
@@ -41,6 +42,19 @@ export async function createNoteForVideo(subjectId: string, title: string, video
 
   revalidatePath('/dashboard')
   return { id: data.id }
+}
+
+// The #1 ranked path step is often a full playlist (top-free-creator rule),
+// which has no single embeddable video id - resolve its first video
+// server-side (keeps the API key off the client) and reuse the same insert.
+export async function createNoteForPlaylist(subjectId: string, title: string, playlistId: string) {
+  const apiKey = process.env.YOUTUBE_API_KEY
+  if (!apiKey) return { error: 'YouTube API key is missing.' }
+
+  const videoId = await resolveFirstPlaylistVideoId(playlistId, apiKey)
+  if (!videoId) return { error: 'Could not find a video in that playlist.' }
+
+  return createNoteForVideo(subjectId, title, videoId)
 }
 
 export async function createNote(formData: FormData) {

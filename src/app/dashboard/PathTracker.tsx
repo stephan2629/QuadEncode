@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { m, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Circle, Trash2, ExternalLink, RefreshCw, PlayCircle, XCircle, NotebookPen, Loader2 } from 'lucide-react';
-import { updatePathStepStatus, deletePath, createNoteForVideo } from './actions';
+import { updatePathStepStatus, deletePath, createNoteForVideo, createNoteForPlaylist } from './actions';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { extractYouTubeId, extractYouTubePlaylistId } from '@/lib/youtube';
 import { toast } from 'sonner';
@@ -54,13 +54,16 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
 
   if (!optimisticPaths || optimisticPaths.length === 0) return null;
 
-  const handleTakeNotes = async (subjectId: string, stepId: string, title: string, videoId: string) => {
+  const handleTakeNotes = async (subjectId: string, stepId: string, title: string, videoId: string | null, playlistId: string | null) => {
     setTakingNotesStepId(stepId);
-    const result = await createNoteForVideo(subjectId, title, videoId);
+    const result = videoId
+      ? await createNoteForVideo(subjectId, title, videoId)
+      : await createNoteForPlaylist(subjectId, title, playlistId!);
     if ('id' in result) {
       router.push(`/notes/${result.id}`);
     } else {
       setTakingNotesStepId(null);
+      toast.error(result.error || 'Could not create a note for that video.');
     }
   };
 
@@ -127,7 +130,7 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                     confirmMessage={`Delete the path for "${path.subjects.name}"?`}
                     onClick={() => handleDelete(path.id)}
                     aria-label={`Delete path for ${path.subjects.name}`}
-                    className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
+                    className="text-gray-500 hover:text-red-400 p-3.5 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
                   >
                     {deletingPathId === path.id ? <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
                   </ConfirmButton>
@@ -169,7 +172,7 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                             disabled={loadingStepId === step.id}
                             aria-label={isCompleted ? 'Mark step incomplete' : 'Mark step complete'}
                             aria-pressed={isCompleted}
-                            className="mt-0.5 text-gray-400 hover:text-accent transition-colors disabled:opacity-50"
+                            className="shrink-0 -m-3 p-3 text-gray-400 hover:text-accent transition-colors disabled:opacity-50 rounded-lg"
                           >
                             {loadingStepId === step.id ? (
                               <RefreshCw className="w-5 h-5 animate-spin" aria-hidden="true" />
@@ -180,30 +183,31 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                             )}
                           </m.button>
 
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-mono text-gray-500">{step.order}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <span className="text-xs font-mono text-gray-500 shrink-0">{step.order}</span>
                               {isVideo ? (
                                 <button
                                   onClick={() => setActiveVideoStepId(activeVideoStepId === step.id ? null : step.id)}
-                                  className={`font-medium transition-colors flex items-center gap-1.5 ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-200 hover:text-accent'}`}
+                                  className={`font-medium transition-colors flex items-center gap-1.5 text-left ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-200 hover:text-accent'}`}
                                 >
                                   {step.resources?.title}
-                                  <PlayCircle className="w-3.5 h-3.5 opacity-70" />
+                                  <PlayCircle className="w-3.5 h-3.5 opacity-70 shrink-0" />
                                 </button>
                               ) : null}
-                              {isVideo && extractYouTubeId(step.resources?.url) && (
+                              {isVideo && (stepVideoId || stepPlaylistId) && (
                                 <button
                                   onClick={() =>
                                     handleTakeNotes(
                                       path.subject_id,
                                       step.id,
                                       step.resources.title,
-                                      extractYouTubeId(step.resources.url)!
+                                      stepVideoId,
+                                      stepPlaylistId
                                     )
                                   }
                                   disabled={takingNotesStepId === step.id}
-                                  className="text-xs text-gray-500 hover:text-accent transition-colors flex items-center gap-1 disabled:opacity-50"
+                                  className="text-xs text-gray-500 hover:text-accent transition-colors flex items-center gap-1 shrink-0 disabled:opacity-50 py-3.5"
                                 >
                                   {takingNotesStepId === step.id ? (
                                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -218,10 +222,10 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                                   href={step.resources?.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className={`font-medium transition-colors flex items-center gap-1.5 ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-200 hover:text-accent'}`}
+                                  className={`font-medium transition-colors flex items-center gap-1.5 text-left ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-200 hover:text-accent'}`}
                                 >
                                   {step.resources?.title}
-                                  <ExternalLink className="w-3 h-3 opacity-50" />
+                                  <ExternalLink className="w-3 h-3 opacity-50 shrink-0" />
                                 </a>
                               )}
                             </div>
