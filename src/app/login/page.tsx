@@ -47,9 +47,15 @@ export default function LoginPage() {
     if (mode === 'reset') {
       const email = formData.get('email') as string;
       const supabase = createClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      // window.location.origin, not NEXT_PUBLIC_SITE_URL: that env var is a
+      // build-time constant baked to the production domain (netlify.toml),
+      // identical on every branch-preview and local build. The PKCE
+      // code_verifier this flow needs is a cookie scoped to whatever origin
+      // actually sent this request, so the reset link has to redirect back
+      // to that same origin or the code exchange fails every time on any
+      // non-production host. Matches the Google OAuth handler below.
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
       });
       setLoading(false);
       if (resetError) {
@@ -69,6 +75,10 @@ export default function LoginPage() {
       setError(res.error);
       setLoading(false);
     } else if (res && 'notice' in res && res.notice) {
+      // Signup with email confirmation on returns here instead of redirecting
+      // (no session yet). Land on the sign-in form with the success notice
+      // rather than leaving the user stuck looking at the signup form again.
+      if (mode === 'signup') setMode('login');
       setNotice(res.notice);
       setLoading(false);
     }
@@ -184,8 +194,12 @@ export default function LoginPage() {
                     name="password"
                     type="password"
                     autoComplete={isLogin ? 'current-password' : 'new-password'}
-                    placeholder="••••••••"
+                    placeholder={isLogin ? '••••••••' : 'At least 8 characters'}
                     required
+                    // Only gate signup: an existing account's password
+                    // predates whatever the project's minimum is today, so
+                    // sign-in must never reject it client-side.
+                    minLength={isLogin ? undefined : 8}
                     className="w-full bg-[#0a0908] border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-sans"
                   />
                 </div>

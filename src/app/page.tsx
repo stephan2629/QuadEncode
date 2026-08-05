@@ -257,25 +257,22 @@ export default function Home() {
           <BrainCircuit className="w-4 h-4 text-accent animate-pulse" /> Active Recall Workspace
         </m.div>
 
-        {/* Hero Copy (Massive Typography) */}
-        <m.h1
-          className="text-[clamp(2.5rem,6vw,80px)] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.1] md:leading-[1.03] text-white"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-        >
+        {/* Hero Copy (Massive Typography). Plain h1, not m.h1: this is the
+            page's LCP element, and animating its opacity in delayed LCP by
+            ~1.1s (Framer Motion has to hydrate and run the fade before the
+            text counts as painted). Everything below the fold still gets
+            the entrance motion; the headline just renders immediately. */}
+        <h1 className="text-[clamp(2.5rem,6vw,80px)] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.1] md:leading-[1.03] text-white">
           Outsmart your own brain. <br className="hidden md:block" />
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent via-yellow-400 to-amber-500">Study without the boredom.</span>
-        </m.h1>
+        </h1>
 
-        <m.p
-          className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-10 md:mb-14 max-w-2xl mx-auto font-light px-4 leading-relaxed tracking-wide"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        >
+        {/* Plain p, not m.p: same LCP reasoning as the h1 above — this is
+            the next-largest text block and was becoming the LCP element
+            once the headline stopped blocking on it. */}
+        <p className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-10 md:mb-14 max-w-2xl mx-auto font-light px-4 leading-relaxed tracking-wide">
           Turn web topics and notes into recall prompts. Type your answer first.
-        </m.p>
+        </p>
 
         {/* Search Bar Component */}
         <m.div
