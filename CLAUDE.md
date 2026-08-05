@@ -360,6 +360,8 @@ Combining six sources produces something original. Copying one produces a clone.
 
 **frontend-design skill.** Use this skill when building a new page or component that needs real visual design work, not just markup and Tailwind classes: a distinctive hero, a deliberate type and layout plan, one signature element the surface is remembered by, restraint everywhere else, and copy treated as design material rather than decoration. The skill normally starts by pinning down a subject and brainstorming a palette and type system from scratch; here that step is already done. Sections 7, 12, and 13 are the brief: skip the generic-palette brainstorm and apply the decided warm-near-black background, serif/mono/sans type roles, and motion spec with the same discipline the skill asks for elsewhere, one real signature choice per surface, self-critique before shipping, never the cream-background or acid-green defaults it falls back to when nothing else is specified.
 
+**visual-audit-refactor skill** (`.claude/skills/visual-audit-refactor/SKILL.md`). Use this skill to visually inspect a rendered page and fix layout issues it finds. It captures a screenshot of `http://localhost:3000` (or a Netlify preview URL, or a mobile viewport via `--viewport=390x844`) with `scripts/capture-screenshot.js` (Playwright, see section 22) into `.claude/screenshots/`, inspects it against this section, sections 12 to 13, `frontend-design`, `ui-ux-pro-max`, `ui-styling`, `design-system`, and (when the flagged component came from 21st.dev/shadcn) `twentyfirst-components` criteria (the design-system one mostly for token/spacing/type-scale consistency with what already exists in `src/`, since this project hand-rolls Tailwind and doesn't use shadcn/ui), identifies the exact component in `src/` producing the defect, refactors it reusing existing patterns rather than inventing new ones, and re-captures to confirm the fix.
+
 ---
 
 ## 15. Interaction principles
@@ -459,4 +461,23 @@ Marketing and UI copy can be punchier and more energetic than a neutral tone gui
 - **No streak, XP, level, or badge mechanics, in copy or in the product.** Section 15's reasoning stands as originally written: streaks punish a bad week and make people quit. Words like "streak," "level up," "boss battle," or "unlock" (also banned outright in section 19) signal exactly this pattern and should not appear even as flavor text with no mechanic behind them, since that is still promising a game system the product doesn't and won't have.
 
 An earlier draft of this section approved copy that broke both rules (a fabricated "10k+ Prompts Solved Today" stat, streak and XP badges, "unlocking" language). That draft was wrong and has been replaced by this one. If a future prompt asks for gamified copy again, point back here rather than re-approving it.
+
+---
+
+## 22. Netlify Loading Feedback & Playwright Visual Testing Skill
+
+- **Netlify Serverless Loading States:** To prevent perceived page freezes during serverless database or AI curation fetches on Netlify, every route MUST have a dedicated `loading.tsx` component (e.g. `src/app/loading.tsx`, `src/app/dashboard/loading.tsx`, `src/app/study/[query]/loading.tsx`, `src/app/review/loading.tsx`, `src/app/notes/[id]/loading.tsx`). Interactive forms must provide immediate button loading spinners (`isSubmitting` / `isSearching`) upon click.
+- **Playwright Visual E2E & Screenshot Testing Skill:** 
+  - Use Playwright (`npx playwright test`) to automate browser testing across viewports (mobile, tablet, desktop).
+  - Capture visual screenshot previews to verify responsive layouts, typography spacing, and test for UI bugs.
+  - Store test suites under `tests/` and configuration in `playwright.config.ts`.
+
+---
+
+## 23. Forbidden Toolbar Buttons in Note Editor
+
+- **No `+ Vocab` or `+ Quiz` Buttons:** Never add `+ Vocab` or `+ Quiz` template insertion buttons to the note editor UI (`NoteEditor.tsx`). Notes are clean markdown textareas. Flashcards are parsed automatically from markdown syntax (`**Vocab:**` / `**Def:**` and `**Quiz:**` / `**A:**`) or created via cloze text selection, without cluttering the note editor header with template insertion buttons.
+
+
+
 

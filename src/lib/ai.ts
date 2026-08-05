@@ -93,7 +93,11 @@ async function callOpenAI(input: GenerateInput): Promise<string> {
     })
   }
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  // Any OpenAI-compatible endpoint works here, so an OmniRoute-style gateway
+  // can be dropped in by setting OPENAI_BASE_URL. Unset means real OpenAI.
+  const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
+
+  const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({

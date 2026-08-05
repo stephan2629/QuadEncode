@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { m } from 'framer-motion';
+import { TiltCard } from './TiltCard';
 
 export default function StudyHeatmap({ reviewDates }: { reviewDates: string[] }) {
   const counts = useMemo(() => {
@@ -44,10 +45,18 @@ export default function StudyHeatmap({ reviewDates }: { reviewDates: string[] })
   ];
 
   return (
-    <div className="bg-[#14120f] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden group">
+    <TiltCard tiltAmount={2} className="bg-[#14120f] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden group">
       <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl -mr-20 -mt-20 transition-opacity group-hover:opacity-100 opacity-50 pointer-events-none" />
 
-      <div className="overflow-x-auto custom-scrollbar pb-2 relative z-10">
+      {/* First appearance of this section is "the app growing" (CLAUDE.md
+          section 13's progress/stats row - it only exists once 5+ cards
+          exist) - worth a real entrance instead of just materializing. */}
+      <m.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="overflow-x-auto custom-scrollbar pb-2 relative z-10"
+      >
         <div className="grid grid-rows-7 grid-flow-col gap-1.5 w-max">
           {days.map((day) => (
             <div
@@ -57,7 +66,7 @@ export default function StudyHeatmap({ reviewDates }: { reviewDates: string[] })
             />
           ))}
         </div>
-      </div>
+      </m.div>
 
       {/* Animated Less -> More Legend Bar */}
       <m.div
@@ -88,7 +97,7 @@ export default function StudyHeatmap({ reviewDates }: { reviewDates: string[] })
 
         <span className="text-accent font-semibold font-sans">More</span>
       </m.div>
-    </div>
+    </TiltCard>
   );
 }
 

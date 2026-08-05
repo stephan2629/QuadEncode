@@ -181,11 +181,16 @@ export default async function DashboardPage() {
       <QuickStudyHub
         activeSubjectId={activeSubject?.id}
         dueCount={dueCount}
+        hasCards={totalCards > 0}
       />
 
-      <div className="mb-12">
-        <StudyHeatmap reviewDates={reviewDates} />
-      </div>
+      {/* Progress and stats appear only once there's enough to show, per
+          CLAUDE.md section 3: "five or more cards/reviews exist". */}
+      {totalCards >= 5 && (
+        <div className="mb-12">
+          <StudyHeatmap reviewDates={reviewDates} />
+        </div>
+      )}
 
       <main>
       {!activeSubject ? (

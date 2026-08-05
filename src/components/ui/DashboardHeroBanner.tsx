@@ -1,6 +1,7 @@
 'use client';
 
-import { m } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { m, useSpring, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
 import { Sparkles, Brain, BookOpen, Layers } from 'lucide-react';
 
@@ -9,6 +10,28 @@ interface DashboardHeroBannerProps {
   totalCards: number;
   dueCount: number;
   noteCount: number;
+}
+
+// Counts up from 0 once on mount rather than just appearing - a real,
+// satisfying animation for the one moment CLAUDE.md section 13 calls out as
+// welcome ("this is the app growing"), not a loop: it settles and stops.
+// Reduced motion skips straight to the final value.
+function CountUp({ value }: { value: number }) {
+  const shouldReduceMotion = useReducedMotion();
+  const spring = useSpring(0, { stiffness: 90, damping: 20 });
+  const [animatedDisplay, setAnimatedDisplay] = useState(0);
+
+  useEffect(() => {
+    if (!shouldReduceMotion) spring.set(value);
+  }, [value, spring, shouldReduceMotion]);
+
+  useEffect(() => {
+    return spring.on('change', (v) => setAnimatedDisplay(Math.round(v)));
+  }, [spring]);
+
+  // Reduced motion never touches the spring, so it renders the real value
+  // straight away instead of sitting at the animation's starting point.
+  return <>{shouldReduceMotion ? value : animatedDisplay}</>;
 }
 
 export function DashboardHeroBanner({
@@ -64,7 +87,7 @@ export function DashboardHeroBanner({
             transition={{ delay: 0.4, duration: 0.4 }}
             className="text-gray-300 text-xs sm:text-sm md:text-base mt-2 font-light max-w-md leading-relaxed"
           >
-            Instant-reveal flashcards on a Leitner schedule, built from your own notes.
+            Instant-reveal flashcards on a memory box schedule, built from your own notes.
           </m.p>
         </div>
 
@@ -81,7 +104,7 @@ export function DashboardHeroBanner({
             </div>
             <div>
               <div className="text-xs text-gray-400 font-medium">Total notes</div>
-              <div className="text-lg font-bold text-white font-serif">{noteCount}</div>
+              <div className="text-lg font-bold text-white font-serif"><CountUp value={noteCount} /></div>
             </div>
           </div>
 
@@ -91,7 +114,7 @@ export function DashboardHeroBanner({
             </div>
             <div>
               <div className="text-xs text-gray-400 font-medium">Flashcards</div>
-              <div className="text-lg font-bold text-white font-serif">{totalCards}</div>
+              <div className="text-lg font-bold text-white font-serif"><CountUp value={totalCards} /></div>
             </div>
           </div>
 
@@ -102,7 +125,7 @@ export function DashboardHeroBanner({
               </div>
               <div>
                 <div className="text-xs text-accent font-bold uppercase tracking-wider">Due review</div>
-                <div className="text-lg font-bold text-white font-serif">{dueCount} cards</div>
+                <div className="text-lg font-bold text-white font-serif"><CountUp value={dueCount} /> cards</div>
               </div>
             </div>
           )}

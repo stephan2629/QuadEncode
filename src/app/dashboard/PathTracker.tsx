@@ -36,10 +36,21 @@ export interface PathData {
 export default function PathTracker({ initialPaths }: { initialPaths: PathData[] }) {
   const router = useRouter();
   const [optimisticPaths, setOptimisticPaths] = useState(initialPaths);
+  // Tracks the initialPaths reference so a change can be caught during
+  // render (React's documented pattern for resetting state when a prop
+  // changes: https://react.dev/learn/you-might-not-need-an-effect) rather
+  // than in an effect, which would commit stale state for one extra frame
+  // before a second render corrected it.
+  const [prevInitialPaths, setPrevInitialPaths] = useState(initialPaths);
   const [loadingStepId, setLoadingStepId] = useState<string | null>(null);
   const [deletingPathId, setDeletingPathId] = useState<string | null>(null);
   const [activeVideoStepId, setActiveVideoStepId] = useState<string | null>(null);
   const [takingNotesStepId, setTakingNotesStepId] = useState<string | null>(null);
+
+  if (initialPaths !== prevInitialPaths) {
+    setPrevInitialPaths(initialPaths);
+    setOptimisticPaths(initialPaths);
+  }
 
   if (!optimisticPaths || optimisticPaths.length === 0) return null;
 
@@ -115,9 +126,10 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                   <ConfirmButton
                     confirmMessage={`Delete the path for "${path.subjects.name}"?`}
                     onClick={() => handleDelete(path.id)}
+                    aria-label={`Delete path for ${path.subjects.name}`}
                     className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
                   >
-                    {deletingPathId === path.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    {deletingPathId === path.id ? <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
                   </ConfirmButton>
                 </div>
 
@@ -155,14 +167,16 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
                             whileTap={{ scale: 0.85 }}
                             onClick={() => handleToggle(path.id, step.id, step.status)}
                             disabled={loadingStepId === step.id}
+                            aria-label={isCompleted ? 'Mark step incomplete' : 'Mark step complete'}
+                            aria-pressed={isCompleted}
                             className="mt-0.5 text-gray-400 hover:text-accent transition-colors disabled:opacity-50"
                           >
                             {loadingStepId === step.id ? (
-                              <RefreshCw className="w-5 h-5 animate-spin" />
+                              <RefreshCw className="w-5 h-5 animate-spin" aria-hidden="true" />
                             ) : isCompleted ? (
-                              <CheckCircle2 className="w-5 h-5 text-accent" />
+                              <CheckCircle2 className="w-5 h-5 text-accent" aria-hidden="true" />
                             ) : (
-                              <Circle className="w-5 h-5" />
+                              <Circle className="w-5 h-5" aria-hidden="true" />
                             )}
                           </m.button>
 

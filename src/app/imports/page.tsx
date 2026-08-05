@@ -37,12 +37,12 @@ export default async function ImportsPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0908] text-white p-4 sm:p-6 md:p-12 max-w-3xl mx-auto">
-      <header className="flex items-center gap-4 mb-10">
+      <header className="flex items-center gap-4 mb-6">
         <Link href="/dashboard" className="text-gray-500 hover:text-white transition-colors p-1">
           <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           <span className="sr-only">Back to dashboard</span>
         </Link>
-        <h1 className="text-3xl font-bold font-serif">Imports</h1>
+        <h1 className="text-2xl font-bold font-serif">Imports</h1>
       </header>
 
       <ul className="space-y-3">

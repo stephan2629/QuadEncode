@@ -85,11 +85,7 @@ export async function saveGeneratedPath(pathData: GeneratedPath) {
     throw new Error('Not authenticated')
   }
 
-  // 1. Find or create the Subject. Subjects are unique per (user_id, slug),
-  // so saving a second path for a subject you already have must reuse that
-  // row instead of inserting a duplicate — insert would violate the unique
-  // constraint and throw before the new path ever got created, silently
-  // losing every path after the first one for a given subject.
+  // 1. Find if Subject already exists
   const { data: existingSubject } = await supabase
     .from('subjects')
     .select()
@@ -97,6 +93,36 @@ export async function saveGeneratedPath(pathData: GeneratedPath) {
     .eq('slug', pathData.slug)
     .maybeSingle()
 
+  // 2. Check if this existing subject already has a path
+  if (existingSubject) {
+    const { data: existingPaths } = await supabase
+      .from('paths')
+      .select('id')
+      .eq('subject_id', existingSubject.id)
+      .limit(1)
+
+    if (existingPaths && existingPaths.length > 0) {
+      const cookieStore = await cookies()
+      cookieStore.set('active_subject_id', existingSubject.id, { path: '/' })
+      revalidatePath('/dashboard')
+      return { alreadyExists: true, pathId: existingPaths[0].id }
+    }
+  }
+
+  // 3. Global 3-Path Limit Check (Strictly enforced before creating any new path)
+  const { count: globalPathCount } = await supabase
+    .from('paths')
+    .select('id', { count: 'exact', head: true })
+
+  if ((globalPathCount ?? 0) >= 3) {
+    revalidatePath('/dashboard')
+    return { 
+      limitReached: true, 
+      error: 'Limit reached: You already have 3 active learning paths across your workspace. Please delete an existing path on your dashboard before saving a new one.' 
+    }
+  }
+
+  // 4. Create or reuse Subject
   let subject = existingSubject
   if (!subject) {
     const { data: newSubject, error: subjectError } = await supabase
@@ -113,31 +139,8 @@ export async function saveGeneratedPath(pathData: GeneratedPath) {
     subject = newSubject
   }
 
-  // Switching now, ahead of the duplicate-path check below, so it happens
-  // whether this save creates a fresh path or finds one that already
-  // exists — either way the user just asked to see this subject.
   const cookieStore = await cookies()
   cookieStore.set('active_subject_id', subject.id, { path: '/' })
-
-  // 2. A subject only ever has one active path at a time - re-saving the
-  // same (or a freshly re-generated) path for a subject you already have
-  // would otherwise insert a second paths row plus a full duplicate set of
-  // resources/path_steps every time, since none of those are deduplicated
-  // by any unique constraint. Skip creation entirely and keep whatever
-  // progress already exists rather than silently doubling it.
-  // .limit(1) + array check rather than .maybeSingle(), which throws if more
-  // than one row comes back - subjects saved before this fix may already
-  // have duplicate paths sitting in the database.
-  const { data: existingPaths } = await supabase
-    .from('paths')
-    .select('id')
-    .eq('subject_id', subject.id)
-    .limit(1)
-
-  if (existingPaths && existingPaths.length > 0) {
-    revalidatePath('/dashboard')
-    return { alreadyExists: true, pathId: existingPaths[0].id }
-  }
 
   // 3. Create the Path
   const { data: path, error: pathError } = await supabase

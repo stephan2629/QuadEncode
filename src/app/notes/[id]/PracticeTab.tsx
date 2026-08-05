@@ -21,9 +21,28 @@ interface ClozeCard {
 interface PracticeTabProps {
   content: string;
   clozeCards?: ClozeCard[];
+  // Optional so this component still renders standalone in tests without a
+  // real note - falls back to a fixed key, which just means those callers
+  // share one session slot instead of a per-note one.
+  noteId?: string;
 }
 
-export default function PracticeTab({ content, clozeCards = [] }: PracticeTabProps) {
+// An in-progress flashcard session (stage 'active') is saved here so a tab
+// refresh resumes the same card/position instead of losing it. Cleared once
+// the session leaves 'active' - finished or reset - so a stale session
+// never comes back after that point.
+interface StoredPracticeTabSession {
+  stage: 'active';
+  sessionCards: NoteCard[];
+  index: number;
+  revealed: boolean;
+}
+
+function sessionStorageKey(noteId: string) {
+  return `practice-tab-session-${noteId}`;
+}
+
+export default function PracticeTab({ content, clozeCards = [], noteId = 'unknown' }: PracticeTabProps) {
   // Cmd+K cloze cards live in separate component state, not the note body
   // markdown, so parseLocalQuiz (which only reads **Vocab:**/**Quiz:**
   // blanks) can't see them - merge them in here or they silently vanish
@@ -54,6 +73,61 @@ export default function PracticeTab({ content, clozeCards = [] }: PracticeTabPro
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [stage, setStage] = useState<'start' | 'active' | 'results'>('start');
+
+  // Resume a saved in-progress session once, after mount (sessionStorage
+  // isn't available during SSR, so reading it any earlier would produce a
+  // hydration mismatch - same reasoning as this repo's useSessionStorage
+  // hook).
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(sessionStorageKey(noteId));
+      if (!raw) return;
+      const stored = JSON.parse(raw) as StoredPracticeTabSession;
+      if (stored.stage === 'active' && stored.sessionCards.length > 0) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSessionCards(stored.sessionCards);
+        setIndex(stored.index);
+        setRevealed(stored.revealed);
+        setStage('active');
+      }
+    } catch (error) {
+      console.warn('Error reading practice session from sessionStorage:', error);
+    }
+    // Only the initial read on mount belongs here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Mirrors the active session to sessionStorage while it's under way, and
+  // clears it the moment it stops for any reason (finished, reset, or back
+  // to start) so a completed or abandoned session never gets resumed.
+  useEffect(() => {
+    const key = sessionStorageKey(noteId);
+    try {
+      if (stage === 'active') {
+        const session: StoredPracticeTabSession = { stage, sessionCards, index, revealed };
+        window.sessionStorage.setItem(key, JSON.stringify(session));
+      } else {
+        window.sessionStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.warn('Error saving practice session to sessionStorage:', error);
+    }
+  }, [noteId, stage, sessionCards, index, revealed]);
+
+  // Explicit "Start over" (skill requirement: a way to manually purge local
+  // session state), distinct from finishing normally - abandons the
+  // current session mid-way rather than completing it.
+  const handleReset = () => {
+    try {
+      window.sessionStorage.removeItem(sessionStorageKey(noteId));
+    } catch (error) {
+      console.warn('Error clearing practice session from sessionStorage:', error);
+    }
+    setStage('start');
+    setSessionCards([]);
+    setIndex(0);
+    setRevealed(false);
+  };
 
   const currentCard = sessionCards[index];
 
@@ -110,7 +184,7 @@ export default function PracticeTab({ content, clozeCards = [] }: PracticeTabPro
 
   if (cards.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+      <div key="empty" className="flex-1 flex flex-col items-center justify-center p-8 text-center">
         <BookOpen className="w-12 h-12 text-gray-700 mb-4" aria-hidden="true" />
         <h3 className="text-xl font-serif text-gray-300 mb-2">No flashcards found</h3>
         <p className="text-gray-500 max-w-sm">
@@ -122,7 +196,7 @@ export default function PracticeTab({ content, clozeCards = [] }: PracticeTabPro
 
   if (stage === 'start') {
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
+      <div key="start" className="flex-1 flex items-center justify-center p-6">
         <div className="text-center max-w-lg w-full">
           <m.div
             initial={{ scale: 0.9, opacity: 0 }}
@@ -155,7 +229,7 @@ export default function PracticeTab({ content, clozeCards = [] }: PracticeTabPro
 
   if (stage === 'results') {
     return (
-      <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto custom-scrollbar">
+      <div key="results" className="flex-1 flex items-center justify-center p-6 overflow-y-auto custom-scrollbar">
         <m.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -190,7 +264,7 @@ export default function PracticeTab({ content, clozeCards = [] }: PracticeTabPro
   }
 
   return (
-    <div className="flex-1 flex flex-col p-6 md:p-10 overflow-y-auto custom-scrollbar relative">
+    <div key="active" className="flex-1 flex flex-col p-6 md:p-10 overflow-y-auto custom-scrollbar relative">
       {/* Spring Progress Bar */}
       <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
         <m.div 
@@ -201,10 +275,16 @@ export default function PracticeTab({ content, clozeCards = [] }: PracticeTabPro
         />
       </div>
 
-      <div className="flex justify-center mb-6 shrink-0 mt-2">
+      <div className="flex items-center justify-center gap-3 mb-6 shrink-0 mt-2">
         <span className="text-[10px] font-bold tracking-wider text-gray-400 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
           {index + 1} / {sessionCards.length}
         </span>
+        <button
+          onClick={handleReset}
+          className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-500 hover:text-gray-300 uppercase transition-colors"
+        >
+          <RotateCcw className="w-3 h-3" aria-hidden="true" /> Start over
+        </button>
       </div>
 
       <div className="w-full max-w-2xl mx-auto flex-1 flex flex-col items-center">

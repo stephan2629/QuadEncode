@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { PenTool, BrainCircuit, RefreshCw, FileText, FileDown, Image as ImageIcon, Video, MoveRight, Search, Eye } from 'lucide-react';
+import { PenTool, BrainCircuit, RefreshCw, FileText, FileDown, Image as ImageIcon, Video, MoveRight, Search, Eye, Loader2 } from 'lucide-react';
 import { m } from "framer-motion";
 import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
@@ -15,13 +15,31 @@ const SubjectWall = dynamic(() => import('@/components/ui/SubjectWall'), { ssr: 
 const TiltCard = dynamic(() => import('@/components/ui/TiltCard'), { ssr: false });
 const FlipCardDemo = dynamic(() => import('@/components/ui/FlipCardDemo'), { ssr: false });
 const MarkdownToRecallDemo = dynamic(() => import('@/components/ui/MarkdownToRecallDemo'), { ssr: false });
+const ContainerScrollAnimation = dynamic(() => import('@/components/ui/ContainerScrollAnimation').then(mod => mod.ContainerScrollAnimation), { ssr: false });
+
+const SEARCH_EXAMPLES = [
+  "CompTIA Security+",
+  "Spanish Vocab",
+  "Music Theory",
+  "AWS Solutions Architect",
+  "Organic Chemistry",
+  "Python Programming",
+  "Guitar Chords",
+  "Machine Learning"
+];
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<User | null>(null);
   const [heroFlipped, setHeroFlipped] = useState(false);
+
+  // Animated Typewriter State for Search Bar Placeholder
+  const [placeholderText, setPlaceholderText] = useState('');
+  const [exampleIndex, setExampleIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const router = useRouter();
 
@@ -36,9 +54,38 @@ export default function Home() {
     }
   }, []);
 
+  // Typewriter effect loop. While focused or typed-into, the input shows a
+  // fixed string instead - computed at render time below rather than pushed
+  // into state here, so the effect only ever touches state from its own
+  // async setTimeout callback, never synchronously in the effect body.
+  useEffect(() => {
+    if (isFocused || searchQuery) return;
+
+    const currentTopic = SEARCH_EXAMPLES[exampleIndex];
+    const targetText = `Try "${currentTopic}"...`;
+
+    const timeout = setTimeout(() => {
+      if (!isDeleting) {
+        setPlaceholderText(targetText.slice(0, placeholderText.length + 1));
+        if (placeholderText.length + 1 >= targetText.length) {
+          setTimeout(() => setIsDeleting(true), 2200);
+        }
+      } else {
+        setPlaceholderText(targetText.slice(0, placeholderText.length - 1));
+        if (placeholderText.length - 1 <= 0) {
+          setIsDeleting(false);
+          setExampleIndex((prev) => (prev + 1) % SEARCH_EXAMPLES.length);
+        }
+      }
+    }, isDeleting ? 35 : 75);
+
+    return () => clearTimeout(timeout);
+  }, [placeholderText, isDeleting, exampleIndex, isFocused, searchQuery]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() && !isSearching) {
+      setIsSearching(true);
       const slug = searchQuery.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       router.push(`/study/${slug}`);
     }
@@ -46,19 +93,25 @@ export default function Home() {
 
   const features = [
     {
+      n: '01',
       icon: BrainCircuit,
       title: "Retrieval beats rereading",
-      description: "Rereading feels fluent and predicts almost nothing. Producing the answer from memory is what leaves a trace. Roediger & Karpicke, 2006."
+      description: "Rereading feels fluent and predicts almost nothing. Producing the answer from memory is what leaves a trace.",
+      citation: "Roediger & Karpicke, 2006",
     },
     {
+      n: '02',
       icon: RefreshCw,
       title: "Spacing beats massing",
-      description: "The same minutes spread across days outperform the same minutes in one sitting, and the advantage grows with the delay. Cepeda et al., 2006."
+      description: "The same minutes spread across days outperform the same minutes in one sitting, and the advantage grows with the delay.",
+      citation: "Cepeda et al., 2006",
     },
     {
+      n: '03',
       icon: PenTool,
       title: "Generation beats provision",
-      description: "A word you generate is remembered better than the same word handed to you. Which is why the app will not write your answers."
+      description: "A word you generate is remembered better than the same word handed to you. Which is why the app will not write your answers.",
+      citation: null,
     }
   ];
 
@@ -206,7 +259,7 @@ export default function Home() {
 
         {/* Hero Copy (Massive Typography) */}
         <m.h1
-          className="text-[clamp(2.5rem,7.5vw,96px)] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.1] md:leading-[1.03] text-white"
+          className="text-[clamp(2.5rem,6vw,80px)] font-bold tracking-tighter mb-6 md:mb-8 font-serif leading-[1.1] md:leading-[1.03] text-white"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
@@ -239,36 +292,48 @@ export default function Home() {
               <input
                 ref={searchInputRef}
                 type="text"
-                className="w-full bg-transparent border-none outline-none text-white text-base md:text-lg px-4 md:px-5 placeholder-gray-500 font-medium"
-                placeholder="What do you want to learn?"
+                className="w-full bg-transparent border-none outline-none text-white text-base md:text-lg px-4 md:px-5 placeholder-gray-400 font-medium"
+                placeholder={isFocused || searchQuery ? "What do you want to learn?" : (placeholderText || "What do you want to learn?")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setTimeout(() => setIsFocused(false), 200)}
               />
               <SearchCharCount length={searchQuery.length} />
-              <button type="submit" className="hidden md:flex flex-shrink-0 items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:brightness-110 px-6 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95">
-                Find path <MoveRight className="w-4 h-4" />
+              <button type="submit" disabled={isSearching} className="hidden md:flex flex-shrink-0 items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:brightness-110 px-6 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 disabled:opacity-70">
+                {isSearching ? <><Loader2 className="w-4 h-4 animate-spin" /> Curating path...</> : <>Find path <MoveRight className="w-4 h-4" /></>}
               </button>
             </div>
           </form>
-          <button onClick={handleSearch} className="md:hidden mt-4 flex items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 w-full justify-center">
-            Find path <MoveRight className="w-4 h-4" />
+          <button onClick={handleSearch} disabled={isSearching} className="md:hidden mt-4 flex items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 w-full justify-center disabled:opacity-70">
+            {isSearching ? <><Loader2 className="w-4 h-4 animate-spin" /> Curating path...</> : <>Find path <MoveRight className="w-4 h-4" /></>}
           </button>
 
           {/* Example Chips */}
-          <div className="flex flex-wrap justify-center gap-2 mt-6">
-            <span className="text-xs text-gray-400 font-mono mr-1 self-center">TRY:</span>
-            {['CompTIA Security+', 'Spanish Vocab', 'Music Theory'].map((chip) => (
-              <button
-                key={chip}
-                type="button"
-                onClick={() => setSearchQuery(chip)}
-                className="px-3.5 py-1.5 text-xs bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-all font-medium"
-              >
-                {chip}
-              </button>
-            ))}
+          <div className="flex flex-col items-center gap-2 mt-6">
+            <div className="text-xs text-gray-400 font-mono flex items-center gap-1.5">
+              <span>Try typing any subject, certification, or skill:</span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 max-w-xl">
+              {[
+                'CompTIA Security+',
+                'Spanish Vocab',
+                'Music Theory',
+                'AWS Solutions Architect',
+                'Organic Chemistry',
+                'Python Programming',
+                'Guitar Chords'
+              ].map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => setSearchQuery(chip)}
+                  className="px-3.5 py-1.5 text-xs bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-all font-medium active:scale-95"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
           </div>
         </m.div>
 
@@ -321,6 +386,9 @@ export default function Home() {
           </div>
         </m.div>
 
+        {/* 21st.dev Inspired Scroll-Driven Container Reveal */}
+        <ContainerScrollAnimation />
+
         {/* Markdown-to-recall preview: the actual mechanic, not a screenshot of it */}
         <m.div
           className="w-full max-w-4xl mx-auto relative z-30 mt-20 md:mt-28 text-left"
@@ -347,6 +415,12 @@ export default function Home() {
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-12 md:mb-20 tracking-tight">Why it is built this way</h2>
+          {/* Evidence cards, not feature cards: each claim is a citation, so
+              the citation gets its own footer treatment (a mono reference
+              tag below a rule) instead of being buried in the paragraph.
+              Equal-width columns, deliberately distinct from the numbered
+              icon cards in "How it works" just below - same TiltCard/rounded-3xl
+              tokens, different rhythm, so the two sections don't blur together. */}
           <m.div
             className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left"
             variants={staggerContainer}
@@ -354,17 +428,27 @@ export default function Home() {
             whileInView="show"
             viewport={{ once: true }}
           >
-            {features.map((feature, idx) => (
-              <m.div key={idx} variants={fadeUpItem} className={idx === 0 ? "md:col-span-2 md:row-span-2" : "col-span-1"}>
-                <TiltCard tiltAmount={4} className="relative group bg-[#14120f]/60 backdrop-blur-md border border-white/10 hover:border-white/20 rounded-3xl p-8 md:p-10 transition-colors overflow-hidden h-full flex flex-col justify-center">
+            {features.map((feature) => (
+              <m.div key={feature.n} variants={fadeUpItem}>
+                <TiltCard tiltAmount={4} className="relative group bg-[#14120f]/60 backdrop-blur-md border border-white/10 hover:border-white/20 rounded-3xl p-8 transition-colors overflow-hidden h-full flex flex-col">
                   <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                  <div className="bg-accent/10 w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-accent mb-6 md:mb-8 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-                    <feature.icon className="w-6 h-6 md:w-8 md:h-8" />
+                  <div className="flex items-center justify-between mb-6 transform-gpu translate-z-10">
+                    <div className="bg-accent/10 w-12 h-12 rounded-2xl flex items-center justify-center text-accent group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                      <feature.icon className="w-6 h-6" />
+                    </div>
+                    <span className="font-mono text-sm text-gray-500">{feature.n}</span>
                   </div>
-                  <h3 className="text-2xl md:text-3xl font-bold font-serif mb-4 text-white transform-gpu translate-z-10">{feature.title}</h3>
-                  <p className="text-gray-400 text-sm md:text-lg leading-relaxed transform-gpu translate-z-10 font-light">
+                  <h3 className="text-2xl font-bold font-serif mb-3 text-white transform-gpu translate-z-10">{feature.title}</h3>
+                  <p className="text-gray-400 text-sm md:text-base leading-relaxed transform-gpu translate-z-10 font-light flex-1">
                     {feature.description}
                   </p>
+                  {feature.citation && (
+                    <div className="mt-6 pt-4 border-t border-white/5 transform-gpu translate-z-10">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-500">
+                        {feature.citation}
+                      </span>
+                    </div>
+                  )}
                 </TiltCard>
               </m.div>
             ))}
@@ -421,16 +505,19 @@ export default function Home() {
 
         {/* Manifesto statement */}
         <m.div
-          className="mt-24 md:mt-32 w-full max-w-3xl mx-auto text-center"
+          className="mt-24 md:mt-32 w-full max-w-3xl mx-auto text-center relative"
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
+          {/* Ambient Glow behind Manifesto */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[300px] bg-gradient-to-r from-amber-500/10 via-accent/5 to-amber-600/10 blur-[140px] rounded-full pointer-events-none -z-10" />
+
           <p className="text-2xl md:text-4xl font-serif font-bold text-white leading-tight mb-8">
             Reading feels productive. <br className="hidden md:block" />It is the cheapest thing you can do <br className="hidden md:block" />with an hour.
           </p>
-          <p className="text-gray-400 text-base md:text-lg leading-relaxed max-w-xl mx-auto">
+          <p className="text-gray-400 text-base md:text-lg leading-relaxed max-w-xl mx-auto font-light">
             Every other tool will happily show you the answer. That is the moment the work stops. Quad Encode holds the answer back until you have produced one, and then shows you your own words, not a stranger&apos;s.
           </p>
 

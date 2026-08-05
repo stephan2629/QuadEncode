@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { Brain, Check, X, RotateCw, Sparkles, ArrowRight, Zap } from 'lucide-react';
+import { Brain, Check, X, RotateCw, RotateCcw, Sparkles, ArrowRight, Zap } from 'lucide-react';
 import { saveMissedQuestionsAction } from '@/app/actions/quiz-actions';
 import { parseLocalQuiz, type QuizQuestion } from '@/lib/quiz-parser';
 
@@ -13,6 +13,22 @@ interface AnsweredQuestion {
 }
 
 type Stage = 'idle' | 'loading' | 'playing' | 'results';
+
+// A quiz in progress (stage 'playing') is saved here so a tab refresh
+// resumes the same question/score instead of losing it. Cleared once the
+// session leaves 'playing' - completion or an explicit reset - so a stale
+// session never comes back after that point.
+interface StoredQuizSession {
+  stage: Stage;
+  questions: QuizQuestion[];
+  index: number;
+  picked: string | null;
+  answered: AnsweredQuestion[];
+}
+
+function sessionStorageKey(noteId: string) {
+  return `quiz-session-${noteId}`;
+}
 
 export default function QuizTab({
   noteId,
@@ -29,6 +45,48 @@ export default function QuizTab({
   const [answered, setAnswered] = useState<AnsweredQuestion[]>([]);
   const [convertedCount, setConvertedCount] = useState<number | null>(null);
 
+  // Resume a saved in-progress session once, after mount (sessionStorage
+  // isn't available during SSR, so reading it any earlier would produce a
+  // hydration mismatch - same reasoning as this repo's useSessionStorage
+  // hook, just inlined here since this component saves several fields as
+  // one combined object rather than one hook call per field).
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(sessionStorageKey(noteId));
+      if (!raw) return;
+      const stored = JSON.parse(raw) as StoredQuizSession;
+      if (stored.stage === 'playing' && stored.questions.length > 0) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setQuestions(stored.questions);
+        setIndex(stored.index);
+        setPicked(stored.picked);
+        setAnswered(stored.answered);
+        setStage('playing');
+      }
+    } catch (error) {
+      console.warn('Error reading quiz session from sessionStorage:', error);
+    }
+    // Only the initial read on mount belongs here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Mirrors the active session to sessionStorage while playing, and clears
+  // it the moment play stops for any reason (results reached, reset, or
+  // back to idle) so a finished or abandoned session never gets resumed.
+  useEffect(() => {
+    const key = sessionStorageKey(noteId);
+    try {
+      if (stage === 'playing') {
+        const session: StoredQuizSession = { stage, questions, index, picked, answered };
+        window.sessionStorage.setItem(key, JSON.stringify(session));
+      } else {
+        window.sessionStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.warn('Error saving quiz session to sessionStorage:', error);
+    }
+  }, [noteId, stage, questions, index, picked, answered]);
+
   const current = questions[index];
   const missed = useMemo(() => answered.filter((a) => !a.correct).map((a) => a.question), [answered]);
   const score = answered.filter((a) => a.correct).length;
@@ -44,6 +102,22 @@ export default function QuizTab({
     setAnswered([]);
     setConvertedCount(null);
     setStage('playing');
+  };
+
+  // Explicit "Start over" (skill requirement: a way to manually purge local
+  // session state), distinct from finishing normally - abandons the current
+  // session mid-way rather than completing it.
+  const handleReset = () => {
+    try {
+      window.sessionStorage.removeItem(sessionStorageKey(noteId));
+    } catch (error) {
+      console.warn('Error clearing quiz session from sessionStorage:', error);
+    }
+    setStage('idle');
+    setQuestions([]);
+    setIndex(0);
+    setPicked(null);
+    setAnswered([]);
   };
 
   const handleStartLocal = () => {
@@ -131,7 +205,7 @@ export default function QuizTab({
 
   if (stage === 'loading') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center h-full min-h-[400px]">
+      <div key="loading" className="flex-1 flex flex-col items-center justify-center p-12 text-center h-full min-h-[400px]">
         <m.div
           animate={{ scale: [1, 1.08, 1] }}
           transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
@@ -150,9 +224,9 @@ export default function QuizTab({
     const isCorrect = picked === current.correct;
 
     return (
-      <div className="flex-1 flex flex-col p-6 md:p-10 overflow-y-auto custom-scrollbar relative">
+      <div key="playing" className="flex-1 flex flex-col p-6 md:p-10 overflow-y-auto custom-scrollbar relative">
         <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
-          <m.div 
+          <m.div
             className="h-full bg-accent"
             initial={{ width: 0 }}
             animate={{ width: `${((index) / questions.length) * 100}%` }}
@@ -160,10 +234,16 @@ export default function QuizTab({
           />
         </div>
 
-        <div className="flex justify-center mb-6 shrink-0 mt-2">
+        <div className="flex items-center justify-center gap-3 mb-6 shrink-0 mt-2">
           <span className="text-[10px] font-bold tracking-wider text-gray-400 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
             {index + 1} / {questions.length}
           </span>
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-500 hover:text-gray-300 uppercase transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" aria-hidden="true" /> Start over
+          </button>
         </div>
 
         {/* my-auto, not justify-center on the scroll container: centering via
@@ -252,7 +332,7 @@ export default function QuizTab({
   if (stage === 'results') {
     const total = answered.length;
     return (
-      <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto custom-scrollbar">
+      <div key="results" className="flex-1 flex items-center justify-center p-6 overflow-y-auto custom-scrollbar">
         <div className="text-center max-w-xl w-full py-10">
           <m.div
             initial={{ scale: 0.85, opacity: 0 }}
@@ -332,7 +412,7 @@ export default function QuizTab({
   const localQuestionsCount = Math.min(parseLocalQuiz(content).length, 10);
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center h-full">
+    <div key="idle" className="flex-1 flex flex-col items-center justify-center p-12 text-center h-full">
       <div className="bg-accent/10 w-20 h-20 rounded-full flex items-center justify-center mb-6 border border-accent/20">
         <Brain className="w-10 h-10 text-accent" aria-hidden="true" />
       </div>

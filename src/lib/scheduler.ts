@@ -1,4 +1,4 @@
-// Leitner boxes, not SM-2. See CLAUDE.md section 8.
+// Memory boxes, not SM-2. See CLAUDE.md section 8.
 export const BOX_INTERVALS_DAYS: Record<number, number> = {
   0: 0,
   1: 1,
