@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { m } from "framer-motion";
 import { login, signup } from './actions';
 import { createClient } from '@/utils/supabase/client';
+import { humanizeAuthError, humanizeCallbackError } from '@/lib/auth-errors';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -24,6 +25,20 @@ export default function LoginPage() {
     setNotice(null);
   }
 
+  // /auth/callback redirects here with ?error=... when a password-reset
+  // link's code exchange fails (commonly: opened in a different browser
+  // than the one that requested it, or expired/already used) - land the
+  // user on the reset form with an explanation instead of a silent /login.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('error');
+    const message = humanizeCallbackError(code);
+    if (message) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMode('reset');
+      setError(message);
+    }
+  }, []);
+
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     setError(null);
@@ -32,12 +47,13 @@ export default function LoginPage() {
     if (mode === 'reset') {
       const email = formData.get('email') as string;
       const supabase = createClient();
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+        redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
       });
       setLoading(false);
       if (resetError) {
-        setError(resetError.message);
+        setError(humanizeAuthError(resetError.message));
       } else {
         setNotice('Check your email for a reset link.');
       }
@@ -47,9 +63,13 @@ export default function LoginPage() {
     const action = isLogin ? login : signup;
     const res = await action(formData);
 
-    // If we reach here, it means there was an error (successful login redirects)
-    if (res?.error) {
+    // Reaching here means no redirect happened: either an error, or a signup
+    // that needs email confirmation before there's a session to redirect with.
+    if (res && 'error' in res && res.error) {
       setError(res.error);
+      setLoading(false);
+    } else if (res && 'notice' in res && res.notice) {
+      setNotice(res.notice);
       setLoading(false);
     }
   }
@@ -63,7 +83,7 @@ export default function LoginPage() {
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (oauthError) {
-      setError(oauthError.message);
+      setError(humanizeAuthError(oauthError.message));
       setGoogleLoading(false);
     }
     // On success, Supabase redirects the browser to Google; no further action here.

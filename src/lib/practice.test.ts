@@ -54,4 +54,36 @@ describe('buildPracticeQuestions', () => {
       expect(matching).toHaveLength(1);
     }
   });
+
+  it('splits a pipe-syntax multiple-choice answer into separate options instead of one garbled string', () => {
+    const cards = [
+      card('a', 'Perro | Gato | Pájaro | Pez', 'What is "dog"?'),
+      card('b', 'To learn.'),
+      card('c', 'To develop.'),
+    ];
+    const questions = buildPracticeQuestions(cards, 4, fixedRng);
+    const dogQuestion = questions.find((q) => q.card.id === 'a')!;
+
+    expect(dogQuestion.card.answer).toBe('Perro');
+    expect(dogQuestion.options).toContain('Perro');
+    expect(dogQuestion.options).toContain('Gato');
+    expect(dogQuestion.options).toContain('Pájaro');
+    expect(dogQuestion.options).toContain('Pez');
+    for (const option of dogQuestion.options) {
+      expect(option).not.toContain('|');
+    }
+  });
+
+  it("uses a pipe-syntax card's own distractors rather than borrowing another card's raw pipe string", () => {
+    const cards = [
+      card('a', 'Perro | Gato | Pájaro | Pez', 'What is "dog"?'),
+      card('b', 'To learn.'),
+      card('c', 'To develop.'),
+    ];
+    const questions = buildPracticeQuestions(cards, 4, fixedRng);
+    const plainQuestion = questions.find((q) => q.card.id === 'b')!;
+    for (const option of plainQuestion.options) {
+      expect(option).not.toContain('|');
+    }
+  });
 });

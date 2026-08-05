@@ -1,12 +1,12 @@
 'use client';
 
-// Multiple-choice practice. Recognition, not recall, so nothing here
-// touches the Leitner schedule — no reviews rows, no box changes.
+// Multiple-choice// Practice is recognition, not recall. Zero AI calls, and nothing here
+// touches the memory box schedule — no reviews rows, no box changes.
 // The graded path for mastery stays in /review.
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Dumbbell } from 'lucide-react';
+import { ArrowLeft, Dumbbell, RotateCcw } from 'lucide-react';
 import { m } from "framer-motion";
 import type { PracticeQuestion } from '@/lib/practice';
 
@@ -16,13 +16,74 @@ interface PracticeResult {
   correct: boolean;
 }
 
+// An in-progress practice session (still short of `questions.length`) is
+// saved here so a tab refresh resumes it instead of losing it. Keyed by
+// the question set's card ids, not a fixed key: the server reshuffles a
+// fresh `questions` prop on every request, and a stored session only makes
+// sense to resume against the same set of cards it was built from -
+// otherwise index/results would point at the wrong questions.
+interface StoredPracticeSession {
+  cardIds: string[];
+  index: number;
+  picked: string | null;
+  results: PracticeResult[];
+}
+
+const STORAGE_KEY = 'practice-session';
+
+function cardIdsOf(questions: PracticeQuestion[]) {
+  return questions.map((q) => q.card.id);
+}
+
+function sameCardSet(a: string[], b: string[]) {
+  return a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',');
+}
+
 export default function PracticeSession({ questions }: { questions: PracticeQuestion[] }) {
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [results, setResults] = useState<PracticeResult[]>([]);
 
+  // Resume a saved session for this exact question set, once after mount
+  // (sessionStorage isn't available during SSR - reading it earlier would
+  // produce a hydration mismatch, same reasoning as this repo's
+  // useSessionStorage hook).
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const stored = JSON.parse(raw) as StoredPracticeSession;
+      if (sameCardSet(stored.cardIds, cardIdsOf(questions)) && stored.index < questions.length) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setIndex(stored.index);
+        setPicked(stored.picked);
+        setResults(stored.results);
+      }
+    } catch (error) {
+      console.warn('Error reading practice session from sessionStorage:', error);
+    }
+    // Only the initial read on mount belongs here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const finished = index >= questions.length;
   const question = questions[index];
+
+  // Mirrors progress to sessionStorage while a session is under way, and
+  // clears it once finished so a completed session never gets "resumed"
+  // back into its last question.
+  useEffect(() => {
+    try {
+      if (!finished) {
+        const session: StoredPracticeSession = { cardIds: cardIdsOf(questions), index, picked, results };
+        window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      } else {
+        window.sessionStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (error) {
+      console.warn('Error saving practice session to sessionStorage:', error);
+    }
+  }, [questions, index, picked, results, finished]);
 
   const handlePick = (option: string) => {
     if (picked !== null) return; // one answer per question
@@ -38,11 +99,25 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
     setIndex((i) => i + 1);
   };
 
+  // Explicit "Start over" (skill requirement: a way to manually purge local
+  // session state) - abandons the current session mid-way, distinct from
+  // reaching the end normally.
+  const handleReset = () => {
+    try {
+      window.sessionStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.warn('Error clearing practice session from sessionStorage:', error);
+    }
+    setIndex(0);
+    setPicked(null);
+    setResults([]);
+  };
+
   if (finished) {
     const correct = results.filter((r) => r.correct).length;
     const missed = results.filter((r) => !r.correct);
     return (
-      <div className="min-h-screen bg-[#0a0908] text-white flex flex-col items-center justify-center p-6">
+      <div key="finished" className="min-h-screen bg-[#0a0908] text-white flex flex-col items-center justify-center p-6">
         <div className="text-center max-w-md w-full">
           <m.div
             initial={{ scale: 0.85, opacity: 0 }}
@@ -88,7 +163,7 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0908] text-white flex flex-col">
+    <div key="active" className="min-h-screen bg-[#0a0908] text-white flex flex-col">
       <header className="flex justify-between items-center p-6 md:p-10">
         <Link href="/dashboard" className="text-gray-500 hover:text-white transition-colors flex items-center gap-2">
           <ArrowLeft className="w-5 h-5" aria-hidden="true" /> Dashboard
@@ -100,6 +175,12 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
           <div className="text-sm text-gray-500 font-medium font-mono">
             {index + 1} / {questions.length}
           </div>
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-500 hover:text-gray-300 uppercase transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" aria-hidden="true" /> Start over
+          </button>
         </div>
       </header>
 

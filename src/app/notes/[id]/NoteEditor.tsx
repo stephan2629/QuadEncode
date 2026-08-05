@@ -423,7 +423,7 @@ export default function NoteEditor({
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.12 }}
-                    className="relative flex-1 group mt-4 md:mt-6 mb-12 flex"
+                    className="relative flex-1 group mt-4 md:mt-6 mb-12 flex px-8 md:px-12"
                   >
                     <textarea
                       ref={textareaRef}
@@ -468,7 +468,7 @@ export default function NoteEditor({
               tabIndex={0}
               className="flex-1 flex flex-col overflow-hidden w-full h-full relative bg-[#0a0908]"
             >
-              <PracticeTab content={content} clozeCards={clozeCards} />
+              <PracticeTab noteId={noteId} content={content} clozeCards={clozeCards} />
             </m.div>
           )}
 

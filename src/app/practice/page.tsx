@@ -5,13 +5,14 @@ import PracticeSession from './PracticeSession';
 
 import { cookies } from 'next/headers';
 
-export default async function PracticePage({ searchParams }: { searchParams: { subject_id?: string } }) {
+export default async function PracticePage({ searchParams }: { searchParams: Promise<{ subject_id?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
+  const resolvedSearchParams = await searchParams;
   const cookieStore = await cookies();
-  const subjectId = searchParams.subject_id || cookieStore.get('active_subject_id')?.value;
+  const subjectId = resolvedSearchParams.subject_id || cookieStore.get('active_subject_id')?.value;
 
   if (!subjectId) redirect('/dashboard');
 

@@ -24,7 +24,7 @@ export default function FlipCardDemo({ kind, prompt, answer, options }: FlipCard
         className="relative w-full h-[180px] text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-2xl block"
         style={{ transformStyle: 'preserve-3d' }}
         animate={{ rotateY: flipped ? 180 : 0 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+        transition={{ rotateY: { duration: 0 } }}
       >
         <div 
           className="absolute inset-0 bg-[#14120f] border border-white/10 rounded-2xl p-6 flex flex-col justify-between"

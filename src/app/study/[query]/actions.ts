@@ -13,6 +13,11 @@ export interface PathResource {
   cost: string;
   format: string;
   description: string;
+  // Set only for certification/exam paths that need a multi-part
+  // progression (e.g. "Prerequisites", "Core exam objectives", or a named
+  // cert in a trifecta like "Network+"). Absent entirely for a normal
+  // subject/skill query, which stays a flat path.
+  stage?: string;
 }
 
 export interface GeneratedPath {
@@ -31,7 +36,18 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
     if (!serperKey) throw new Error('Serper API key is missing. Please add SERPER_API_KEY to .env.local');
     if (!youtubeKey) throw new Error('YouTube API key is missing. Please add YOUTUBE_API_KEY to .env.local');
 
-    const cleanQuery = query.replace(/-/g, ' ');
+    const cleanQuery = query.replace(/-/g, ' ').trim();
+
+    // 0. Upfront Validation: Query must be at least 3 characters and not pure digits
+    if (cleanQuery.length < 3 || /^\d+$/.test(cleanQuery)) {
+      return { error: `"${cleanQuery}" is too short or ambiguous. Please enter a specific subject, certification, or skill (e.g. "CompTIA Security+", "Spanish Vocabulary", "AWS").` };
+    }
+
+    // Common non-educational words filter
+    const genericObjects = new Set(['hamburger', 'burger', 'pizza', 'taco', 'sandwich', 'apple', 'banana', 'shoe', 'pencil', 'table', 'chair', 'car', 'door']);
+    if (genericObjects.has(cleanQuery.toLowerCase())) {
+      return { error: `"${cleanQuery}" is an everyday item, not an educational subject or skill. Try searching for a specific topic like "Culinary Arts", "Nutrition Science", or "CompTIA Security+".` };
+    }
 
     // 1. Fetch Web Results from Serper
     const serperRes = await fetch('https://google.serper.dev/search', {
@@ -44,17 +60,20 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
     });
     const serperData = await serperRes.json();
 
-    // 2. Fetch Video Results from YouTube. Real video/playlist ids and URLs
-    // are extracted here in code (see src/lib/youtube.ts), not left for the
-    // model to guess.
-    // To ensure top free creators (like Professor Messer) and structured courses surface,
-    // we fetch playlists by relevance, and standalone videos by upload date (to keep it fresh).
+    // 2. Fetch Video Results from YouTube
     const ytPlaylists = await searchYouTube(`${cleanQuery} full course playlist`, youtubeKey, { type: 'playlist', order: 'relevance', maxResults: '4' });
     const ytVideos = await searchYouTube(`${cleanQuery} full course tutorial`, youtubeKey, { type: 'video', order: 'date', maxResults: '4' });
     const ytCandidates = [...ytPlaylists, ...ytVideos];
 
     const prompt = `
       You are an expert curriculum designer. A user wants to learn about: "${cleanQuery}".
+
+      STRICT TOPIC VALIDATION RULE:
+      Evaluate if "${cleanQuery}" is a real, structured educational topic, academic subject, technical certification, language, software tool, or professional skill.
+      If it is a random object, fast food item, single non-educational noun, gibberish, profanity, or not a real course topic, respond with EXACTLY this JSON and nothing else:
+      {"error": "not_a_subject"}
+
+      Otherwise, continue below.
 
       Here are the top web search results:
       ${JSON.stringify(serperData.organic?.slice(0, 6) || [])}
@@ -65,13 +84,25 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
       you pick - never invent or modify a YouTube URL:
       ${JSON.stringify(ytCandidates.slice(0, 6))}
 
-      Create a highly curated learning path with 5 to 6 resources, selecting the absolute best
-      options from the provided search results above. Do not use any URL that isn't present in
-      the search results or YouTube candidates given to you.
+      CERTIFICATION / MULTI-STAGE DETECTION:
+      If "${cleanQuery}" names a certification, credential, or exam prep target (e.g. a CompTIA
+      exam, AWS Solutions Architect, CCNA, Azure Fundamentals, PMP), do not return a single flat
+      course list. Instead structure the path into logical stages covering the full progression a
+      learner needs, and set a "stage" field on every resource naming the stage it belongs to, for
+      example "Prerequisites", "Core exam objectives", "Practice & revision". If the query implies
+      a standard multi-part track (the CompTIA trifecta: A+ -> Network+ -> Security+), use each
+      certification as its own stage in order, covering the complete progression rather than just
+      the first one named. For a normal subject or skill query that isn't cert-shaped, omit the
+      "stage" field entirely and return a flat path exactly as before.
+
+      Create a highly curated learning path with 5 to 6 resources for a normal subject, or up to
+      15 resources spread across all stages combined for a certification/multi-stage path,
+      selecting the absolute best options from the provided search results above. Do not use any
+      URL that isn't present in the search results or YouTube candidates given to you.
 
       Ranking rules, in order:
-      1. Free-First Ranking Engine: Free video courses (especially structured YouTube playlists) MUST always rank above paid platforms or generic article sites.
-      2. Top Free Creator Priority: For standard certifications/topics with well-known free educators (e.g., Professor Messer for CompTIA A+, Network+, Security+), you MUST explicitly surface their free YouTube courses/playlists as the absolute #1 ranked path step.
+      1. Free-First Ranking Engine: Free video courses (especially structured YouTube playlists) MUST always rank above paid platforms or generic article sites. For a staged/certification path, this applies within every stage, not just once overall.
+      2. Top Free Creator Priority: For standard certifications/topics with well-known free educators (e.g., Professor Messer for CompTIA A+, Network+, Security+, freeCodeCamp, Stephane Maarek or AWS's own free video courses, NetworkChuck), you MUST explicitly surface their free YouTube courses/playlists as the #1 ranked resource in the relevant stage.
       3. Full playlist courses (from YouTube Data API) must be ranked higher than fragmented blog posts, landing pages, or paid sites like Udemy/Coursera.
       4. Within each tier, order beginner to advanced.
       5. Prefer official documentation and well-known, reputable sources over unfamiliar blogs.
@@ -94,7 +125,8 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
             "isFree": true,
             "cost": "Free" or "$20",
             "format": "video" or "text",
-            "description": "2-3 sentences explaining exactly what this covers and who it suits."
+            "description": "2-3 sentences explaining exactly what this covers and who it suits.",
+            "stage": "Only for certification/multi-stage paths - omit entirely otherwise."
           }
         ]
       }
@@ -103,7 +135,11 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
     const responseText = await generateText({ prompt, json: true });
     if (!responseText) throw new Error('No response from AI');
 
-    const parsed = JSON.parse(responseText) as GeneratedPath;
+    const parsed = JSON.parse(responseText) as GeneratedPath | { error: string };
+
+    if ('error' in parsed) {
+      return { error: `"${cleanQuery}" doesn't look like a skill, subject, or certification. Try something like "Spanish vocabulary" or "AWS Solutions Architect".` };
+    }
 
     // Discard anything that doesn't actually resolve before it ever reaches
     // the database - an AI-curated path is only as trustworthy as its
@@ -114,11 +150,23 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
     const liveResources = parsed.resources.filter((_, i) => liveFlags[i]);
 
     // Enforced in code, not just asked for in the prompt: a model can ignore
-    // instructions, but a stable sort can't.
-    const freeFirst = [...liveResources].sort(
-      (a, b) => Number(b.isFree) - Number(a.isFree)
+    // instructions, but a stable sort can't. Sorted free-first within each
+    // stage rather than across the flattened list, so a certification
+    // path's progression order survives the sort instead of every free
+    // resource from every stage floating to the very top.
+    const stageOrder: string[] = [];
+    for (const r of liveResources) {
+      const stage = r.stage ?? '';
+      if (!stageOrder.includes(stage)) stageOrder.push(stage);
+    }
+    const freeFirst = stageOrder.flatMap((stage) =>
+      liveResources
+        .filter((r) => (r.stage ?? '') === stage)
+        .sort((a, b) => Number(b.isFree) - Number(a.isFree))
     );
-    parsed.resources = freeFirst.slice(0, 5);
+
+    const isStaged = liveResources.some((r) => r.stage);
+    parsed.resources = freeFirst.slice(0, isStaged ? 15 : 5);
 
     if (parsed.resources.length === 0) {
       throw new Error('Every candidate resource failed its link check. Please try again.');

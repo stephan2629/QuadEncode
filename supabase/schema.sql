@@ -201,8 +201,13 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
+  -- This runs inside the signup transaction, so any error here rolls the whole
+  -- signup back. A leftover profile row (deleting a user mid-testing is enough
+  -- to leave one) would otherwise trip the unique constraint on user_id and
+  -- fail every subsequent signup with an opaque database error.
   insert into public.profiles (user_id, display_name)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', ''));
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', ''))
+  on conflict (user_id) do nothing;
   return new;
 end;
 $$;

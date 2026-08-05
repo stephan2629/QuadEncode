@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { m } from "framer-motion";
 import { createClient } from '@/utils/supabase/client';
+import { humanizeAuthError } from '@/lib/auth-errors';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -22,7 +23,7 @@ export default function ResetPasswordPage() {
     const { error: updateError } = await supabase.auth.updateUser({ password });
 
     if (updateError) {
-      setError(updateError.message);
+      setError(humanizeAuthError(updateError.message));
       setLoading(false);
       return;
     }
@@ -46,7 +47,7 @@ export default function ResetPasswordPage() {
         </div>
 
         <div className="bg-[#14120f]/80 backdrop-blur-xl border border-white/5 rounded-3xl p-8 shadow-2xl">
-          <h1 className="text-2xl font-bold text-white mb-2">Set a new password</h1>
+          <h1 className="text-2xl font-bold font-serif text-white mb-2">Set a new password</h1>
           <p className="text-gray-400 text-sm mb-8">
             Enter the password you want to use from now on.
           </p>

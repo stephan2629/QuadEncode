@@ -9,9 +9,10 @@ import { TiltCard } from './TiltCard';
 interface QuickStudyHubProps {
   activeSubjectId?: string;
   dueCount: number;
+  hasCards: boolean;
 }
 
-export function QuickStudyHub({ activeSubjectId, dueCount }: QuickStudyHubProps) {
+export function QuickStudyHub({ activeSubjectId, dueCount, hasCards }: QuickStudyHubProps) {
   return (
     <m.div
       initial={{ opacity: 0, y: 15 }}
@@ -28,40 +29,44 @@ export function QuickStudyHub({ activeSubjectId, dueCount }: QuickStudyHubProps)
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* 1. Review Shortcut Card */}
-        <TiltCard tiltAmount={4} className="h-full">
-          <Link
-            href={activeSubjectId ? `/review?subject_id=${activeSubjectId}` : '/review'}
-            className="group relative flex flex-col justify-between p-6 h-full min-h-[180px] bg-[#14120f]/80 backdrop-blur-xl border border-white/10 hover:border-accent/40 rounded-3xl overflow-hidden shadow-xl transition-all duration-500 hover:shadow-[0_0_30px_rgba(245,158,11,0.15)] block"
-          >
-            <div className="absolute -top-12 -right-12 w-36 h-36 bg-accent/10 rounded-full blur-2xl group-hover:bg-accent/20 transition-all pointer-events-none" />
-            
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 rounded-2xl bg-accent/10 border border-accent/20 text-accent group-hover:scale-110 transition-transform duration-300">
-                  <Brain className="w-6 h-6" />
-                </div>
-                {dueCount > 0 && (
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent text-[#0a0908] shadow-md">
-                    {dueCount} due
-                  </span>
-                )}
-              </div>
-              <h4 className="text-lg font-bold font-serif text-white group-hover:text-accent transition-colors">
-                Start spaced repetition
-              </h4>
-              <p className="text-xs text-gray-400 mt-1 leading-relaxed font-light">
-                Flip 0ms cards using Leitner box intervals to retain information long-term.
-              </p>
-            </div>
+      <div className={`grid grid-cols-1 gap-6 ${hasCards ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+        {/* 1. Review Shortcut Card - only once a card exists to review, per
+            CLAUDE.md section 3 (progressive disclosure): review/quiz UI is an
+            absence, not an empty state, until the user has actually made one. */}
+        {hasCards && (
+          <TiltCard tiltAmount={4} className="h-full">
+            <Link
+              href={activeSubjectId ? `/review?subject_id=${activeSubjectId}` : '/review'}
+              className="group relative flex flex-col justify-between p-6 h-full min-h-[180px] bg-[#14120f]/80 backdrop-blur-xl border border-white/10 hover:border-accent/40 rounded-3xl overflow-hidden shadow-xl transition-all duration-500 hover:shadow-[0_0_30px_rgba(245,158,11,0.15)] block"
+            >
+              <div className="absolute -top-12 -right-12 w-36 h-36 bg-accent/10 rounded-full blur-2xl group-hover:bg-accent/20 transition-all pointer-events-none" />
 
-            <div className="mt-6 flex items-center text-xs font-semibold text-accent gap-2 group-hover:translate-x-1 transition-transform">
-              <span>Review now</span>
-              <Play className="w-3.5 h-3.5 fill-accent" />
-            </div>
-          </Link>
-        </TiltCard>
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 rounded-2xl bg-accent/10 border border-accent/20 text-accent group-hover:scale-110 transition-transform duration-300">
+                    <Brain className="w-6 h-6" />
+                  </div>
+                  {dueCount > 0 && (
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent text-[#0a0908] shadow-md">
+                      {dueCount} due
+                    </span>
+                  )}
+                </div>
+                <h4 className="text-lg font-bold font-serif text-white group-hover:text-accent transition-colors">
+                  Start spaced repetition
+                </h4>
+                <p className="text-xs text-gray-400 mt-1 leading-relaxed font-light">
+                  Flip 0ms cards using memory box intervals to retain information long-term.
+                </p>
+              </div>
+
+              <div className="mt-6 flex items-center text-xs font-semibold text-accent gap-2 group-hover:translate-x-1 transition-transform">
+                <span>Review now</span>
+                <Play className="w-3.5 h-3.5 fill-accent" />
+              </div>
+            </Link>
+          </TiltCard>
+        )}
 
         {/* 2. Path Discovery Card */}
         <TiltCard tiltAmount={4} className="h-full">

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
+import { humanizeAuthError } from '@/lib/auth-errors'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -15,7 +16,7 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
-    return { error: error.message }
+    return { error: humanizeAuthError(error.message) }
   }
 
   revalidatePath('/', 'layout')
@@ -29,14 +30,27 @@ export async function signup(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  const { error } = await supabase.auth.signUp({
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: name } },
+    options: {
+      data: { full_name: name },
+      emailRedirectTo: `${siteUrl}/auth/callback`,
+    },
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: humanizeAuthError(error.message) }
+  }
+
+  // With email confirmation on, signUp returns no session: the account exists
+  // but stays unusable until the link is clicked. Redirecting to /dashboard
+  // here would just bounce off the middleware back to /login with nothing
+  // explaining why, so say what happened instead.
+  if (!data.session) {
+    return { notice: 'Account created. Check your email for the confirmation link.' }
   }
 
   revalidatePath('/', 'layout')

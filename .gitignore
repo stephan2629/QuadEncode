@@ -14,6 +14,7 @@
 /coverage
 /playwright-report
 /test-results
+/.claude/screenshots
 
 # next.js
 /.next/
@@ -34,6 +35,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the checked-in template, which holds no real values.
+!.env*.example
 
 # vercel
 .vercel

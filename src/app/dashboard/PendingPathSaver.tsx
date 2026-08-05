@@ -3,16 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { saveGeneratedPath } from './actions';
 
 // Lazy-initialized from sessionStorage so the "saving" state is derived up
 // front instead of flipped on synchronously inside the effect body.
-function hasPendingPath() {
-  return typeof window !== 'undefined' && !!sessionStorage.getItem('pendingPathSave');
-}
-
 export default function PendingPathSaver() {
-  const [saving, setSaving] = useState(hasPendingPath);
+  const [saving, setSaving] = useState(
+    () => typeof window !== 'undefined' && sessionStorage.getItem('pendingPathSave') !== null
+  );
   const router = useRouter();
 
   useEffect(() => {
@@ -28,8 +27,13 @@ export default function PendingPathSaver() {
     Promise.resolve()
       .then(() => JSON.parse(pendingData))
       .then(saveGeneratedPath)
-      .then(() => {
+      .then((res: Awaited<ReturnType<typeof saveGeneratedPath>>) => {
         setSaving(false);
+        if (res?.limitReached) {
+          toast.error(res.error || 'Limit reached: Maximum 3 active paths allowed.');
+        } else {
+          toast.success('Learning path saved!');
+        }
         router.refresh();
       })
       .catch((err) => {
