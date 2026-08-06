@@ -132,6 +132,56 @@
   100% { transform: translateY(-400%); }
 }
 
+/* Square loader (adapted from a UIverse.io component by ZacharyCrespin)
+   used by SquareLoader.tsx. Color swapped from the source's plain white to
+   --accent. The source used :nth-of-type(0) through (7) for 7 real
+   squares - nth-of-type is 1-indexed, so (0) never matched anything and
+   every real square inherited the next rule's delay instead, shifting the
+   whole stagger by one slot. Using :nth-child(1) through (7) with 7 evenly
+   spaced delays fixes that instead of carrying the bug forward. */
+@keyframes square-loader-move {
+  0% { left: 0; top: 0; }
+  10.5% { left: 0; top: 0; }
+  12.5% { left: 32px; top: 0; }
+  23% { left: 32px; top: 0; }
+  25% { left: 64px; top: 0; }
+  35.5% { left: 64px; top: 0; }
+  37.5% { left: 64px; top: 32px; }
+  48% { left: 64px; top: 32px; }
+  50% { left: 32px; top: 32px; }
+  60.5% { left: 32px; top: 32px; }
+  62.5% { left: 32px; top: 64px; }
+  73% { left: 32px; top: 64px; }
+  75% { left: 0; top: 64px; }
+  85.5% { left: 0; top: 64px; }
+  87.5% { left: 0; top: 32px; }
+  98% { left: 0; top: 32px; }
+  100% { left: 0; top: 0; }
+}
+.square-loader {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  transform: rotate(45deg);
+}
+.square-loader-square {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  margin: 2px;
+  background: var(--accent);
+  animation: square-loader-move 10s ease-in-out infinite both;
+}
+.square-loader-square:nth-child(1) { animation-delay: 0s; }
+.square-loader-square:nth-child(2) { animation-delay: -1.4285714286s; }
+.square-loader-square:nth-child(3) { animation-delay: -2.8571428571s; }
+.square-loader-square:nth-child(4) { animation-delay: -4.2857142857s; }
+.square-loader-square:nth-child(5) { animation-delay: -5.7142857143s; }
+.square-loader-square:nth-child(6) { animation-delay: -7.1428571429s; }
+.square-loader-square:nth-child(7) { animation-delay: -8.5714285714s; }
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar {
   width: 8px;

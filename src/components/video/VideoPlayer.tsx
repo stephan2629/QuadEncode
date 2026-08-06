@@ -136,6 +136,12 @@ export default function VideoPlayer({ videoId, seekToSeconds, onCapture }: Video
             className="group absolute inset-0 w-full h-full cursor-pointer"
             aria-label="Play video"
           >
+            {/* object-contain, not object-cover: this facade's container
+                runs far taller than the thumbnail's native 16:9 (60% width,
+                full panel height in the split-view layout), and cover would
+                crop the thumbnail's own title text off both edges to fill
+                that box. Letterboxing against the container's existing
+                bg-black loses nothing instead. */}
             {/* eslint-disable-next-line @next/next/no-img-element -- YouTube
                 thumbnail CDN, not a Next-optimizable local/remote asset worth
                 configuring image domains for one call site */}
@@ -143,7 +149,7 @@ export default function VideoPlayer({ videoId, seekToSeconds, onCapture }: Video
               src={`https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`}
               onError={(e) => { e.currentTarget.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`; }}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-contain"
             />
             <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors flex items-center justify-center">
               <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-xl group-hover:scale-105 transition-transform">

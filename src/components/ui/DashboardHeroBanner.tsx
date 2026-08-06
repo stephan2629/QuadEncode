@@ -7,6 +7,7 @@ import { Sparkles, Brain, BookOpen, Layers } from 'lucide-react';
 
 interface DashboardHeroBannerProps {
   subjectName?: string;
+  userName?: string | null;
   totalCards: number;
   dueCount: number;
   noteCount: number;
@@ -36,6 +37,7 @@ function CountUp({ value }: { value: number }) {
 
 export function DashboardHeroBanner({
   subjectName = 'Study Workspace',
+  userName,
   totalCards,
   dueCount,
   noteCount,
@@ -63,6 +65,17 @@ export function DashboardHeroBanner({
       {/* Hero Content */}
       <div className="relative z-10 p-6 sm:p-8 md:p-12 flex flex-col md:flex-row justify-between md:items-end gap-6">
         <div className="max-w-xl">
+          {userName && (
+            <m.p
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              className="text-sm text-gray-400 font-medium mb-2"
+            >
+              Welcome back, {userName}.
+            </m.p>
+          )}
+
           <m.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}

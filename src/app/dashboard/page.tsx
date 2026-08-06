@@ -25,6 +25,8 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
+  const userName = user.user_metadata?.name || user.user_metadata?.full_name || null;
+
   // Fetch all subjects for the switcher
   const { data: subjects, error } = await supabase
     .from('subjects')
@@ -151,20 +153,46 @@ export default async function DashboardPage() {
       <div data-dashboard-scroll className="flex-1 overflow-y-auto w-full p-4 sm:p-6 md:p-12 max-w-6xl mx-auto custom-scrollbar">
       <PendingPathSaver />
       
-      <header className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0 mb-10 md:mb-16">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="font-serif text-xl md:text-2xl font-bold tracking-tight text-accent flex items-center gap-2">
-            <Image src="/logo.png" alt="Quad Encode Logo" width={32} height={32} className="w-6 h-6 md:w-8 md:h-8" /> Quad Encode
-          </Link>
-          
-          <div className="hidden sm:block h-6 w-px bg-white/10" />
-          
+      <header className="mb-10 md:mb-16">
+        {/* Two independent layouts, toggled by display, rather than one
+            markup block reflowed with CSS order across the breakpoint:
+            mobile pairs the logo with the account menu on row one (top
+            right, subject switcher gets its own row below); desktop pairs
+            the logo with the subject switcher instead. Those are two
+            different groupings, not the same group in a different order,
+            so there's no single flex/order trick that produces both from
+            one tree - two small, individually simple blocks beats one
+            clever one here. */}
+        <div className="sm:hidden flex flex-col gap-3">
+          <div className="flex justify-between items-center">
+            <Link href="/" className="font-serif text-xl font-bold tracking-tight text-accent flex items-center gap-2 whitespace-nowrap shrink-0">
+              <Image src="/logo.png" alt="Quad Encode Logo" width={32} height={32} className="w-6 h-6" /> Quad Encode
+            </Link>
+            <AccountMenu
+              email={user.email ?? ''}
+              name={userName}
+              onLogout={logout}
+            />
+          </div>
+
           {subjects && subjects.length > 0 && activeSubject && (
             <SubjectSwitcher subjects={subjects} activeSubjectId={activeSubject.id} />
           )}
         </div>
-        
-        <div className="flex items-center w-full sm:w-auto justify-end">
+
+        <div className="hidden sm:flex justify-between items-center">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="font-serif text-2xl font-bold tracking-tight text-accent flex items-center gap-2 whitespace-nowrap shrink-0">
+              <Image src="/logo.png" alt="Quad Encode Logo" width={32} height={32} className="w-8 h-8" /> Quad Encode
+            </Link>
+
+            <div className="h-6 w-px bg-white/10" />
+
+            {subjects && subjects.length > 0 && activeSubject && (
+              <SubjectSwitcher subjects={subjects} activeSubjectId={activeSubject.id} />
+            )}
+          </div>
+
           <AccountMenu
             email={user.email ?? ''}
             name={user.user_metadata?.name || user.user_metadata?.full_name || null}
@@ -175,6 +203,7 @@ export default async function DashboardPage() {
 
       <DashboardHeroBanner
         subjectName={activeSubject?.name}
+        userName={userName}
         totalCards={totalCards}
         dueCount={dueCount}
         noteCount={activeSubject?.notes?.length ?? 0}

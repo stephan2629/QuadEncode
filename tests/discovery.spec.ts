@@ -26,13 +26,30 @@ test.describe('Discovery & Path Generation', () => {
 
   test('Public Landing Page features interactive demo', async ({ page }) => {
     await page.goto('/');
-    
-    // Look for the FlipCardDemo
-    const submitButton = page.locator('text="Submit"');
-    await expect(submitButton).toBeVisible();
-    
-    // Test the mock app window presence
-    const mockApp = page.locator('text="Quad Encode - Study Session"');
-    await expect(mockApp).toBeVisible();
+
+    // The 0ms instant-reveal flashcard widget (CLAUDE.md section 1) - verify
+    // a real card renders and clicking it actually flips. Located by role
+    // + visible text, not accessible name: FlipCardDemo's aria-label is a
+    // fixed "Showing a prompt/answer..." string that overrides the
+    // accessible-name computation, so the actual prompt text never appears
+    // in it - name: matching against it would never find anything.
+    // Asserting on aria-pressed rather than the answer text's visibility:
+    // the card's front and back both stay in the DOM with a nonzero
+    // bounding box at all times (only CSS backface-visibility hides the
+    // unflipped face), which toBeVisible() doesn't account for - it would
+    // pass even before a real flip. This section also animates in on
+    // scroll (Framer Motion whileInView), hence the scroll first.
+    // hasText only, not also matching on the aria-label-derived accessible
+    // name: that label flips to "Showing the answer..." once clicked, and
+    // a Locator re-queries on every assertion rather than holding a fixed
+    // reference, so a name: filter tied to the pre-click label would stop
+    // matching the very element the test just clicked.
+    const card = page.getByRole('button').filter({ hasText: 'What is the relative minor of G major?' });
+    await card.scrollIntoViewIfNeeded();
+    await expect(card).toBeVisible();
+    await expect(card).toHaveAttribute('aria-pressed', 'false');
+
+    await card.click();
+    await expect(card).toHaveAttribute('aria-pressed', 'true');
   });
 });

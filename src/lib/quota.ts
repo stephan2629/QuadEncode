@@ -15,9 +15,14 @@ export interface QuotaState {
   limit: number;
   resetAt: Date;
   exhausted: boolean;
+  // Hours until the window rolls over, floored at 1 so a near-instant reset
+  // never reads as "in about 0 hours." Only meaningful once exhausted, but
+  // cheap enough to always compute rather than make callers ask for it.
+  hoursUntilReset: number;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 
 // A window resets once 24 hours have passed since it started, not at a fixed
 // wall-clock boundary — simplest rule that matches "2 per 24-hour period."
@@ -32,5 +37,6 @@ export function getQuotaState(quota: QuizQuota, now: Date = new Date()): QuotaSt
     limit: QUIZ_DAILY_LIMIT,
     resetAt,
     exhausted: used >= QUIZ_DAILY_LIMIT,
+    hoursUntilReset: Math.max(1, Math.ceil((resetAt.getTime() + DAY_MS - now.getTime()) / HOUR_MS)),
   };
 }

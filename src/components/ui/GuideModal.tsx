@@ -1,7 +1,7 @@
 'use client';
 
 import { m, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Video, Keyboard, Clock, Link2, PlaySquare } from 'lucide-react';
+import { X, Sparkles, Video, Keyboard, Clock, Link2, PlaySquare, Scissors, Wand2 } from 'lucide-react';
 
 interface GuideModalProps {
   isOpen: boolean;
@@ -96,25 +96,49 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                       </div>
                       <span className="text-xs text-gray-500 font-medium bg-white/5 px-2 py-1 rounded">➔ Multiple Choice</span>
                     </div>
+
+                    <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="font-mono text-xs text-gray-300">
+                        Mitochondria: Powerhouse of the cell
+                      </div>
+                      <span className="text-xs text-gray-500 font-medium bg-white/5 px-2 py-1 rounded">➔ Front/Back Card</span>
+                    </div>
+                    <p className="text-xs text-gray-500 -mt-1">No markup needed - a plain &quot;Term: Definition&quot; or &quot;Term - Definition&quot; line works too.</p>
                   </div>
                 </section>
 
-                {/* Keyboard Shortcuts */}
+                {/* Turn text into cards - keyboard shortcut and its
+                    no-keyboard equivalents side by side, so this isn't just
+                    a Mac/desktop-only page. */}
                 <section>
                   <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-widest text-gray-400">
-                    <Keyboard className="w-4 h-4 text-accent" /> Keyboard Shortcuts
+                    <Keyboard className="w-4 h-4 text-accent" /> Turn text into cards
                   </h3>
-                  <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5">
-                    <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3">
+                    <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <h4 className="text-sm font-semibold text-white mb-1">Cloze deletion (fill in the blank)</h4>
-                        <p className="text-xs text-gray-400">Highlight any text in your editor and press the shortcut to turn it into a fill-in-the-blank flashcard.</p>
+                        <p className="text-xs text-gray-400">Highlight any text in your editor, then press the shortcut on a keyboard, or tap the scissors button in the toolbar on any device.</p>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0 ml-4">
-                        <kbd className="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs font-mono text-gray-300">Cmd</kbd>
-                        <span className="text-gray-500">+</span>
-                        <kbd className="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs font-mono text-gray-300">K</kbd>
+                      <div className="flex items-center gap-2 shrink-0 sm:ml-4">
+                        <div className="flex items-center gap-1">
+                          <kbd className="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs font-mono text-gray-300">Cmd</kbd>
+                          <span className="text-gray-500">+</span>
+                          <kbd className="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs font-mono text-gray-300">K</kbd>
+                        </div>
+                        <span className="text-xs text-gray-600">or</span>
+                        <div className="p-1.5 bg-white/10 border border-white/10 rounded" title="Toolbar button">
+                          <Scissors className="w-3.5 h-3.5 text-gray-300" aria-hidden="true" />
+                        </div>
                       </div>
+                    </div>
+
+                    <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <h4 className="text-sm font-semibold text-white mb-1">Generate from your notes</h4>
+                        <p className="text-xs text-gray-400">Write normally, no syntax needed, then hit &quot;Generate 10 Quizzes &amp; 10 Cards&quot; on the Quiz tab. Same on every device, 2 free generations a day.</p>
+                      </div>
+                      <Wand2 className="w-5 h-5 text-gray-300 shrink-0" aria-hidden="true" />
                     </div>
                   </div>
                 </section>

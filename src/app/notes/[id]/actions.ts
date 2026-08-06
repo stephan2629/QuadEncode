@@ -2,7 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { generateText } from '@/lib/ai'
+import { generateText, capSourceText } from '@/lib/ai'
 import { parseBlanks } from '@/lib/parseBlanks'
 
 function friendlyAIError(e: Error): string {
@@ -30,6 +30,11 @@ async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClien
     .in('type', ['basic', 'vocab'])
 
   const existingByLine = new Map((existing ?? []).map((c) => [c.line, c]))
+  // Same definition already on another card in this note - skip making a
+  // second card for it. Seeded from existing rows, then grown as new cards
+  // are created in this pass, so pasting or generating the same definition
+  // twice in one save doesn't slip through either.
+  const seenAnswers = new Set((existing ?? []).map((c) => c.answer.trim().toLowerCase()))
 
   for (const blank of blanks) {
     const current = existingByLine.get(blank.line)
@@ -45,7 +50,10 @@ async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClien
     // graduates to 'authored' via the section 4 mechanic (two correct
     // answers, then the user re-explains it in their own words).
     const tier = 'imported'
+    const normalizedAnswer = blank.answer.trim().toLowerCase()
     if (!current) {
+      if (seenAnswers.has(normalizedAnswer)) continue
+      seenAnswers.add(normalizedAnswer)
       await supabase.from('cards').insert([
         {
           note_id: noteId,
@@ -226,7 +234,7 @@ CRITICAL RULES:
           generatedText = `## Imported Raw Text\n\n${pdfText}`
         } else {
           generatedText = await generateText({
-            prompt: `Here is the extracted text from the document:\n\n${pdfText}\n\n${promptText}`,
+            prompt: `Here is the extracted text from the document:\n\n${capSourceText(pdfText)}\n\n${promptText}`,
             provider,
           })
         }
@@ -249,7 +257,7 @@ CRITICAL RULES:
         generatedText = `## Imported Raw Text\n\n${text}`
       } else {
         generatedText = await generateText({
-          prompt: `${promptText}\n\nSource Material:\n${text}`,
+          prompt: `${promptText}\n\nSource Material:\n${capSourceText(text)}`,
           provider,
         })
       }

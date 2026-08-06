@@ -36,4 +36,13 @@ describe('getQuotaState', () => {
     const state = getQuotaState({ count: QUIZ_DAILY_LIMIT, resetAt }, now);
     expect(state.exhausted).toBe(true);
   });
+
+  it('reports whole hours until reset, floored at 1', () => {
+    const resetAt = new Date('2026-08-01T09:00:00Z');
+    const now = new Date('2026-08-01T09:00:00Z');
+    expect(getQuotaState({ count: 0, resetAt }, now).hoursUntilReset).toBe(24);
+
+    const almostThere = new Date('2026-08-02T08:59:59Z');
+    expect(getQuotaState({ count: 0, resetAt }, almostThere).hoursUntilReset).toBe(1);
+  });
 });

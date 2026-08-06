@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { Check, ArrowRight, ArrowLeft, BookOpen, RotateCcw } from 'lucide-react';
 import { parseLocalQuiz } from '@/lib/quiz-parser';
+import { flashcardTextSizeClass } from '@/lib/flashcardTextSize';
 
 interface NoteCard {
   id: string;
@@ -320,7 +321,7 @@ export default function PracticeTab({ content, clozeCards = [], noteId = 'unknow
                 {currentCard.explanation && (
                   <p className="text-sm md:text-base text-gray-400 font-serif italic mb-4 max-w-xl mx-auto">&quot;{currentCard.explanation}&quot;</p>
                 )}
-                <p className="text-xl md:text-3xl font-serif leading-relaxed text-white">{frontText}</p>
+                <p className={`${flashcardTextSizeClass(frontText, ['text-xl md:text-3xl', 'text-lg md:text-2xl', 'text-base md:text-xl', 'text-sm md:text-lg'])} font-serif leading-relaxed text-white`}>{frontText}</p>
               </div>
               {!revealed && (
                 <p className="absolute bottom-6 text-xs text-gray-600 font-mono tracking-widest uppercase">Click to flip</p>
@@ -330,7 +331,7 @@ export default function PracticeTab({ content, clozeCards = [], noteId = 'unknow
               className="absolute inset-0 bg-white/5 backdrop-blur-md border border-white/10 p-12 md:p-16 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] transition-shadow duration-300"
               style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
             >
-              <p className="text-lg md:text-2xl text-gray-300 leading-relaxed font-serif">{backText}</p>
+              <p className={`${flashcardTextSizeClass(backText, ['text-lg md:text-2xl', 'text-base md:text-xl', 'text-sm md:text-lg', 'text-xs md:text-base'])} text-gray-300 leading-relaxed font-serif`}>{backText}</p>
             </div>
           </m.div>
         </div>

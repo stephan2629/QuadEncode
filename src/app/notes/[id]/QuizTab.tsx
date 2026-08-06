@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { Brain, Check, X, RotateCw, RotateCcw, Sparkles, ArrowRight, Zap } from 'lucide-react';
-import { saveMissedQuestionsAction } from '@/app/actions/quiz-actions';
+import { Brain, Check, X, RotateCw, RotateCcw, Sparkles, ArrowRight, Zap, Loader2, Wand2 } from 'lucide-react';
+import { saveMissedQuestionsAction, generateAIQuizAction, getQuizQuota, type QuizQuotaInfo } from '@/app/actions/quiz-actions';
 import { parseLocalQuiz, type QuizQuestion } from '@/lib/quiz-parser';
 
 interface AnsweredQuestion {
@@ -33,9 +33,14 @@ function sessionStorageKey(noteId: string) {
 export default function QuizTab({
   noteId,
   content,
+  onGenerated,
 }: {
   noteId: string;
   content: string;
+  // Notifies the note editor that AI generation appended text to body_md
+  // server-side, so its own `content` state (already saved separately)
+  // picks up the new cards without a full page reload.
+  onGenerated?: (newContent: string) => void;
 }) {
   const [stage, setStage] = useState<Stage>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +49,28 @@ export default function QuizTab({
   const [picked, setPicked] = useState<string | null>(null);
   const [answered, setAnswered] = useState<AnsweredQuestion[]>([]);
   const [convertedCount, setConvertedCount] = useState<number | null>(null);
+  const [quota, setQuota] = useState<QuizQuotaInfo | null>(null);
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    getQuizQuota().then(setQuota).catch(() => {});
+  }, []);
+
+  const handleGenerate = async () => {
+    setError(null);
+    setGenerating(true);
+    const res = await generateAIQuizAction(noteId, content);
+    setGenerating(false);
+
+    if (!res.success) {
+      setError(res.error ?? 'Failed to generate.');
+      getQuizQuota().then(setQuota).catch(() => {});
+      return;
+    }
+
+    onGenerated?.(content + '\n\n' + res.appendedText + '\n');
+    getQuizQuota().then(setQuota).catch(() => {});
+  };
 
   // Resume a saved in-progress session once, after mount (sessionStorage
   // isn't available during SSR, so reading it any earlier would produce a
@@ -435,6 +462,32 @@ export default function QuizTab({
           <Zap className="w-5 h-5" aria-hidden="true" />
           Start Quiz ({localQuestionsCount} questions)
         </button>
+
+        {quota && (
+          <>
+            <button
+              onClick={handleGenerate}
+              disabled={generating || quota.remaining <= 0}
+              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-medium px-8 py-4 rounded-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+            >
+              {generating ? (
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Wand2 className="w-4 h-4" aria-hidden="true" />
+              )}
+              {generating
+                ? 'Reading your notes...'
+                : quota.remaining <= 0
+                  ? `Daily limit reached (${quota.limit}/${quota.limit} used)`
+                  : `Generate 10 Quizzes & 10 Cards (${quota.remaining}/${quota.limit} left today)`}
+            </button>
+            {quota.remaining <= 0 && (
+              <p className="text-xs text-gray-500 -mt-2">
+                More in about {quota.hoursUntilReset} {quota.hoursUntilReset === 1 ? 'hour' : 'hours'}.
+              </p>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

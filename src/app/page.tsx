@@ -518,7 +518,7 @@ export default function Home() {
             Every other tool will happily show you the answer. That is the moment the work stops. Quad Encode holds the answer back until you have produced one, and then shows you your own words, not a stranger&apos;s.
           </p>
 
-          <div className="mt-16 md:mt-24 flex flex-col md:flex-row flex-wrap justify-center gap-8 perspective-1000">
+          <div className="mt-16 md:mt-24 flex flex-col md:flex-row flex-wrap items-center justify-center gap-8 perspective-1000">
             <FlipCardDemo
               kind="Music Theory"
               prompt="What is the relative minor of G major?"
@@ -533,6 +533,11 @@ export default function Home() {
               kind="Spanish"
               prompt="Translate: 'To develop'"
               answer="Desarrollar"
+            />
+            <FlipCardDemo
+              kind="Organic Chemistry"
+              prompt="What functional group defines an alcohol?"
+              answer="Hydroxyl (-OH)"
             />
           </div>
         </m.div>

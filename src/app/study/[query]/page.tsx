@@ -1,11 +1,22 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { generatePath } from './actions';
 import SavePathButton from './SavePathButton';
 import PathTimeline from '@/components/ui/PathTimeline';
 import WordCycleLoader from '@/components/ui/WordCycleLoader';
+import SquareLoader from '@/components/ui/SquareLoader';
+
+// ISR per CLAUDE.md section 16 ("generated at build time or with ISR,
+// never client side"). The Serper + YouTube + Gemini + link-check pipeline
+// in generatePath() measured at 21.5s in production - without this, every
+// single visitor (including Google's crawler) paid that cost on every
+// request, because calling a 'use server' action directly from this page
+// for data made the whole route fully dynamic. A week matches how often a
+// curated resource list actually goes stale; the first visitor after that
+// window pays the 21s once, everyone else gets the cached page instantly.
+export const revalidate = 604800;
 
 export async function generateMetadata({ params }: { params: Promise<{ query: string }> }): Promise<Metadata> {
   const resolvedParams = await params;
@@ -46,11 +57,10 @@ export default async function StudyPage({ params }: { params: Promise<{ query: s
       <main className="max-w-4xl mx-auto px-4 md:px-6 py-12 md:py-16">
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center py-20 text-center fade-in-up">
-            <div className="relative mb-8">
-              <div className="absolute inset-0 bg-accent/20 blur-xl rounded-full animate-pulse" />
-              <Loader2 className="w-12 h-12 text-accent animate-spin relative z-10" />
+            <div className="mb-8">
+              <SquareLoader />
             </div>
-            <h2 className="text-2xl font-serif font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500">
+            <h2 className="text-2xl font-serif font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500">
               Finding best sources
             </h2>
             <WordCycleLoader />
