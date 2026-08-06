@@ -1,9 +1,10 @@
 'use server';
 
 import { generateText } from '@/lib/ai';
-import { createClient } from '@/utils/supabase/server';
+import { createPublicClient } from '@/utils/supabase/public';
 import { checkLinkStatus } from '@/lib/link-checker';
 import { searchYouTube } from '@/lib/youtube';
+import { normalizeCertPlus } from '@/lib/certQuery';
 
 export interface PathResource {
   title: string;
@@ -37,6 +38,7 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
     if (!youtubeKey) throw new Error('YouTube API key is missing. Please add YOUTUBE_API_KEY to .env.local');
 
     const cleanQuery = query.replace(/-/g, ' ').trim();
+    const searchQuery = normalizeCertPlus(cleanQuery);
 
     // 0. Upfront Validation: Query must be at least 3 characters and not pure digits
     if (cleanQuery.length < 3 || /^\d+$/.test(cleanQuery)) {
@@ -56,20 +58,20 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
         'X-API-KEY': serperKey,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ q: `${cleanQuery} full course tutorial guide` })
+      body: JSON.stringify({ q: `${searchQuery} full course tutorial guide` })
     });
     const serperData = await serperRes.json();
 
     // 2. Fetch Video Results from YouTube
-    const ytPlaylists = await searchYouTube(`${cleanQuery} full course playlist`, youtubeKey, { type: 'playlist', order: 'relevance', maxResults: '4' });
-    const ytVideos = await searchYouTube(`${cleanQuery} full course tutorial`, youtubeKey, { type: 'video', order: 'date', maxResults: '4' });
+    const ytPlaylists = await searchYouTube(`${searchQuery} full course playlist`, youtubeKey, { type: 'playlist', order: 'relevance', maxResults: '4' });
+    const ytVideos = await searchYouTube(`${searchQuery} full course tutorial`, youtubeKey, { type: 'video', order: 'date', maxResults: '4' });
     const ytCandidates = [...ytPlaylists, ...ytVideos];
 
     const prompt = `
-      You are an expert curriculum designer. A user wants to learn about: "${cleanQuery}".
+      You are an expert curriculum designer. A user wants to learn about: "${searchQuery}".
 
       STRICT TOPIC VALIDATION RULE:
-      Evaluate if "${cleanQuery}" is a real, structured educational topic, academic subject, technical certification, language, software tool, or professional skill.
+      Evaluate if "${searchQuery}" is a real, structured educational topic, academic subject, technical certification, language, software tool, or professional skill.
       If it is a random object, fast food item, single non-educational noun, gibberish, profanity, or not a real course topic, respond with EXACTLY this JSON and nothing else:
       {"error": "not_a_subject"}
 
@@ -85,7 +87,7 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
       ${JSON.stringify(ytCandidates.slice(0, 6))}
 
       CERTIFICATION / MULTI-STAGE DETECTION:
-      If "${cleanQuery}" names a certification, credential, or exam prep target (e.g. a CompTIA
+      If "${searchQuery}" names a certification, credential, or exam prep target (e.g. a CompTIA
       exam, AWS Solutions Architect, CCNA, Azure Fundamentals, PMP), do not return a single flat
       course list. Instead structure the path into logical stages covering the full progression a
       learner needs, and set a "stage" field on every resource naming the stage it belongs to, for
@@ -174,7 +176,7 @@ export async function generatePath(query: string): Promise<GeneratedPath | { err
 
     if (parsed?.slug && parsed?.subjectName) {
       try {
-        const supabase = await createClient();
+        const supabase = createPublicClient();
         await supabase
           .from('indexed_subjects')
           .upsert({ slug: parsed.slug, name: parsed.subjectName }, { onConflict: 'slug', ignoreDuplicates: true });

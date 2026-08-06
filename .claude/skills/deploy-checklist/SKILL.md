@@ -33,7 +33,7 @@ pkill -f "QuadEncode/node_modules/.bin/next dev"
 
 ### Step 2: check for build errors
 
-Run all four CI gates locally, cheapest first, so a failure is caught
+Run all five CI gates locally, cheapest first, so a failure is caught
 before the expensive step:
 
 ```bash
@@ -41,11 +41,21 @@ npm run lint
 npm run typecheck
 npm run test
 rm -rf .next && npm run build
+npm run test:e2e
 ```
 
+`test:e2e` (Playwright, CLAUDE.md section 17's "one end to end test per
+phase" - currently `tests/discovery.spec.ts` for Phase 4) starts its own
+`next dev` server automatically per `playwright.config.ts`'s `webServer`
+block, reusing one already running on :3000 outside CI. Run it last, after
+the production build above has already finished - not because a sequential
+build-then-dev has caused the corruption Step 1 warns about (only running
+both *at once* has), but there's no reason to risk it.
+
 Fix anything red before continuing - don't commit on a broken build. The
-same four checks run in `.github/workflows/ci.yml` on every push, so a
-clean local run here means CI won't block the PR either.
+same five checks run in `.github/workflows/ci.yml` on every push (including
+a Chromium install step for Playwright), so a clean local run here means CI
+won't block the PR either.
 
 ### Step 3: update the README
 

@@ -18,19 +18,44 @@ export interface ParsedBlank {
   videoT?: number;
 }
 
-const PROMPT_PREFIXES: { prefix: string; kind: ParsedBlank['kind'] }[] = [
-  { prefix: '**Vocab:**', kind: 'vocab' },
-  { prefix: '**Quiz:**', kind: 'quiz' },
+// Colon is the documented separator (CLAUDE.md section 9), but a dash reads
+// just as naturally typed live and shouldn't silently fail to make a card.
+// Matched as a pattern (word, optional space, ":" or "-", closing "**")
+// rather than an enumerated list of exact strings - "**Vocab:**",
+// "**Vocab -**", and "**Vocab-**" all satisfy the same regex instead of each
+// spacing variant needing its own hardcoded entry.
+const PROMPT_PATTERNS: { re: RegExp; kind: ParsedBlank['kind'] }[] = [
+  { re: /^\*\*Vocab\s*[-:]\*\*/, kind: 'vocab' },
+  { re: /^\*\*Quiz\s*[-:]\*\*/, kind: 'quiz' },
 ];
-const ANSWER_PREFIXES = ['**A:**', '**Def:**'];
-const EXPLAIN_PREFIX = '**Explain:**';
-const TIMESTAMP_PREFIX = '**At:**';
+const ANSWER_RE = /^\*\*(?:A|Def)\s*[-:]\*\*/;
+const EXPLAIN_RE = /^\*\*Explain\s*[-:]\*\*/;
+const TIMESTAMP_RE = /^\*\*At\s*[-:]\*\*/;
 
-function stripPrefix(line: string, prefixes: string[]): string | null {
-  for (const prefix of prefixes) {
-    if (line.startsWith(prefix)) return line.slice(prefix.length).trim();
-  }
-  return null;
+// Fallback for a term and its definition written on one plain line, no
+// **Vocab:**/**Def:** markup at all - "Mitochondria: Powerhouse of the
+// cell" or "Mitochondria - Powerhouse of the cell". Requires the line to
+// start with a letter (excludes **-marked lines, list items, times like
+// "10:00 AM") and the dash form to have spaces around it (so it doesn't
+// fire on a hyphenated word like "T-cell"). This is a real tradeoff: any
+// ordinary sentence shaped like "Term: rest of the line" now becomes a
+// card too - accepted because that's the exact syntax asked for, and a
+// stray card is a one-tap delete, not a data problem.
+const INLINE_VOCAB_RE = /^([A-Za-z][^\n]{1,58}?)(?:: | - )(\S[^\n]{1,300})$/;
+
+// The inline fallback above only applies to text the user typed live, not
+// pasted or uploaded material - a pasted article or an extracted PDF page
+// is full of ordinary colons and dashes that were never meant to become
+// cards. NoteEditor puts imported source text under one of these headings
+// (see handleImportComplete); parseBlanks treats everything under one, up
+// to the next heading, as off limits for the fallback. Explicit
+// **Vocab:**/**Quiz:** markup is unaffected - it works the same everywhere.
+const IMPORTED_SECTION_HEADINGS = ['## Imported source', '## Imported Raw Text'];
+const HEADING_RE = /^#{1,6}\s/;
+
+function stripMatch(line: string, re: RegExp): string | null {
+  const m = line.match(re);
+  return m ? line.slice(m[0].length).trim() : null;
 }
 
 // "2:22" -> 142, "1:02:03" -> 3723. Companion to formatTimestamp below -
@@ -57,9 +82,17 @@ export function parseBlanks(bodyMd: string): ParsedBlank[] {
   // Consumed (reset to null) the moment it attaches to one, so it can't also
   // attach to some unrelated blank further down the note.
   let pendingVideoT: number | null = null;
+  // Whether the current line falls under an imported-source heading (reset
+  // on every heading encountered, including back out of one).
+  let insideImportedSection = false;
 
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
+
+    if (HEADING_RE.test(trimmed)) {
+      insideImportedSection = IMPORTED_SECTION_HEADINGS.some((h) => trimmed.startsWith(h));
+      continue;
+    }
 
     const timestampUrlMatch = trimmed.match(/timestamp:\/\/[^?)]+\?t=(\d+)/) || trimmed.match(/#t=(\d+)/);
     if (timestampUrlMatch) {
@@ -68,22 +101,35 @@ export function parseBlanks(bodyMd: string): ParsedBlank[] {
         // If it's a standalone link on its own line, consume it and continue
         continue;
       }
-    } else if (trimmed.startsWith(TIMESTAMP_PREFIX)) {
-      const parsed = parseTimestamp(trimmed.slice(TIMESTAMP_PREFIX.length).trim());
-      if (parsed !== null) pendingVideoT = parsed;
-      continue;
+    } else {
+      const timestampVal = stripMatch(trimmed, TIMESTAMP_RE);
+      if (timestampVal !== null) {
+        const parsed = parseTimestamp(timestampVal);
+        if (parsed !== null) pendingVideoT = parsed;
+        continue;
+      }
     }
 
-    const match = PROMPT_PREFIXES.find((p) => trimmed.startsWith(p.prefix));
-    if (!match) continue;
-    const prompt = trimmed.slice(match.prefix.length).trim();
+    const match = PROMPT_PATTERNS.find((p) => p.re.test(trimmed));
+    if (!match) {
+      const inline = insideImportedSection ? null : trimmed.match(INLINE_VOCAB_RE);
+      if (!inline) continue;
+      const blank: ParsedBlank = { line: i, answerLine: i, kind: 'vocab', prompt: inline[1].trim(), answer: inline[2].trim() };
+      if (pendingVideoT !== null) {
+        blank.videoT = pendingVideoT;
+        pendingVideoT = null;
+      }
+      blanks.push(blank);
+      continue;
+    }
+    const prompt = trimmed.replace(match.re, '').trim();
     if (!prompt) continue;
 
     let j = i + 1;
     while (j < lines.length && lines[j].trim() === '') j++;
     if (j >= lines.length) continue;
 
-    const answer = stripPrefix(lines[j].trim(), ANSWER_PREFIXES);
+    const answer = stripMatch(lines[j].trim(), ANSWER_RE);
     if (answer === null) continue;
 
     const blank: ParsedBlank = { line: i, answerLine: j, kind: match.kind, prompt, answer };
@@ -94,9 +140,12 @@ export function parseBlanks(bodyMd: string): ParsedBlank[] {
 
     let k = j + 1;
     while (k < lines.length && lines[k].trim() === '') k++;
-    if (k < lines.length && lines[k].trim().startsWith(EXPLAIN_PREFIX)) {
-      blank.explanation = lines[k].trim().slice(EXPLAIN_PREFIX.length).trim();
-      blank.explanationLine = k;
+    if (k < lines.length) {
+      const explanationVal = stripMatch(lines[k].trim(), EXPLAIN_RE);
+      if (explanationVal !== null) {
+        blank.explanation = explanationVal;
+        blank.explanationLine = k;
+      }
     }
 
     blanks.push(blank);

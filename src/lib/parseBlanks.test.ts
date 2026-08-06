@@ -9,6 +9,70 @@ describe('parseBlanks', () => {
     ]);
   });
 
+  it('accepts a dash in place of the colon for Vocab/Def', () => {
+    const md = '**Vocab -** Diminished chord\n**Def -** Tense and unstable.';
+    expect(parseBlanks(md)).toEqual([
+      { line: 0, answerLine: 1, kind: 'vocab', prompt: 'Diminished chord', answer: 'Tense and unstable.' },
+    ]);
+  });
+
+  it('accepts a dash in place of the colon for Quiz/A', () => {
+    const md = '**Quiz -** What is 2+2?\n**A -** 4 | 5 | 22';
+    expect(parseBlanks(md)).toEqual([
+      { line: 0, answerLine: 1, kind: 'quiz', prompt: 'What is 2+2?', answer: '4 | 5 | 22' },
+    ]);
+  });
+
+  it('accepts a dash with no surrounding space, and Def instead of A', () => {
+    const md = '**Vocab-**Diminished chord\n**Def-**Tense and unstable.';
+    expect(parseBlanks(md)).toEqual([
+      { line: 0, answerLine: 1, kind: 'vocab', prompt: 'Diminished chord', answer: 'Tense and unstable.' },
+    ]);
+  });
+
+  it('makes a vocab card from a plain "Term: Definition" line, no markup', () => {
+    const md = 'Mitochondria: Powerhouse of the cell';
+    expect(parseBlanks(md)).toEqual([
+      { line: 0, answerLine: 0, kind: 'vocab', prompt: 'Mitochondria', answer: 'Powerhouse of the cell' },
+    ]);
+  });
+
+  it('makes a vocab card from a plain "Term - Definition" line, no markup', () => {
+    const md = 'Mitochondria - Powerhouse of the cell';
+    expect(parseBlanks(md)).toEqual([
+      { line: 0, answerLine: 0, kind: 'vocab', prompt: 'Mitochondria', answer: 'Powerhouse of the cell' },
+    ]);
+  });
+
+  it('does not split a hyphenated word with no surrounding spaces', () => {
+    const md = 'T-cell is a type of lymphocyte';
+    expect(parseBlanks(md)).toEqual([]);
+  });
+
+  it('ignores a plain line with no colon or dash separator', () => {
+    const md = 'Just a regular sentence with no separator at all.';
+    expect(parseBlanks(md)).toEqual([]);
+  });
+
+  it('skips the no-markup fallback inside an imported-source section', () => {
+    const md = '## Imported source\n\nChapter 3: Cell Biology\nMitochondria: Powerhouse of the cell';
+    expect(parseBlanks(md)).toEqual([]);
+  });
+
+  it('still applies the no-markup fallback once a later heading ends the imported section', () => {
+    const md = '## Imported source\n\nChapter 3: Cell Biology\n\n## My notes\n\nMitochondria: Powerhouse of the cell';
+    expect(parseBlanks(md)).toEqual([
+      { line: 6, answerLine: 6, kind: 'vocab', prompt: 'Mitochondria', answer: 'Powerhouse of the cell' },
+    ]);
+  });
+
+  it('still honors explicit **Vocab:** markup inside an imported-source section', () => {
+    const md = '## Imported source\n\n**Vocab:** Mitochondria\n**Def:** Powerhouse of the cell';
+    expect(parseBlanks(md)).toEqual([
+      { line: 2, answerLine: 3, kind: 'vocab', prompt: 'Mitochondria', answer: 'Powerhouse of the cell' },
+    ]);
+  });
+
   it('treats an empty answer as an open blank with no answer', () => {
     const md = '**Vocab:** Leading tone\n**Def:**';
     expect(parseBlanks(md)).toEqual([

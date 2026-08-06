@@ -9,6 +9,16 @@ export interface GenerateInput {
 
 const GEMINI_RETRY_DELAYS_MS = [1500, 3000]
 
+// Caps how much source material (a note's body, extracted PDF text, pasted
+// text) a caller interpolates into a prompt before sending it here. There's
+// already enough in the first ~12k characters to extract a full batch of
+// cards or quiz questions from - sending an entire long PDF or transcript
+// past that only spends tokens for no extra output.
+export const MAX_SOURCE_CHARS = 12000
+export function capSourceText(text: string): string {
+  return text.length > MAX_SOURCE_CHARS ? text.slice(0, MAX_SOURCE_CHARS) : text
+}
+
 function isRetryable(message: string): boolean {
   const m = message.toLowerCase()
   return (

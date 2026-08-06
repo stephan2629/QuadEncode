@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useDeferredValue } from 'react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, FileDown, FileText, Brain, BookOpen, HelpCircle, Bold, Italic, Heading2, List } from 'lucide-react';
+import { ArrowLeft, Save, FileDown, FileText, Brain, BookOpen, HelpCircle, Bold, Italic, Heading2, List, Scissors } from 'lucide-react';
 import { m, AnimatePresence } from "framer-motion";
 import dynamic from 'next/dynamic';
 import ImportModal from '@/components/ui/ImportModal';
@@ -48,6 +48,38 @@ const TABS: { id: Tab; label: string; Icon: typeof FileText }[] = [
   { id: 'quiz', label: 'Quiz', Icon: Brain },
 ];
 
+// Styled hover tooltip for the formatting toolbar, replacing the native
+// browser `title` (slow to appear, unstyled). Same CSS-only group-hover
+// pattern already used in dashboard/SubjectNav.tsx - no new dependency.
+// `label` doubles as the button's aria-label, since it already is the
+// description a screen reader needs.
+function ToolbarButton({
+  onClick,
+  label,
+  accent,
+  children,
+}: {
+  onClick: () => void;
+  label: string;
+  accent?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative group/tip">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className={`p-3.5 rounded-lg text-gray-400 transition-colors ${accent ? 'hover:text-accent hover:bg-accent/10' : 'hover:text-white hover:bg-white/5'}`}
+      >
+        {children}
+      </button>
+      <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 hidden group-hover/tip:block whitespace-nowrap px-2.5 py-1.5 bg-[#1a1815] border border-white/10 rounded-lg text-xs text-gray-300 shadow-xl z-50 pointer-events-none">
+        {label}
+      </div>
+    </div>
+  );
+}
 
 
 export default function NoteEditor({
@@ -197,6 +229,31 @@ export default function NoteEditor({
     };
   }, [content, noteId, initialData.body_md]);
 
+  // Manual save on top of the debounced autosave above - either one alone
+  // already writes the same content, so firing both isn't a correctness
+  // issue, just an immediate write instead of waiting out the 1s debounce.
+  const handleManualSave = async () => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    setSaveStatus('saving');
+    await updateNoteContent(noteId, content);
+    setSaveStatus('saved');
+    toast.success('Note saved');
+  };
+
+  // Cmd+S / Ctrl+S from anywhere in the editor, not just the textarea -
+  // intercepted at the window level so it also overrides the browser's own
+  // save-page shortcut instead of triggering it.
+  useEffect(() => {
+    const handleSaveShortcut = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 's') return;
+      e.preventDefault();
+      handleManualSave();
+    };
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, noteId]);
+
   // Handle Title Blur (save on blur rather than keystroke for title)
   const handleTitleBlur = async () => {
     if (title !== initialData.title) {
@@ -223,15 +280,10 @@ export default function NoteEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cmd+K (Mac) or Ctrl+K (Windows): selected text becomes a cloze card.
-  // Doesn't touch the note body — the card is created directly.
-  const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (!(e.metaKey || e.ctrlKey) || e.key !== 'k') return;
-    e.preventDefault();
-
-    const textarea = e.currentTarget;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
+  // Selected text becomes a cloze card. Doesn't touch the note body — the
+  // card is created directly. Shared by Cmd+K (desktop) and the "Make card"
+  // toolbar button (touch devices have no Cmd/Ctrl key to bind to).
+  const makeClozeFromSelection = async (start: number, end: number) => {
     if (start === end) return;
 
     const selected = content.slice(start, end);
@@ -252,15 +304,48 @@ export default function NoteEditor({
     toast.success('Card created');
   };
 
+  // Ctrl on Windows/Linux, Cmd on Mac - every shortcut in this editor
+  // checks both, never metaKey alone, so nothing here is Mac-only.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    if (e.key === 'k') {
+      e.preventDefault();
+      makeClozeFromSelection(e.currentTarget.selectionStart, e.currentTarget.selectionEnd);
+    } else if (e.key === 'b') {
+      e.preventDefault();
+      wrapSelection('**');
+    } else if (e.key === 'i') {
+      e.preventDefault();
+      wrapSelection('_');
+    }
+  };
+
+  // Tap equivalent of Cmd+K: select text on a phone (no keyboard, no
+  // Cmd/Ctrl key to bind), then tap this instead. Reads the textarea's
+  // selection the same way wrapSelection() below does, since the underlying
+  // selectionStart/selectionEnd survive the textarea losing focus to the
+  // button - proven by wrapSelection already relying on that.
+  const handleMakeCardTap = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    makeClozeFromSelection(textarea.selectionStart, textarea.selectionEnd);
+  };
+
   const handleImportComplete = async (generatedPrompts: string, sourceText?: string, importedPdfUrl?: string | null) => {
     // One "## Open questions" section per note: append under the existing
     // heading if the note already has one.
     const heading = '## Open questions';
     let trimmed = content.replace(/\s*$/, '');
 
-    // Append source text first if it exists
+    // Append source text first if it exists, under its own heading so
+    // parseBlanks can tell "pasted/extracted material" apart from text the
+    // user typed live - the no-markup "Term: Definition" fallback only
+    // fires outside a section like this one, or a pasted article/PDF page
+    // full of ordinary colons and dashes would flood the note with
+    // accidental cards. Explicit **Vocab:**/**Quiz:** markup still works
+    // here same as anywhere else.
     if (sourceText) {
-      trimmed = `${trimmed}\n\n${sourceText.trim()}`;
+      trimmed = `${trimmed}\n\n## Imported source\n\n${sourceText.trim()}`;
     }
 
     const newContent = trimmed.includes(heading)
@@ -301,14 +386,22 @@ export default function NoteEditor({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          {/* Visually mobile-only-hidden, not display:none - sr-only keeps
+          {/* Doubles as the manual-save trigger (Cmd/Ctrl+S does the same
+              thing) on top of the debounced autosave still running above.
+              Visually mobile-only-hidden, not display:none - sr-only keeps
               this aria-live save-status announcement reaching screen readers
               at every width, since the space it frees up on a narrow header
               isn't worth losing that for. */}
-          <div className="sr-only sm:not-sr-only sm:flex text-xs items-center gap-1.5 text-gray-500 px-3 py-1.5 rounded-full bg-white/5" aria-live="polite">
+          <button
+            type="button"
+            onClick={handleManualSave}
+            title="Save now (Cmd/Ctrl+S)"
+            className="sr-only sm:not-sr-only sm:flex text-xs items-center gap-1.5 text-gray-500 hover:text-accent px-3 py-1.5 rounded-full bg-white/5 hover:bg-accent/10 transition-colors min-h-[44px] sm:min-h-0"
+            aria-live="polite"
+          >
             <Save className={`w-3.5 h-3.5 ${saveStatus === 'saving' ? 'animate-pulse text-accent' : ''}`} aria-hidden="true" />
             <span className="hidden sm:inline">{saveStatus === 'saving' ? 'Saving…' : 'Saved'}</span>
-          </div>
+          </button>
 
           <button
             onClick={() => setIsGuideModalOpen(true)}
@@ -466,43 +559,31 @@ export default function NoteEditor({
                   {/* Formatting toolbar - inserts markdown at the cursor, not
                       a rich-text engine. See wrapSelection/prefixLine above. */}
                   <div className="flex items-center gap-1 px-8 md:px-12 pt-4 md:pt-6">
-                    <button
-                      type="button"
-                      onClick={() => wrapSelection('**')}
-                      className="p-3.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                      title="Bold"
-                      aria-label="Bold"
-                    >
+                    <ToolbarButton onClick={() => wrapSelection('**')} label="Bold (Ctrl/Cmd+B)">
                       <Bold className="w-4 h-4" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => wrapSelection('_')}
-                      className="p-3.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                      title="Italic"
-                      aria-label="Italic"
-                    >
+                    </ToolbarButton>
+                    <ToolbarButton onClick={() => wrapSelection('_')} label="Italic (Ctrl/Cmd+I)">
                       <Italic className="w-4 h-4" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => prefixLine('## ')}
-                      className="p-3.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                      title="Heading"
-                      aria-label="Heading"
-                    >
+                    </ToolbarButton>
+                    <ToolbarButton onClick={() => prefixLine('## ')} label="Heading">
                       <Heading2 className="w-4 h-4" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => prefixLine('- ')}
-                      className="p-3.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                      title="Bullet list"
-                      aria-label="Bullet list"
-                    >
+                    </ToolbarButton>
+                    <ToolbarButton onClick={() => prefixLine('- ')} label="Bullet list">
                       <List className="w-4 h-4" aria-hidden="true" />
-                    </button>
+                    </ToolbarButton>
+                    <div className="w-px h-4 bg-white/10 mx-1" aria-hidden="true" />
+                    <ToolbarButton onClick={handleMakeCardTap} label="Make card from selection (Ctrl/Cmd+K)" accent>
+                      <Scissors className="w-4 h-4" aria-hidden="true" />
+                    </ToolbarButton>
                   </div>
+
+                  {/* Always visible, not just on an empty note - a syntax
+                      reminder is only useful right when you've forgotten
+                      the format, which is just as likely mid-note as on a
+                      blank one. */}
+                  <p className="px-8 md:px-12 mt-2 text-xs text-gray-500">
+                    Tip: write &quot;Term: definition&quot; on its own line, or select any text and tap <Scissors className="w-3 h-3 inline -mt-0.5" aria-hidden="true" />, to make a flashcard. More in the <HelpCircle className="w-3 h-3 inline -mt-0.5" aria-hidden="true" /> Guide, top right.
+                  </p>
 
                   <m.div
                     initial={{ opacity: 0, y: 8 }}
@@ -570,7 +651,7 @@ export default function NoteEditor({
               tabIndex={0}
               className="flex-1 flex flex-col overflow-hidden w-full h-full relative"
             >
-              <QuizTab noteId={noteId} content={content} />
+              <QuizTab noteId={noteId} content={content} onGenerated={handleContentChange} />
             </m.div>
           )}
         </AnimatePresence>

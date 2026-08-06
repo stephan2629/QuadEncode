@@ -7,6 +7,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { submitReview, keepCard, updateCard, deleteCard, graduateCard } from './actions';
 import CompletionScreen from './CompletionScreen';
 import { seededShuffle } from '@/lib/utils';
+import { flashcardTextSizeClass } from '@/lib/flashcardTextSize';
 
 interface Card {
   id: string;
@@ -354,7 +355,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                           className="absolute inset-0 bg-[#14120f] border-2 border-white/10 p-8 md:p-12 rounded-3xl flex flex-col items-center justify-center text-center shadow-xl"
                           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                         >
-                          <p className="text-lg md:text-2xl text-gray-300 leading-relaxed font-serif">{displayAnswer}</p>
+                          <p className={`${flashcardTextSizeClass(displayAnswer, ['text-lg md:text-2xl', 'text-base md:text-xl', 'text-sm md:text-lg', 'text-xs md:text-base'])} text-gray-300 leading-relaxed font-serif`}>{displayAnswer}</p>
                         </div>
                       </m.div>
                     </div>

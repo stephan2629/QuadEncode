@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { generateText } from '@/lib/ai'
+import { generateText, capSourceText } from '@/lib/ai'
 import { getQuotaState, QUIZ_DAILY_LIMIT } from '@/lib/quota'
 import { updateNoteContent } from '@/app/notes/[id]/actions'
 
@@ -41,6 +41,7 @@ export interface QuizQuotaInfo {
   remaining: number
   limit: number
   resetAt: string
+  hoursUntilReset: number
 }
 
 export async function getQuizQuota(): Promise<QuizQuotaInfo> {
@@ -48,14 +49,10 @@ export async function getQuizQuota(): Promise<QuizQuotaInfo> {
     const supabase = await createClient()
     const profile = await loadQuotaProfile(supabase)
     const state = getQuotaState({ count: profile.quiz_count_today, resetAt: new Date(profile.last_quiz_reset_at) })
-    return { used: state.used, remaining: state.remaining, limit: state.limit, resetAt: state.resetAt.toISOString() }
+    return { used: state.used, remaining: state.remaining, limit: state.limit, resetAt: state.resetAt.toISOString(), hoursUntilReset: state.hoursUntilReset }
   } catch {
-    return { used: 0, remaining: QUIZ_DAILY_LIMIT, limit: QUIZ_DAILY_LIMIT, resetAt: new Date().toISOString() }
+    return { used: 0, remaining: QUIZ_DAILY_LIMIT, limit: QUIZ_DAILY_LIMIT, resetAt: new Date().toISOString(), hoursUntilReset: 24 }
   }
-}
-
-function hoursUntil(target: Date, now: Date): number {
-  return Math.max(1, Math.ceil((target.getTime() + 24 * 60 * 60 * 1000 - now.getTime()) / (60 * 60 * 1000)))
 }
 
 export async function generateAIQuizAction(noteId: string, content: string) {
@@ -67,15 +64,20 @@ export async function generateAIQuizAction(noteId: string, content: string) {
     const state = getQuotaState({ count: profile.quiz_count_today, resetAt: new Date(profile.last_quiz_reset_at) }, now)
 
     if (state.exhausted) {
-      const hours = hoursUntil(state.resetAt, now)
       return {
         success: false,
         quotaExhausted: true,
-        error: `You've used both AI quizzes for today. More in about ${hours} ${hours === 1 ? 'hour' : 'hours'}.`,
+        error: `Daily limit reached (${state.limit}/${state.limit} AI generations used). More in about ${state.hoursUntilReset} ${state.hoursUntilReset === 1 ? 'hour' : 'hours'}.`,
       }
     }
 
+    // The full original `content` is still what gets saved to the note
+    // below - capSourceText only shrinks what's sent to the model.
+    const sourceContent = capSourceText(content);
+
     const prompt = `You are a study assistant. Extract exactly 10 Vocabulary Flashcards and 10 Quiz Questions from the user's notes.
+
+If the source text already writes a term and its definition together on one line (e.g. "Mitochondria: Powerhouse of the cell" or "Mitochondria - Powerhouse of the cell"), split it: the term becomes the Vocab line, the definition becomes the separate Def line. Never put both the term and its definition inside a single Vocab or Def line.
 
 OUTPUT SYNTAX:
 
@@ -89,7 +91,7 @@ OUTPUT SYNTAX:
 ... (Repeat up to item 10)
 
 TEXT CONTENT:
-${content}
+${sourceContent}
 `;
 
     const generatedText = await generateText({ prompt });
