@@ -45,6 +45,10 @@ const comptia = (id: string, patterns: RegExp[]): Certification => ({
 // `certifications` table with the same three fields and read it in
 // generatePath().
 export const CERTIFICATIONS: Certification[] = [
+  // First of the CompTIA entries: "the CompTIA trifecta" names all three of
+  // A+, Network+ and Security+ at once, so it must not be caught by any of
+  // the single-exam patterns below.
+  comptia('trifecta', [/\btrifecta\b/]),
   // CompTIA, most specific first so "CompTIA CySA+" never falls through to
   // the broader Security+ pattern.
   comptia('cysa', [/\bcysa\+?\b/, /\bcomptia\b.*\bcybersecurity analyst\b/]),
@@ -61,9 +65,9 @@ export const CERTIFICATIONS: Certification[] = [
   // Bare "a+" is a letter grade without "comptia" next to it.
   comptia('a', [/\bcomptia\b\W+a\+?\b/, /\ba\+ ?(certification|cert|exam)\b/]),
   // Last of the CompTIA entries on purpose: anything naming CompTIA without
-  // naming one of its exams is still a certification search, and should get
-  // the three-step shape and lose the retry rather than falling through to a
-  // flat AI path. Every specific exam above is matched first.
+  // naming one of its exams gets the trifecta path (src/lib/certPaths.ts),
+  // which is the answer to a bare "comptia" search anyway. Every specific
+  // exam above is matched first.
   comptia('any', [/\bcomptia\b/]),
   {
     id: 'aws',

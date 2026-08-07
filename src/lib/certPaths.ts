@@ -44,7 +44,7 @@ const CERTMASTER_PRACTICE = {
 };
 
 // Keyed by Certification.id from src/lib/certShape.ts.
-const CERTS: Record<string, HardcodedCertPath> = {
+const SINGLE_CERTS: Record<string, HardcodedCertPath> = {
   'comptia-a': {
     subjectName: 'CompTIA A+',
     overview:
@@ -216,6 +216,40 @@ const CERTS: Record<string, HardcodedCertPath> = {
       { ...CERTMASTER_PRACTICE },
     ],
   },
+};
+
+// A+ -> Network+ -> Security+ in that order, which is the progression most
+// entry-level IT job postings ask for and what people mean by "the CompTIA
+// trifecta". Composed from the three entries above rather than written out a
+// fourth time: a Messer playlist that moves, or an exam code that turns over,
+// stays one edit instead of two that drift apart.
+//
+// Each resource's exam label is prefixed with the certification it belongs
+// to, since that label is what PathTimeline puts in the step headings - three
+// unlabelled runs of "Training course" would give no clue which exam you are
+// looking at. CompTIA's CertMaster page repeats once per certification on
+// purpose: it is sold per exam, and it sits in that exam's prep step.
+const TRIFECTA_ORDER = ['comptia-a', 'comptia-network', 'comptia-security'];
+
+const TRIFECTA: HardcodedCertPath = {
+  subjectName: 'CompTIA Trifecta',
+  overview:
+    'The three CompTIA exams people usually take together, in order: A+ (two exams) for IT support fundamentals, then Network+ for networking, then Security+ for security. Each one below starts with the official exam page, then a training course (free or paid), then practice material.',
+  resources: TRIFECTA_ORDER.flatMap((id) => {
+    const cert = SINGLE_CERTS[id];
+    return cert.resources.map((r) => ({
+      ...r,
+      exam: r.exam ? `${cert.subjectName} ${r.exam}` : cert.subjectName,
+    }));
+  }),
+};
+
+const CERTS: Record<string, HardcodedCertPath> = {
+  ...SINGLE_CERTS,
+  'comptia-trifecta': TRIFECTA,
+  // A bare "CompTIA" search names no single exam, so the trifecta is the
+  // honest answer to it rather than an AI-picked guess at which exam was meant.
+  'comptia-any': TRIFECTA,
 };
 
 // Matching is detectCertification's job, not a second set of regexes here.
