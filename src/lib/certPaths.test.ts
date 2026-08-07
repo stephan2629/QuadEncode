@@ -73,3 +73,41 @@ describe('getHardcodedCertPath', () => {
     }
   });
 });
+
+describe('CompTIA trifecta', () => {
+  const path = getHardcodedCertPath('comptia trifecta')!;
+
+  it('answers both a trifecta search and a bare CompTIA one', () => {
+    expect(path.subjectName).toBe('CompTIA Trifecta');
+    expect(getHardcodedCertPath('comptia-trifecta')?.subjectName).toBe('CompTIA Trifecta');
+    expect(getHardcodedCertPath('CompTIA')?.subjectName).toBe('CompTIA Trifecta');
+    // A query naming one exam still gets that exam, not all three.
+    expect(getHardcodedCertPath('CompTIA Security+')?.subjectName).toBe('CompTIA Security+');
+  });
+
+  it('runs A+ then Network+ then Security+, each starting with its official page', () => {
+    const overviews = path.resources.filter((r) => r.step === 'overview');
+    expect(overviews.map((r) => r.exam)).toEqual(['CompTIA A+', 'CompTIA Network+', 'CompTIA Security+']);
+
+    // Overview before course before prep, within each certification.
+    const order = { overview: 0, course: 1, 'exam-prep': 2 };
+    for (const name of ['CompTIA A+', 'CompTIA Network+', 'CompTIA Security+']) {
+      const steps = path.resources
+        .filter((r) => r.exam?.startsWith(name))
+        .map((r) => order[r.step as keyof typeof order]);
+      expect(steps, name).toEqual([...steps].sort((a, b) => a - b));
+    }
+  });
+
+  it('keeps a free and a paid training course for every exam in the run', () => {
+    const courses = path.resources.filter((r) => r.step === 'course');
+    // A+ Core 1, A+ Core 2, Network+, Security+.
+    const exams = [...new Set(courses.map((r) => r.exam))];
+    expect(exams).toHaveLength(4);
+    for (const exam of exams) {
+      const pair = courses.filter((r) => r.exam === exam);
+      expect(pair.some((r) => r.isFree), exam).toBe(true);
+      expect(pair.some((r) => !r.isFree), exam).toBe(true);
+    }
+  });
+});

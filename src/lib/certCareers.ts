@@ -26,7 +26,15 @@ export interface CertCareer {
 const COMPTIA = { label: "CompTIA's career pages", url: 'https://www.comptia.org/en-us/explore-careers/' };
 
 // Keyed by Certification.id from src/lib/certShape.ts.
+const TRIFECTA_CAREER: CertCareer = {
+  roles: ['Help desk support specialist', 'Network administrator', 'Cyber defense analyst', 'Systems administrator'],
+  next: 'The three build on each other: A+ gets you into support, Network+ moves you to network roles, Security+ opens security work and is the baseline on a lot of US government and defense contract postings.',
+  source: COMPTIA,
+};
+
 const CAREERS: Record<string, CertCareer> = {
+  'comptia-trifecta': TRIFECTA_CAREER,
+  'comptia-any': TRIFECTA_CAREER,
   'comptia-a': {
     roles: ['Help desk support specialist', 'IT support technician', 'Field service technician', 'Desktop support analyst'],
     next: 'Network+ is the usual next exam, then Security+. Those three together are what most entry-level IT job postings ask for.',
