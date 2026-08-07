@@ -42,6 +42,11 @@ export function DashboardHeroBanner({
   dueCount,
   noteCount,
 }: DashboardHeroBannerProps) {
+  // Section 3's threshold for progress and stats. Cards rather than notes:
+  // the same rule gates the review entry point, and a subject can hold a lot
+  // of prose before it holds a single card.
+  const showStats = totalCards >= 5;
+
   return (
     <m.div
       initial={{ opacity: 0, y: 15 }}
@@ -63,7 +68,12 @@ export function DashboardHeroBanner({
       </div>
 
       {/* Hero Content */}
-      <div className="relative z-10 p-6 sm:p-8 md:p-12 flex flex-col md:flex-row justify-between md:items-end gap-6">
+      {/* Side by side only from lg. At the md breakpoint (768, iPad portrait)
+          the two columns each got about half the width, which wrapped the
+          subject heading onto two lines and pushed the stat tiles into a
+          narrow vertical stack with dead space beside them. A tablet has the
+          room to read this as one full-width block instead. */}
+      <div className="relative z-10 p-6 sm:p-8 md:p-12 flex flex-col lg:flex-row justify-between lg:items-end gap-6">
         <div className="max-w-xl">
           {userName && (
             <m.p
@@ -104,35 +114,50 @@ export function DashboardHeroBanner({
           </m.p>
         </div>
 
-        {/* Quick Stats Badges */}
+        {/* Progressive disclosure, CLAUDE.md section 3: stats appear at five
+            or more cards, and until then they are absent rather than showing
+            "0". A zero counter is the exact empty state that section forbids.
+            The due tile keeps its own condition: it is a call to action, not
+            a stat, and it can't read zero. */}
+        {(showStats || dueCount > 0) && (
         <m.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, duration: 0.4 }}
-          className="flex items-center gap-3 sm:gap-4 flex-wrap"
+          // A two-column grid below lg rather than a wrapping flex row: two
+          // tiles don't fit side by side on a phone, so flex-wrap dropped the
+          // second one onto its own line at its content width and left the
+          // rest of the row empty. Equal halves fill it and read as one unit.
+          className="grid grid-cols-2 gap-3 sm:gap-4 lg:flex lg:items-center"
         >
+          {showStats && (
           <div className="bg-[#14120f]/80 backdrop-blur-xl border border-white/10 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-lg">
             <div className="p-2 rounded-xl bg-accent/10 text-accent">
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs text-gray-400 font-medium">Total notes</div>
+              <div className="text-[11px] sm:text-xs text-gray-400 font-medium whitespace-nowrap">Total notes</div>
               <div className="text-lg font-bold text-white font-serif"><CountUp value={noteCount} /></div>
             </div>
           </div>
+          )}
 
+          {showStats && (
           <div className="bg-[#14120f]/80 backdrop-blur-xl border border-white/10 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-lg">
             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
               <Brain className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs text-gray-400 font-medium">Flashcards</div>
+              <div className="text-[11px] sm:text-xs text-gray-400 font-medium whitespace-nowrap">Flashcards</div>
               <div className="text-lg font-bold text-white font-serif"><CountUp value={totalCards} /></div>
             </div>
           </div>
+          )}
 
           {dueCount > 0 && (
-            <div className="bg-accent/20 backdrop-blur-xl border border-accent/40 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+            // Third tile in a two-column grid, so it spans the row rather
+            // than sitting half-width beside empty space.
+            <div className="col-span-2 lg:col-span-1 bg-accent/20 backdrop-blur-xl border border-accent/40 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
               <div className="p-2 rounded-xl bg-accent text-[#0a0908]">
                 <BookOpen className="w-5 h-5" />
               </div>
@@ -143,6 +168,7 @@ export function DashboardHeroBanner({
             </div>
           )}
         </m.div>
+        )}
       </div>
     </m.div>
   );
