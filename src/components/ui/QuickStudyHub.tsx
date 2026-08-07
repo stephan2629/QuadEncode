@@ -31,7 +31,7 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }
           <h3 className="text-xl font-bold font-serif text-white tracking-tight flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-accent" /> Quick study hub
           </h3>
-          <p className="text-xs text-gray-400 font-light mt-0.5">Jump directly into recall, path discovery, or instant command search.</p>
+          <p className="text-xs text-gray-400 mt-0.5">Jump directly into recall, path discovery, or instant command search.</p>
         </div>
       </div>
 
@@ -53,7 +53,7 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }
                     <Brain className="w-6 h-6" />
                   </div>
                   {dueCount > 0 && (
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent text-[#0a0908] shadow-md">
+                    <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent text-[#0a0908] shadow-md">
                       {dueCount} due
                     </span>
                   )}
@@ -61,7 +61,7 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }
                 <h4 className="text-lg font-bold font-serif text-white group-hover:text-accent transition-colors">
                   Start spaced repetition
                 </h4>
-                <p className="text-xs text-gray-400 mt-1 leading-relaxed font-light">
+                <p className="text-xs text-gray-400 mt-1 leading-relaxed">
                   Flip 0ms cards using memory box intervals to retain information long-term.
                 </p>
               </div>
@@ -87,14 +87,14 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }
                 <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform duration-300">
                   <Compass className="w-6 h-6" />
                 </div>
-                <span className={`text-[10px] font-mono font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border ${atPathLimit ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-white/5 border-white/10 text-gray-400'}`}>
+                <span className={`text-[11px] font-mono font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border ${atPathLimit ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-white/5 border-white/10 text-gray-400'}`}>
                   {atPathLimit ? `${pathCount}/${PATH_LIMIT} paths` : 'AI curated'}
                 </span>
               </div>
               <h4 className="text-lg font-bold font-serif text-white group-hover:text-amber-400 transition-colors">
                 Discover learning paths
               </h4>
-              <p className="text-xs text-gray-400 mt-1 leading-relaxed font-light">
+              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
                 {atPathLimit
                   ? `You're at the ${PATH_LIMIT}-path limit. Delete a path below before saving a new one.`
                   : 'Type any subject to instantly curate top-rated video courses and documentation.'}
@@ -125,20 +125,20 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }
                 <div className="p-3 rounded-2xl bg-white/10 border border-white/20 text-white group-hover:scale-110 transition-transform duration-300">
                   <Command className="w-6 h-6" />
                 </div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/10 border border-white/10 text-gray-300">
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-white/10 border border-white/10 text-gray-300">
                   ⌘K / Ctrl+K
                 </span>
               </div>
               <h4 className="text-lg font-bold font-serif text-white">
                 Command palette
               </h4>
-              <p className="text-xs text-gray-300 mt-1 leading-relaxed font-light">
-                Tap or press ⌘K anywhere to jump across subjects, notes, and instant study tools.
+              <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                Tap or press Ctrl+K (⌘K on Mac) anywhere to jump across subjects, notes, and instant study tools.
               </p>
             </div>
 
             <div className="relative z-10 mt-6 items-center text-xs font-mono text-gray-400 hidden md:flex">
-              Press <kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/10 text-white mx-1">⌘K</kbd> to launch
+              Press <kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/10 text-white mx-1">Ctrl/⌘K</kbd> to launch
             </div>
           </div>
         </TiltCard>

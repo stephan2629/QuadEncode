@@ -1,6 +1,33 @@
+import ReactDOM from 'react-dom';
 import { Loader2 } from 'lucide-react';
 
+// Next's default deviceSizes (no `images` override in next.config.ts). The
+// banner is a `fill` image with no `sizes`, so it behaves as 100vw and the
+// browser picks a width from this set.
+const DEVICE_WIDTHS = [640, 750, 828, 1080, 1200, 1920, 2048, 3840];
+const bannerUrl = (w: number) =>
+  `/_next/image?url=${encodeURIComponent('/dashboard-banner.png')}&w=${w}&q=75`;
+
 export default function DashboardLoading() {
+  // The banner image is this route's LCP element, and `priority` on the
+  // <Image> in DashboardHeroBanner is not enough on its own: the preload
+  // tag that `priority` emits lives in page.tsx's HTML, and page.tsx awaits
+  // several Supabase queries before any of it is sent. This skeleton is the
+  // only thing that ships at TTFB, so preloading here is what actually
+  // closes the gap - measured at 1411ms of LCP "load delay" before this,
+  // with the image itself taking 0.8ms to download once requested.
+  //
+  // Passing the full srcset rather than one width so the browser resolves
+  // exactly the candidate it would have chosen from the real <Image>; a
+  // single hardcoded width would risk preloading one file and then fetching
+  // a different one.
+  ReactDOM.preload(bannerUrl(1920), {
+    as: 'image',
+    fetchPriority: 'high',
+    imageSrcSet: DEVICE_WIDTHS.map((w) => `${bannerUrl(w)} ${w}w`).join(', '),
+    imageSizes: '100vw',
+  });
+
   return (
     <div className="h-dvh w-full bg-[#0a0908] text-white flex flex-col p-6 max-w-6xl mx-auto custom-scrollbar">
       {/* Header Skeleton */}

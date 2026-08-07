@@ -59,7 +59,8 @@ The same principle applies throughout. The interface grows as the user builds it
 | Feature appears when |
 |---|
 | Search and Notes: always |
-| Review & Quizzes: first card or quiz exists |
+| Review & Quizzes (dashboard entry point, `/review`): first card or quiz exists |
+| Practice & Quiz tabs (note editor): that note holds 10 or more vocab/definition pairs, or 10 or more quiz question/answer pairs, counted separately |
 | Progress and stats: five or more cards/reviews exist |
 | Subject switcher: second subject exists |
 | Import history: first import completed |

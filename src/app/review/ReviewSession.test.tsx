@@ -124,14 +124,26 @@ describe('ReviewSession', () => {
     expect(graduateCard).toHaveBeenCalledWith('card-9', 'It works because of X.');
   });
 
-  it('flips a vocab card and advances it without crashing', async () => {
+  it('reveals a vocab definition after an attempt is typed, and advances', async () => {
     render(
       <ReviewSession
-        initialQueue={[makeCard({ type: 'vocab', box: 2, prompt: 'Term', answer: 'Definition' })]}
+        initialQueue={[makeCard({ type: 'vocab', box: 2, prompt: 'Term', answer: 'A cell powerhouse.' })]}
       />
     );
-    fireEvent.click(screen.getByText('Term'));
-    expect(screen.getByText('Definition')).toBeInTheDocument();
+    const reveal = screen.getByText('Reveal the definition');
+
+    // Nothing typed yet: the definition stays hidden and the button is dead.
+    expect(reveal).toBeDisabled();
+    fireEvent.click(reveal);
+    expect(screen.queryByText('A cell powerhouse.')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('Type what you remember...'), {
+      target: { value: 'my guess' },
+    });
+    fireEvent.click(screen.getByText('Reveal the definition'));
+    expect(screen.getByText('A cell powerhouse.')).toBeInTheDocument();
+    expect(screen.getByText('my guess')).toBeInTheDocument();
+
     fireEvent.click(screen.getByText('Correct'));
     expect(await screen.findByText('Review Complete!')).toBeInTheDocument();
   });

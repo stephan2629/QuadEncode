@@ -83,7 +83,7 @@ export default function ResetPasswordPage() {
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h2 className="text-2xl font-bold font-serif text-white">Password Updated!</h2>
-              <p className="text-sm text-gray-400 font-light max-w-xs mx-auto">
+              <p className="text-sm text-gray-400 max-w-xs mx-auto">
                 Your new password has been saved. Redirecting to your dashboard...
               </p>
               <div className="pt-4 flex items-center justify-center gap-2 text-xs font-mono text-accent">
@@ -97,7 +97,7 @@ export default function ResetPasswordPage() {
                   <Lock className="w-3.5 h-3.5" /> Security Reset
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-bold font-serif text-white tracking-tight">Set your new password</h1>
-                <p className="text-gray-400 text-xs sm:text-sm mt-1.5 font-light leading-relaxed">
+                <p className="text-gray-400 text-xs sm:text-sm mt-1.5 leading-relaxed">
                   Enter your new password below to secure your account.
                 </p>
               </div>

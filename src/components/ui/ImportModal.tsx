@@ -142,8 +142,10 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
                 onClick={() => fileInputRef.current?.click()}
               >
                 <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <input 
+                <input
                   type="file"
+                  id="import-file"
+                  name="file"
                   ref={fileInputRef}
                   onChange={handleFileChange}
                   accept="application/pdf,image/png,image/jpeg,image/webp"

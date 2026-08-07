@@ -1,12 +1,13 @@
-// Mirrors this project's Supabase Auth password policy (dashboard-configured:
-// 8-32 characters, all four character classes) so the raw Supabase error -
-// "Password should contain at least one character of each:
-// abcdefghijklmnopqrstuvwxyz, ABCDEFGHIJKLMNOPQRSTUVWXYZ, 0123456789,
-// !@#$%^&*()_+-=[]{};':\"|<>?,./`~." - never reaches the user. Checked
-// client-side first with this short hint instead.
-const PASSWORD_RULE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,32}$/;
+// Length only, 8 to 32 characters. The character-class requirement this used
+// to mirror (one lower, one upper, one digit, one symbol) is also a Supabase
+// Auth dashboard setting: it has to be set to "No required characters" under
+// Authentication > Providers > Email, or Supabase rejects the password after
+// this check passes and the user sees a raw provider error. humanizeAuthError
+// still translates that error, so a project where the setting hasn't been
+// flipped yet fails readably rather than cryptically.
+const PASSWORD_RULE = /^.{8,32}$/;
 
-export const PASSWORD_HINT = '8-32 characters, with upper, lower, a number, and a symbol';
+export const PASSWORD_HINT = '8 to 32 characters';
 
 export function validatePassword(password: string): string | null {
   return PASSWORD_RULE.test(password) ? null : `Password needs ${PASSWORD_HINT}.`;

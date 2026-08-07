@@ -1,5 +1,3 @@
-import { PASSWORD_HINT } from './password';
-
 // Supabase Auth returns raw, sometimes fragment-like strings straight from
 // the backend (e.g. "email rate limit exceeded"). Map the common ones to
 // plain sentences that say what happened and what to do next, per CLAUDE.md
@@ -28,7 +26,10 @@ export function humanizeAuthError(message: unknown): string {
     return 'Confirm your email first. Check your inbox for the link.';
   }
   if (m.includes('password should contain at least one character of each')) {
-    return `Password needs ${PASSWORD_HINT}.`;
+    // Only reachable while the Supabase project still has a character-class
+    // requirement set (see src/lib/password.ts) - the app itself asks for
+    // length only, so this says what Supabase actually wants.
+    return 'Password needs an uppercase letter, a lowercase letter, a number, and a symbol.';
   }
   if (m.includes('password should be at least')) {
     // Pull the actual required length out of Supabase's message instead of

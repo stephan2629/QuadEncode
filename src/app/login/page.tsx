@@ -6,7 +6,7 @@ import { login, signup } from './actions';
 import { createClient } from '@/utils/supabase/client';
 import { humanizeAuthError, humanizeCallbackError } from '@/lib/auth-errors';
 import { validatePassword, PASSWORD_HINT } from '@/lib/password';
-import { Loader2, Mail, Lock, User, AlertCircle, CheckCircle2, ArrowLeft, Key } from 'lucide-react';
+import { Loader2, Mail, Lock, User, AlertCircle, CheckCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -19,11 +19,15 @@ export default function LoginPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  // Same field serves sign-in and create-account (it renders for both modes),
+  // so one toggle covers both.
+  const [showPassword, setShowPassword] = useState(false);
 
   function switchMode(next: Mode) {
     setMode(next);
     setError(null);
     setNotice(null);
+    setShowPassword(false);
   }
 
   // /auth/callback redirects here with ?error=... when a password-reset
@@ -132,21 +136,21 @@ export default function LoginPage() {
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
           
           <div className="mb-6 text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-mono font-bold uppercase tracking-wider mb-3">
-              {mode === 'login' && <Key className="w-3.5 h-3.5" />}
-              {mode === 'signup' && <User className="w-3.5 h-3.5" />}
-              {mode === 'reset' && <Lock className="w-3.5 h-3.5" />}
-              {mode === 'login' && 'Auth Gateway'}
-              {mode === 'signup' && 'Register Portal'}
-              {mode === 'reset' && 'Account Recovery'}
-            </div>
-            
+            {mode !== 'login' && (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-mono font-bold uppercase tracking-wider mb-3">
+                {mode === 'signup' && <User className="w-3.5 h-3.5" />}
+                {mode === 'reset' && <Lock className="w-3.5 h-3.5" />}
+                {mode === 'signup' && 'Register Portal'}
+                {mode === 'reset' && 'Account Recovery'}
+              </div>
+            )}
+
             <h2 className="text-2xl sm:text-3xl font-bold font-serif text-white tracking-tight">
               {mode === 'login' && 'Welcome back'}
               {mode === 'signup' && 'Create an account'}
               {mode === 'reset' && 'Reset your password'}
             </h2>
-            <p className="text-gray-400 text-xs sm:text-sm mt-1.5 font-light leading-relaxed">
+            <p className="text-gray-400 text-xs sm:text-sm mt-1.5 leading-relaxed">
               {mode === 'login' && 'Enter your details to access your learning paths.'}
               {mode === 'signup' && 'Sign up to start organizing your knowledge.'}
               {mode === 'reset' && "Enter your email and we'll send you a reset link."}
@@ -202,7 +206,7 @@ export default function LoginPage() {
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     autoComplete={isLogin ? 'current-password' : 'new-password'}
                     placeholder={isLogin ? '••••••••' : PASSWORD_HINT}
                     required
@@ -211,8 +215,16 @@ export default function LoginPage() {
                     // sign-in must never reject it client-side.
                     minLength={isLogin ? undefined : 8}
                     maxLength={isLogin ? undefined : 32}
-                    className="w-full bg-[#0a0908] border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-sans"
+                    className="w-full bg-[#0a0908] border border-white/10 rounded-xl pl-11 pr-12 py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-sans"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
             )}
@@ -267,7 +279,7 @@ export default function LoginPage() {
           {mode !== 'reset' && (
             <div className="flex items-center gap-3 my-6 relative z-10">
               <div className="h-px flex-1 bg-white/10" />
-              <span className="text-[10px] text-gray-400 uppercase tracking-widest font-mono">Or</span>
+              <span className="text-[11px] text-gray-400 uppercase tracking-widest font-mono">Or</span>
               <div className="h-px flex-1 bg-white/10" />
             </div>
           )}

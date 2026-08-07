@@ -7,6 +7,20 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # The RLS test (src/lib/notes-rls.test.ts) and the note editor e2e spec
+    # (tests/notes-editor.spec.ts) both sign in as throwaway users they
+    # create and delete themselves, which needs the service role key -
+    # email confirmation is on for this project, so a plain signUp never
+    # yields a session unattended. Add these three as repository secrets
+    # (Settings -> Secrets and variables -> Actions). Until they exist this
+    # run fails on purpose: a security test that quietly skips itself in CI
+    # proves nothing. Locally the same suites skip, so a fresh clone with no
+    # service role key still gets a green `npm test`. See
+    # docs/decisions/0009.
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

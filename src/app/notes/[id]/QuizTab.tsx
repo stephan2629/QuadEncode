@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { Brain, Check, X, RotateCw, RotateCcw, Sparkles, ArrowRight, Zap, Loader2, Wand2 } from 'lucide-react';
-import { saveMissedQuestionsAction, generateAIQuizAction, getQuizQuota, type QuizQuotaInfo } from '@/app/actions/quiz-actions';
+import { Brain, Check, X, RotateCw, RotateCcw, Sparkles, ArrowRight, Zap } from 'lucide-react';
+import { saveMissedQuestionsAction } from '@/app/actions/quiz-actions';
 import { parseLocalQuiz, type QuizQuestion } from '@/lib/quiz-parser';
 
 interface AnsweredQuestion {
@@ -33,14 +33,9 @@ function sessionStorageKey(noteId: string) {
 export default function QuizTab({
   noteId,
   content,
-  onGenerated,
 }: {
   noteId: string;
   content: string;
-  // Notifies the note editor that AI generation appended text to body_md
-  // server-side, so its own `content` state (already saved separately)
-  // picks up the new cards without a full page reload.
-  onGenerated?: (newContent: string) => void;
 }) {
   const [stage, setStage] = useState<Stage>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -49,28 +44,6 @@ export default function QuizTab({
   const [picked, setPicked] = useState<string | null>(null);
   const [answered, setAnswered] = useState<AnsweredQuestion[]>([]);
   const [convertedCount, setConvertedCount] = useState<number | null>(null);
-  const [quota, setQuota] = useState<QuizQuotaInfo | null>(null);
-  const [generating, setGenerating] = useState(false);
-
-  useEffect(() => {
-    getQuizQuota().then(setQuota).catch(() => {});
-  }, []);
-
-  const handleGenerate = async () => {
-    setError(null);
-    setGenerating(true);
-    const res = await generateAIQuizAction(noteId, content);
-    setGenerating(false);
-
-    if (!res.success) {
-      setError(res.error ?? 'Failed to generate.');
-      getQuizQuota().then(setQuota).catch(() => {});
-      return;
-    }
-
-    onGenerated?.(content + '\n\n' + res.appendedText + '\n');
-    getQuizQuota().then(setQuota).catch(() => {});
-  };
 
   // Resume a saved in-progress session once, after mount (sessionStorage
   // isn't available during SSR, so reading it any earlier would produce a
@@ -262,12 +235,12 @@ export default function QuizTab({
         </div>
 
         <div className="flex items-center justify-center gap-3 mb-6 shrink-0 mt-2">
-          <span className="text-[10px] font-bold tracking-wider text-gray-400 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
+          <span className="text-[11px] font-bold tracking-wider text-gray-400 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
             {index + 1} / {questions.length}
           </span>
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-400 hover:text-gray-300 uppercase transition-colors"
+            className="flex items-center gap-1 text-[11px] font-bold tracking-wider text-gray-400 hover:text-gray-300 uppercase transition-colors"
           >
             <RotateCcw className="w-3 h-3" aria-hidden="true" /> Start over
           </button>
@@ -344,11 +317,11 @@ export default function QuizTab({
                   {index + 1 < questions.length ? 'Next question' : 'See results'}
                   <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </m.button>
-                <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase hidden md:block">Press Enter</div>
+                <div className="text-[11px] text-gray-400 font-mono tracking-widest uppercase hidden md:block">Press Enter</div>
               </>
             )}
             {!revealed && current.type === 'quiz' && (
-              <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-4 hidden md:block">Press 1-{current.options?.length} to pick an answer</div>
+              <div className="text-[11px] text-gray-400 font-mono tracking-widest uppercase mt-4 hidden md:block">Press 1-{current.options?.length} to pick an answer</div>
             )}
           </div>
         </div>
@@ -463,31 +436,11 @@ export default function QuizTab({
           Start Quiz ({localQuestionsCount} questions)
         </button>
 
-        {quota && (
-          <>
-            <button
-              onClick={handleGenerate}
-              disabled={generating || quota.remaining <= 0}
-              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-medium px-8 py-4 rounded-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
-            >
-              {generating ? (
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Wand2 className="w-4 h-4" aria-hidden="true" />
-              )}
-              {generating
-                ? 'Reading your notes...'
-                : quota.remaining <= 0
-                  ? `Daily limit reached (${quota.limit}/${quota.limit} used)`
-                  : `Generate 10 Quizzes & 10 Cards (${quota.remaining}/${quota.limit} left today)`}
-            </button>
-            {quota.remaining <= 0 && (
-              <p className="text-xs text-gray-500 -mt-2">
-                More in about {quota.hoursUntilReset} {quota.hoursUntilReset === 1 ? 'hour' : 'hours'}.
-              </p>
-            )}
-          </>
-        )}
+        {/* The AI generation button used to live here. It moved to the
+            Notes tab (GenerateCardsButton.tsx): this tab only appears once
+            a note already holds 10+ quiz or vocab pairs, so keeping the
+            control that creates them behind that gate would have made the
+            threshold impossible to cross from an empty note. */}
       </div>
     </div>
   );

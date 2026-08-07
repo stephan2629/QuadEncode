@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { parseBlanks, renderNoteForPreview, parseTimestamp, formatTimestamp } from './parseBlanks';
+import {
+  parseBlanks,
+  renderNoteForPreview,
+  parseTimestamp,
+  formatTimestamp,
+  haveBlanksChanged,
+  hasEnoughForPracticeAndQuiz,
+} from './parseBlanks';
 
 describe('parseBlanks', () => {
   it('pairs an adjacent Vocab/Def line', () => {
@@ -196,6 +203,61 @@ describe('parseTimestamp / formatTimestamp', () => {
   it('formats seconds back into the same shape it parses', () => {
     expect(formatTimestamp(142)).toBe('2:22');
     expect(formatTimestamp(3723)).toBe('1:02:03');
+  });
+});
+
+describe('haveBlanksChanged', () => {
+  it('is false for a prose-only edit that leaves every blank untouched', () => {
+    const prev = '**Vocab:** Term\n**Def:** Definition\n\nSome prose.';
+    const next = '**Vocab:** Term\n**Def:** Definition\n\nSome different prose entirely.';
+    expect(haveBlanksChanged(prev, next)).toBe(false);
+  });
+
+  it('is true when a new vocab pair is added', () => {
+    const prev = '**Vocab:** Term\n**Def:** Definition';
+    const next = '**Vocab:** Term\n**Def:** Definition\n\n**Vocab:** New\n**Def:** New definition';
+    expect(haveBlanksChanged(prev, next)).toBe(true);
+  });
+
+  it('is true when an existing answer is edited', () => {
+    const prev = '**Vocab:** Term\n**Def:** Old definition';
+    const next = '**Vocab:** Term\n**Def:** New definition';
+    expect(haveBlanksChanged(prev, next)).toBe(true);
+  });
+
+  it('is false for whitespace-only changes on non-blank lines', () => {
+    const prev = '**Vocab:** Term\n**Def:** Definition\n\nProse.';
+    const next = '**Vocab:** Term\n**Def:** Definition\n\n\n\nProse.';
+    expect(haveBlanksChanged(prev, next)).toBe(false);
+  });
+
+  it('is false comparing identical content', () => {
+    const md = '**Quiz:** Q?\n**A:** Correct | Wrong';
+    expect(haveBlanksChanged(md, md)).toBe(false);
+  });
+});
+
+describe('hasEnoughForPracticeAndQuiz', () => {
+  const vocabPairs = (n: number) =>
+    Array.from({ length: n }, (_, i) => `**Vocab:** T${i}\n**Def:** D${i}`).join('\n\n');
+  const quizPairs = (n: number) =>
+    Array.from({ length: n }, (_, i) => `**Quiz:** Q${i}?\n**A:** Right${i} | Wrong${i}`).join('\n\n');
+
+  it('is false at 9 vocab pairs', () => {
+    expect(hasEnoughForPracticeAndQuiz(vocabPairs(9))).toBe(false);
+  });
+
+  it('is true at 10 vocab pairs', () => {
+    expect(hasEnoughForPracticeAndQuiz(vocabPairs(10))).toBe(true);
+  });
+
+  it('is false at 6 vocab plus 6 quiz - neither kind alone reaches 10', () => {
+    const md = vocabPairs(6) + '\n\n' + quizPairs(6);
+    expect(hasEnoughForPracticeAndQuiz(md)).toBe(false);
+  });
+
+  it('is true at 10 quiz pairs', () => {
+    expect(hasEnoughForPracticeAndQuiz(quizPairs(10))).toBe(true);
   });
 });
 

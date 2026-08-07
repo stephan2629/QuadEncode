@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { Check, ArrowRight, ArrowLeft, BookOpen, RotateCcw } from 'lucide-react';
+import { Check, ArrowRight, ArrowLeft, BookOpen, RotateCcw, RotateCw } from 'lucide-react';
 import { parseLocalQuiz } from '@/lib/quiz-parser';
 import { flashcardTextSizeClass } from '@/lib/flashcardTextSize';
 
@@ -286,12 +286,12 @@ export default function PracticeTab({ content, clozeCards = [], noteId = 'unknow
       </div>
 
       <div className="flex items-center justify-center gap-3 mb-6 shrink-0 mt-2">
-        <span className="text-[10px] font-bold tracking-wider text-gray-400 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
+        <span className="text-[11px] font-bold tracking-wider text-gray-400 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
           {index + 1} / {sessionCards.length}
         </span>
         <button
           onClick={handleReset}
-          className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-400 hover:text-gray-300 uppercase transition-colors"
+          className="flex items-center gap-1 text-[11px] font-bold tracking-wider text-gray-400 hover:text-gray-300 uppercase transition-colors"
         >
           <RotateCcw className="w-3 h-3" aria-hidden="true" /> Start over
         </button>
@@ -299,6 +299,13 @@ export default function PracticeTab({ content, clozeCards = [], noteId = 'unknow
 
       <div className="w-full max-w-2xl mx-auto flex-1 flex flex-col items-center">
         <div className="relative w-full aspect-[4/3] md:aspect-[21/9] mb-8" style={{ perspective: '2000px' }}>
+          {/* Same three-zone face as the landing page's FlipCardDemo (label
+              row, content, hint row) and the same accent-tinted back, so a
+              card looks like the thing the home page showed you. The flip
+              itself is duration 0, not the spring this used to run: section
+              13 makes the answer reveal instant with no exceptions, and a
+              200ms spring is exactly the window that lets the eye skim the
+              answer before recall is attempted. */}
           <m.div
             key={currentCard.id}
             role="button"
@@ -306,32 +313,39 @@ export default function PracticeTab({ content, clozeCards = [], noteId = 'unknow
             style={{ transformStyle: 'preserve-3d' }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0, rotateY: revealed ? 180 : 0 }}
-            transition={{ 
+            transition={{
               opacity: { duration: 0.2 },
               y: { duration: 0.2 },
-              rotateY: { type: 'spring', stiffness: 200, damping: 20 }
+              rotateY: { duration: 0 },
             }}
             onClick={() => setRevealed(true)}
           >
-            <div 
-              className="absolute inset-0 bg-white/5 backdrop-blur-md border border-white/10 p-12 md:p-16 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] transition-shadow duration-300"
+            <div
+              className="absolute inset-0 bg-[#14120f] border border-white/10 p-6 md:p-8 rounded-2xl shadow-2xl flex flex-col justify-between text-center hover:border-white/20 transition-colors"
               style={{ backfaceVisibility: 'hidden' }}
             >
-              <div className="overflow-y-auto w-full custom-scrollbar flex flex-col items-center justify-center h-full">
+              <span className="font-mono text-[11px] uppercase tracking-widest text-gray-400 shrink-0">Prompt</span>
+              <div className="overflow-y-auto w-full custom-scrollbar flex flex-col items-center justify-center flex-1 min-h-0 py-2">
                 {currentCard.explanation && (
                   <p className="text-sm md:text-base text-gray-400 font-serif italic mb-4 max-w-xl mx-auto">&quot;{currentCard.explanation}&quot;</p>
                 )}
-                <p className={`${flashcardTextSizeClass(frontText, ['text-xl md:text-3xl', 'text-lg md:text-2xl', 'text-base md:text-xl', 'text-sm md:text-lg'])} font-serif leading-relaxed text-white`}>{frontText}</p>
+                <p className={`${flashcardTextSizeClass(frontText, ['text-xl md:text-3xl', 'text-lg md:text-2xl', 'text-base md:text-xl', 'text-sm md:text-lg', 'text-xs md:text-base'])} font-serif leading-snug text-white`}>{frontText}</p>
               </div>
-              {!revealed && (
-                <p className="absolute bottom-6 text-xs text-gray-600 font-mono tracking-widest uppercase">Click to flip</p>
-              )}
+              <span className="flex items-center justify-center gap-1.5 text-xs text-gray-500 shrink-0">
+                <RotateCw className="w-3 h-3" aria-hidden="true" /> Click to flip
+              </span>
             </div>
             <div
-              className="absolute inset-0 bg-white/5 backdrop-blur-md border border-white/10 p-12 md:p-16 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] transition-shadow duration-300"
+              className="absolute inset-0 bg-accent/10 border border-accent/25 p-6 md:p-8 rounded-2xl shadow-2xl flex flex-col justify-between text-center"
               style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
             >
-              <p className={`${flashcardTextSizeClass(backText, ['text-lg md:text-2xl', 'text-base md:text-xl', 'text-sm md:text-lg', 'text-xs md:text-base'])} text-gray-300 leading-relaxed font-serif`}>{backText}</p>
+              <span className="font-mono text-[11px] uppercase tracking-widest text-accent shrink-0">Answer</span>
+              <div className="overflow-y-auto w-full custom-scrollbar flex flex-col items-center justify-center flex-1 min-h-0 py-2">
+                <p className={`${flashcardTextSizeClass(backText, ['text-lg md:text-2xl', 'text-base md:text-xl', 'text-sm md:text-lg', 'text-xs md:text-base', 'text-[11px] md:text-sm'])} text-white leading-snug font-serif`}>{backText}</p>
+              </div>
+              <span className="flex items-center justify-center gap-1.5 text-xs text-gray-500 shrink-0">
+                <RotateCw className="w-3 h-3" aria-hidden="true" /> Click to flip back
+              </span>
             </div>
           </m.div>
         </div>
@@ -376,10 +390,10 @@ export default function PracticeTab({ content, clozeCards = [], noteId = 'unknow
                   <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </m.button>
               </div>
-              <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-2 hidden md:block">Arrow keys to navigate</div>
+              <div className="text-[11px] text-gray-400 font-mono tracking-widest uppercase mt-2 hidden md:block">Arrow keys to navigate</div>
             </>
           ) : (
-            <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-4 hidden md:block">
+            <div className="text-[11px] text-gray-400 font-mono tracking-widest uppercase mt-4 hidden md:block">
               Press Space to flip
             </div>
           )}

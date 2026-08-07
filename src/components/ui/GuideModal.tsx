@@ -122,7 +122,7 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                       </div>
                       <div className="flex items-center gap-2 shrink-0 sm:ml-4">
                         <div className="flex items-center gap-1">
-                          <kbd className="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs font-mono text-gray-300">Cmd</kbd>
+                          <kbd className="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs font-mono text-gray-300">Ctrl/Cmd</kbd>
                           <span className="text-gray-500">+</span>
                           <kbd className="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs font-mono text-gray-300">K</kbd>
                         </div>

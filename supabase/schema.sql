@@ -75,6 +75,16 @@ create table cards (
   fails int not null default 0
 );
 
+-- Guards against the race between autosave and manual save both deciding
+-- the same **Vocab:**/**Quiz:** line is new and inserting it twice
+-- (syncCardsFromNote in src/app/notes/[id]/actions.ts). Partial, not a
+-- full-table constraint: cloze cards are meant to share a line with each
+-- other (two different selections on one line is a normal cloze workflow)
+-- and with a vocab/quiz card on that line, so the predicate keeps them out
+-- of this check entirely. See docs/decisions/0009.
+create unique index cards_vocab_basic_note_line_key on cards (note_id, line)
+  where type in ('basic', 'vocab');
+
 create table reviews (
   id uuid primary key default gen_random_uuid(),
   card_id uuid not null references cards(id) on delete cascade,
@@ -101,6 +111,20 @@ create table indexed_subjects (
   first_searched_at timestamptz not null default now()
 );
 
+-- Shared cache of a generated path, keyed by slug. Search works signed out
+-- and a given subject's path is the same for every visitor, so like
+-- indexed_subjects above this holds no user data and is not scoped per
+-- user - one row serves everyone who searches that slug until it goes
+-- stale. Saves a Serper + YouTube + Gemini + link-check pass (~20s) on
+-- every visit after the first. See docs/decisions/0006.
+create table path_cache (
+  slug text primary key,
+  subject_name text not null,
+  overview text not null,
+  resources jsonb not null,
+  generated_at timestamptz not null default now()
+);
+
 -- Row level security: every table, owned rows only.
 alter table profiles enable row level security;
 alter table subjects enable row level security;
@@ -112,6 +136,7 @@ alter table cards enable row level security;
 alter table reviews enable row level security;
 alter table imports enable row level security;
 alter table indexed_subjects enable row level security;
+alter table path_cache enable row level security;
 
 -- Anyone, signed in or not, can look up or register a searched slug —
 -- this table holds no user data, just what subjects exist to index.
@@ -120,6 +145,19 @@ create policy "public read indexed subjects" on indexed_subjects
 
 create policy "anyone can register a searched subject" on indexed_subjects
   for insert with check (true);
+
+-- Same reasoning as indexed_subjects: no user data, search works signed
+-- out, one shared row per slug. Update policy is needed alongside insert
+-- because a retry (skipCache) overwrites an existing row rather than only
+-- ever inserting a new one.
+create policy "public read path cache" on path_cache
+  for select using (true);
+
+create policy "anyone can write path cache" on path_cache
+  for insert with check (true);
+
+create policy "anyone can update path cache" on path_cache
+  for update using (true) with check (true);
 
 create policy "own profile" on profiles
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

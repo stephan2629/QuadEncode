@@ -3,7 +3,12 @@
 // AI-curated path, so every resource gets checked here rather than trusted
 // on the model's word.
 const TIMEOUT_MS = 5000
-const OK_STATUSES = new Set([200, 301, 302])
+// 403 counts as live: Udemy and other bot-protected hosts answer 403 to a
+// server-side fetch with no browser fingerprint, inconsistently, while the
+// page itself loads fine for a person. A genuinely dead URL on those same
+// hosts still returns 404, which stays rejected. Without this every paid
+// (Udemy-only) course step is emptied by its own link check.
+const OK_STATUSES = new Set([200, 301, 302, 403])
 
 async function attempt(url: string, method: 'HEAD' | 'GET'): Promise<boolean> {
   const controller = new AbortController()

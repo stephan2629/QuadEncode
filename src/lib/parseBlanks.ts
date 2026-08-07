@@ -154,6 +154,35 @@ export function parseBlanks(bodyMd: string): ParsedBlank[] {
   return blanks;
 }
 
+// A comparable fingerprint of everything syncCardsFromNote actually cares
+// about - which lines have a real (non-empty-answer) blank, and what each
+// one says. Two bodies with the same fingerprint produce the same set of
+// cards, so this is what lets updateNoteContent skip the whole card sync
+// pass on a prose-only edit (src/app/notes/[id]/actions.ts).
+function blankFingerprint(bodyMd: string): string {
+  return JSON.stringify(
+    parseBlanks(bodyMd)
+      .filter((b) => b.answer !== '')
+      .map((b) => [b.line, b.kind, b.prompt, b.answer, b.explanation ?? ''])
+  );
+}
+
+export function haveBlanksChanged(prevBodyMd: string, newBodyMd: string): boolean {
+  return blankFingerprint(prevBodyMd) !== blankFingerprint(newBodyMd);
+}
+
+// Practice and Quiz tabs (note editor only - not the dashboard's Review
+// entry point or /review, which keep the existing "first card exists" rule)
+// stay absent until a note holds a real batch: 10+ vocab pairs, or 10+ quiz
+// pairs, counted separately so 6 of each doesn't count as "10" of anything.
+// Cloze cards don't count - see docs/decisions/0009.
+export function hasEnoughForPracticeAndQuiz(bodyMd: string, threshold = 10): boolean {
+  const blanks = parseBlanks(bodyMd).filter((b) => b.answer !== '');
+  const vocabCount = blanks.filter((b) => b.kind === 'vocab').length;
+  const quizCount = blanks.filter((b) => b.kind === 'quiz').length;
+  return vocabCount >= threshold || quizCount >= threshold;
+}
+
 // Renders card pairs as styled blockquote callouts for the markdown preview
 // pane, so an open blank "shows as a todo in the note" (section 7) without
 // needing in-place textarea highlighting.
