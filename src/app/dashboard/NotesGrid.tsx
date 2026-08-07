@@ -87,11 +87,11 @@ export default function NotesGrid({ notes }: { notes: Note[] }) {
                       <p className="text-xs text-gray-500 mt-1 line-clamp-3">{snippet}</p>
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      {updated && <span className="text-[10px] text-gray-400 font-mono">{updated}</span>}
+                      {updated && <span className="text-[11px] text-gray-400 font-mono">{updated}</span>}
                       {vocabCount > 0 && (
                         <m.span
                           whileHover={{ scale: 1.08 }}
-                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent"
+                          className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent"
                         >
                           {vocabCount} vocab
                         </m.span>
@@ -99,7 +99,7 @@ export default function NotesGrid({ notes }: { notes: Note[] }) {
                       {quizCount > 0 && (
                         <m.span
                           whileHover={{ scale: 1.08 }}
-                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                          className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400"
                         >
                           {quizCount} quiz
                         </m.span>

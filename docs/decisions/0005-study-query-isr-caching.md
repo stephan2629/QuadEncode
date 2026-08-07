@@ -39,3 +39,19 @@ turns out too long for some subject.
 **Did not touch the local-provider `## Imported Raw Text` heading path in
 `generatePath`'s sibling import flow** - unrelated code path, no cookie
 dependency there to begin with.
+
+## Correction (2026-08-06, see docs/decisions/0007)
+
+The claim above - that fixing the cookie dependency let `export const
+revalidate` cache the page - was never actually verified and turned out to
+be wrong. A production build (`next build && next start`) shows
+`/study/[query]` has zero entries in `.next/prerender-manifest.json` and
+re-runs `generatePath()` on every single request, cookie fix and all. The
+route was never entering Next's ISR system in the first place, for an
+unrelated reason: see 0007, and 0008 for the actual fix
+(`generateStaticParams` was missing - unrelated to the cookie dependency
+described below). `docs/decisions/0006`'s `path_cache` table is what
+actually prevented repeat pipeline runs before real ISR existed, and still
+does independent of it. This record is left otherwise unedited so the
+original (incorrect) reasoning stays visible rather than silently
+rewritten.

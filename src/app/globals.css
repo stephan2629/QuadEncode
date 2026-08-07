@@ -9,11 +9,23 @@
   --foreground: #f3f4f6;
   --accent: #f59e0b; /* Amber for active states */
   --accent-muted: #78350f;
-  --muted: #6b7280;
+  /* Muted text, retuned for a dark background. Tailwind's default gray-500
+     (#6b7280) is built for dark-on-light and lands at 4.12:1 on this page
+     and 3.87:1 on a card, both under the 4.5:1 WCAG AA needs for normal
+     text (CLAUDE.md section 12 makes accessibility part of the build, not a
+     later pass). #858c99 reads as the same muted gray and clears AA at
+     5.88:1 and 5.53:1. */
+  --muted: #858c99;
   --border: rgba(255, 255, 255, 0.1);
 }
 
 @theme inline {
+  /* Overrides Tailwind's own gray-500 everywhere it is used as a text
+     colour, which is 74 of its 75 uses in src/. Fixing the token beats
+     editing 74 call sites, and it means a new component using text-gray-500
+     is legible by default rather than being one more thing to catch in
+     review. */
+  --color-gray-500: var(--muted);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-accent: var(--accent);

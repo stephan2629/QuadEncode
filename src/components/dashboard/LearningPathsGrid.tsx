@@ -42,15 +42,15 @@ export function LearningPathsGrid({ paths }: { paths: SubjectPath[] }) {
             {/* Card Header */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-md flex items-center gap-1.5">
                   <Sparkles className="w-3 h-3" /> Path
                 </span>
                 {path.dueCount > 0 ? (
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent text-[#0a0908] shadow-md">
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent text-[#0a0908] shadow-md">
                     {path.dueCount} due
                   </span>
                 ) : (
-                  <span className="text-[10px] font-mono text-gray-400 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full">
+                  <span className="text-[11px] font-mono text-gray-400 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full">
                     Up to date
                   </span>
                 )}

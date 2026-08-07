@@ -36,7 +36,7 @@ export function ContainerScrollAnimation() {
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold font-serif text-white tracking-tight leading-tight">
           Designed for maximum <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent via-yellow-400 to-amber-500">long-term memory</span> retention.
         </h2>
-        <p className="text-gray-300 text-sm md:text-base mt-4 font-light leading-relaxed">
+        <p className="text-gray-300 text-sm md:text-base mt-4 leading-relaxed">
           Scroll through how Quad Encode transforms raw notes and open-web topics into high-efficiency active recall prompts.
         </p>
       </m.div>
@@ -55,10 +55,10 @@ export function ContainerScrollAnimation() {
               else in the app (kicker badge, "AI curated", "Due review") -
               not a fake window chrome borrowed from a generic SaaS template. */}
           <div className="flex items-center justify-between pb-6 mb-6 border-b border-white/10">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-400">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-400">
               The mechanic
             </span>
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-full">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-full">
               0ms answer reveal
             </span>
           </div>
@@ -70,7 +70,7 @@ export function ContainerScrollAnimation() {
                 <BrainCircuit className="w-5 h-5" />
               </div>
               <h3 className="text-lg font-bold font-serif text-white mb-2">1. Ranked learning paths</h3>
-              <p className="text-xs text-gray-400 leading-relaxed font-light">
+              <p className="text-xs text-gray-400 leading-relaxed">
                 Type any skill or certification. Quad Encode curates top video courses and web docs into structured paths.
               </p>
             </div>
@@ -79,9 +79,9 @@ export function ContainerScrollAnimation() {
               <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-4 text-accent group-hover:scale-110 transition-transform">
                 <Zap className="w-5 h-5" />
               </div>
-              <h3 className="text-lg font-bold font-serif text-white mb-2">2. Type before you see</h3>
-              <p className="text-xs text-gray-400 leading-relaxed font-light">
-                No passive card flipping. You must type your attempt before Quad Encode reveals the canonical answer.
+              <h3 className="text-lg font-bold font-serif text-white mb-2">2. Answer, then reveal</h3>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Answer from memory first. The reveal is instant, with no fade for your eye to read ahead through, then you rate whether you had it.
               </p>
             </div>
 
@@ -90,7 +90,7 @@ export function ContainerScrollAnimation() {
                 <RefreshCw className="w-5 h-5" />
               </div>
               <h3 className="text-lg font-bold font-serif text-white mb-2">3. Memory box schedule</h3>
-              <p className="text-xs text-gray-400 leading-relaxed font-light">
+              <p className="text-xs text-gray-400 leading-relaxed">
                 Missed cards drop back to Box 0. Mastered items advance to 1d, 3d, 7d, and 21d interval reviews.
               </p>
             </div>
@@ -100,7 +100,7 @@ export function ContainerScrollAnimation() {
           <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-left">
             <div>
               <p className="text-sm font-serif font-bold text-white">Ready to study without the boredom?</p>
-              <p className="text-xs text-gray-400 font-light">Join Quad Encode and force active recall on every topic.</p>
+              <p className="text-xs text-gray-400">Join Quad Encode and force active recall on every topic.</p>
             </div>
             <Link
               href="/dashboard"

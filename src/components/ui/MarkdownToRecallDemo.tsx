@@ -37,7 +37,7 @@ export default function MarkdownToRecallDemo() {
       {/* Connector */}
       <div className="flex md:flex-col items-center justify-center gap-2 text-accent py-2 md:py-0">
         <ArrowRight className="w-5 h-5 rotate-90 md:rotate-0" aria-hidden="true" />
-        <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400">becomes</span>
+        <span className="text-[11px] font-mono uppercase tracking-widest text-gray-400">becomes</span>
       </div>
 
       {/* Recall card */}
@@ -70,11 +70,11 @@ export default function MarkdownToRecallDemo() {
         ) : (
           <div className="flex flex-col flex-1">
             <div className="bg-white/5 border border-white/10 rounded-xl p-3 mb-3">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-1">You wrote</div>
+              <div className="text-[11px] font-mono uppercase tracking-widest text-gray-400 mb-1">You wrote</div>
               <p className="text-sm text-gray-300">{attempt}</p>
             </div>
             <div className="bg-accent/10 border border-accent/30 rounded-xl p-3">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-accent mb-1">Definition</div>
+              <div className="text-[11px] font-mono uppercase tracking-widest text-accent mb-1">Definition</div>
               <p className="text-sm text-white leading-relaxed">{DEFINITION}</p>
             </div>
             <button

@@ -11,7 +11,7 @@ export default function ReviewLoading() {
         <Brain className="w-4 h-4" /> Spaced Repetition Engine
       </div>
       <h3 className="text-xl font-serif font-bold text-gray-200 mb-2">Preparing Review Cards</h3>
-      <p className="text-xs text-gray-400 font-light max-w-xs font-mono">
+      <p className="text-xs text-gray-400 max-w-xs font-mono">
         Sorting memory boxes & due items...
       </p>
     </div>

@@ -98,7 +98,7 @@ export function DashboardHeroBanner({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.4 }}
-            className="text-gray-300 text-xs sm:text-sm md:text-base mt-2 font-light max-w-md leading-relaxed"
+            className="text-gray-300 text-xs sm:text-sm md:text-base mt-2 max-w-md leading-relaxed"
           >
             Instant-reveal flashcards on a memory box schedule, built from your own notes.
           </m.p>

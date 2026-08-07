@@ -6,14 +6,18 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
+  // Only the routes updateSession() actually branches on (see
+  // src/utils/supabase/middleware.ts). Public pages like /study/[query]
+  // must never hit this - calling supabase.auth.getUser() there writes a
+  // Set-Cookie header on every request, which makes Netlify's CDN skip its
+  // ISR cache and re-run the full path-generation pipeline for every visitor.
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/dashboard/:path*',
+    '/notes/:path*',
+    '/review/:path*',
+    '/practice/:path*',
+    '/imports/:path*',
+    '/settings/:path*',
+    '/login',
   ],
 }

@@ -13,7 +13,7 @@ export default function StudyLoading() {
       <h2 className="text-2xl md:text-3xl font-serif font-bold mb-3 text-white">
         Analyzing Web & Video Resources...
       </h2>
-      <p className="text-gray-400 max-w-md mx-auto text-xs md:text-sm font-light leading-relaxed">
+      <p className="text-gray-400 max-w-md mx-auto text-xs md:text-sm leading-relaxed">
         Fetching top-rated video courses and documentation to curate your active recall path. This takes about 5 seconds on serverless.
       </p>
     </div>

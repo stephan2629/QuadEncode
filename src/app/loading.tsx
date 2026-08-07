@@ -8,7 +8,7 @@ export default function GlobalLoading() {
         <Loader2 className="w-10 h-10 text-accent animate-spin relative z-10" />
       </div>
       <h3 className="text-xl font-serif font-bold text-gray-200 mb-2">Loading Quad Encode</h3>
-      <p className="text-xs text-gray-400 font-light max-w-xs font-mono">
+      <p className="text-xs text-gray-400 max-w-xs font-mono">
         Preparing workspace...
       </p>
     </div>

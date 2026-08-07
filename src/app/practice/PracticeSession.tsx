@@ -169,7 +169,7 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
           <ArrowLeft className="w-5 h-5" aria-hidden="true" /> Dashboard
         </Link>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-bold tracking-wider text-gray-600 uppercase border border-white/10 rounded-full px-2.5 py-1">
+          <span className="text-[11px] font-bold tracking-wider text-gray-600 uppercase border border-white/10 rounded-full px-2.5 py-1">
             Practice
           </span>
           <div className="text-sm text-gray-500 font-medium font-mono">
@@ -177,7 +177,7 @@ export default function PracticeSession({ questions }: { questions: PracticeQues
           </div>
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-400 hover:text-gray-300 uppercase transition-colors"
+            className="flex items-center gap-1 text-[11px] font-bold tracking-wider text-gray-400 hover:text-gray-300 uppercase transition-colors"
           >
             <RotateCcw className="w-3 h-3" aria-hidden="true" /> Start over
           </button>

@@ -10,6 +10,9 @@ import { createClient } from '@/utils/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
 import SearchCharCount from '@/components/ui/SearchCharCount';
+import Footer from '@/components/ui/Footer';
+import AccountMenu from '@/components/ui/AccountMenu';
+import { logout } from '@/app/login/actions';
 
 const SubjectWall = dynamic(() => import('@/components/ui/SubjectWall'), { ssr: false });
 const TiltCard = dynamic(() => import('@/components/ui/TiltCard'), { ssr: false });
@@ -82,11 +85,40 @@ export default function Home() {
     return () => clearTimeout(timeout);
   }, [placeholderText, isDeleting, exampleIndex, isFocused, searchQuery]);
 
+  // Drives the sticky nav's compact/blurred state. Plain scroll listener
+  // rather than Framer's useScroll: this only needs one boolean threshold,
+  // not a continuous motion value, and a passive listener costs less than
+  // a subscription that re-renders on every frame of scroll.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Clears the local user state as well as the session, so the header
+  // reverts to "Sign in" immediately instead of waiting on a refresh.
+  const handleLogout = async () => {
+    await logout();
+    setUser(null);
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim() && !isSearching) {
       setIsSearching(true);
-      const slug = searchQuery.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      // "+" becomes "plus" instead of being stripped: it is part of the
+      // official name of most CompTIA exams, and dropping it turned
+      // "CompTIA Security+" into "comptia-security" and "A+ certification"
+      // into "a-certification", which no longer says which exam it is.
+      // detectCertification reads "plus" back as "+" (src/lib/certShape.ts).
+      const slug = searchQuery
+        .trim()
+        .toLowerCase()
+        .replace(/\+/g, ' plus ')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
       router.push(`/study/${slug}`);
     }
   };
@@ -110,7 +142,7 @@ export default function Home() {
       n: '03',
       icon: PenTool,
       title: "Generation beats provision",
-      description: "A word you generate is remembered better than the same word handed to you. Which is why the app will not write your answers.",
+      description: "A word you generate is remembered better than the same word handed to you. Write the answer yourself and it stays; the cards you author count toward progress, the imported ones do not until you re-explain them.",
       citation: null,
     }
   ];
@@ -136,7 +168,7 @@ export default function Home() {
       n: '03',
       icon: Eye,
       title: 'Answer before you are told',
-      body: 'Review is a blank field, not a flashcard back. You write the answer, then compare it with the one you wrote when you understood it. What you keep missing returns sooner; what has stuck moves out of the way.',
+      body: 'The prompt comes up on its own. Answer it in your head, then reveal, which happens instantly so nothing lets your eye skim ahead. Rate yourself honestly. What you keep missing comes back sooner; what has stuck moves out of the way, and a card you fail three times writes itself back into your note to re-explain.',
       cta: 'Run a session',
       href: '/dashboard',
     },
@@ -206,9 +238,20 @@ export default function Home() {
         <SubjectWall />
       </m.div>
 
-      {/* Navbar */}
+      {/* Navbar. Sticky rather than absolute: it used to scroll away with
+          the hero, which left a signed-in visitor no route back to their
+          own work until the very bottom of a long page. Keeping it pinned
+          means the account menu (Go to dashboard / Settings / Log out) is
+          reachable from anywhere on the page. Padding tightens once stuck
+          so it takes less of the viewport while scrolling, and the
+          backdrop blur only appears then, so it stays invisible over the
+          hero. */}
       <m.nav
-        className="absolute top-0 w-full p-4 md:p-10 flex justify-between items-center z-50"
+        className={`fixed top-0 w-full flex justify-between items-center z-50 transition-[padding,background-color,border-color] duration-300 border-b ${
+          scrolled
+            ? 'py-3 px-4 md:px-10 bg-[#0a0908]/80 backdrop-blur-xl border-white/10'
+            : 'p-4 md:p-10 bg-transparent border-transparent'
+        }`}
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -219,22 +262,22 @@ export default function Home() {
         </div>
 
         {user ? (
-          <Link href="/dashboard" className="flex items-center gap-3 group bg-white/5 hover:bg-white/10 px-3 py-1.5 md:py-2 rounded-full border border-white/10 transition-colors">
-            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-accent/20 border border-accent overflow-hidden flex items-center justify-center">
-              {user.user_metadata?.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-accent text-xs md:text-sm font-bold">{user.email?.charAt(0).toUpperCase()}</span>
-              )}
-            </div>
-            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors hidden md:block">
-              {user.user_metadata?.name || 'Dashboard'}
-            </span>
-          </Link>
+          // The same dropdown the app's own header uses, rather than a
+          // second bespoke one: a signed-in visitor on the landing page
+          // gets the same Dashboard / Settings / Log out routes they'd have
+          // anywhere else, instead of a chip that only goes one place.
+          <AccountMenu
+            email={user.email ?? ''}
+            name={user.user_metadata?.name || user.user_metadata?.full_name || null}
+            avatarUrl={user.user_metadata?.avatar_url ?? null}
+            showDashboardLink
+            onLogout={handleLogout}
+          />
         ) : (
+          // Straight to /login, not /dashboard - the proxy would bounce a
+          // signed-out visitor there anyway, so this skips a redirect.
           <Link
-            href="/dashboard"
+            href="/login"
             className="text-xs md:text-sm font-semibold text-accent hover:text-[#0a0908] bg-[#14120f] hover:bg-gradient-to-b hover:from-accent hover:to-yellow-600 border border-white/10 hover:border-accent/0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all duration-300 inline-block active:scale-95"
           >
             Sign in
@@ -254,7 +297,10 @@ export default function Home() {
           transition={{ duration: 0.5 }}
           className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs font-mono font-bold uppercase tracking-wider mb-6 shadow-[0_0_20px_rgba(245,158,11,0.2)] backdrop-blur-md"
         >
-          <BrainCircuit className="w-4 h-4 text-accent animate-pulse" /> Active Recall Workspace
+          {/* No animate-pulse on the icon: section 13 forbids looping and
+              idle animation outright, and a badge that throbs forever is
+              exactly that. */}
+          <BrainCircuit className="w-4 h-4 text-accent" aria-hidden="true" /> The AI active recall workspace
         </m.div>
 
         {/* Hero Copy (Massive Typography). Plain h1, not m.h1: this is the
@@ -271,7 +317,7 @@ export default function Home() {
             the next-largest text block and was becoming the LCP element
             once the headline stopped blocking on it. */}
         <p className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-10 md:mb-14 max-w-2xl mx-auto font-light px-4 leading-relaxed tracking-wide">
-          Turn web topics and notes into recall prompts. Type your answer first.
+          Turn notes, PDFs, and web topics into cards that test you. Answer from memory before the card shows you.
         </p>
 
         {/* Search Bar Component */}
@@ -289,6 +335,11 @@ export default function Home() {
               <input
                 ref={searchInputRef}
                 type="text"
+                id="subject-search"
+                name="subject"
+                // The placeholder rotates through examples, so it can't be the
+                // accessible name for this field.
+                aria-label="What do you want to learn?"
                 className="w-full bg-transparent border-none outline-none text-white text-base md:text-lg px-4 md:px-5 placeholder-gray-400 font-medium"
                 placeholder={isFocused || searchQuery ? "What do you want to learn?" : (placeholderText || "What do you want to learn?")}
                 value={searchQuery}
@@ -332,6 +383,84 @@ export default function Home() {
               ))}
             </div>
           </div>
+
+        </m.div>
+
+        {/* Both routes into the app, side by side and the same size, because
+            leading with the search box alone implied path finding was the
+            product. Someone taking notes for a class should not have to
+            search for a path first. Reuses the TiltCard + stagger tokens the
+            rest of the page already uses, so this is an information
+            architecture change rather than a new surface. */}
+        <m.div
+          className="w-full max-w-3xl mx-auto mt-16 md:mt-20 text-left"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-center text-2xl md:text-3xl font-serif font-bold text-white mb-3 tracking-tight">
+            Two ways in
+          </h2>
+          <p className="text-center text-gray-400 text-sm md:text-base max-w-xl mx-auto mb-8">
+            Which one you want depends on whether you already have something to study. Both end in the
+            same place, with cards that ask you the question.
+          </p>
+          <m.div
+            className="grid grid-cols-1 md:grid-cols-2 gap-5"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+          >
+            <m.div variants={fadeUpItem}>
+              <TiltCard tiltAmount={4} className="group bg-[#14120f]/60 backdrop-blur-md border border-accent/25 hover:border-accent/50 rounded-3xl p-7 h-full flex flex-col transition-colors">
+                <div className="bg-accent/10 w-11 h-11 rounded-2xl flex items-center justify-center text-accent mb-5">
+                  <Search className="w-5 h-5" aria-hidden="true" />
+                </div>
+                <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-accent mb-2">
+                  You have nothing yet
+                </p>
+                <h3 className="text-xl font-bold font-serif mb-2 text-white">Find a path</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-5 flex-1">
+                  Type in a subject and get its resources put in an order, free ones first, each with a
+                  plain description of what it covers. No account needed to look.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    searchInputRef.current?.focus();
+                  }}
+                  className="text-sm font-semibold text-accent hover:text-accent/80 transition-colors inline-flex items-center gap-1.5 min-h-[44px] self-start cursor-pointer"
+                >
+                  Search a subject <MoveRight className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+              </TiltCard>
+            </m.div>
+            <m.div variants={fadeUpItem}>
+              <TiltCard tiltAmount={4} className="group bg-[#14120f]/60 backdrop-blur-md border border-blue-400/25 hover:border-blue-400/50 rounded-3xl p-7 h-full flex flex-col transition-colors">
+                <div className="bg-blue-400/10 w-11 h-11 rounded-2xl flex items-center justify-center text-blue-400 mb-5">
+                  <PenTool className="w-5 h-5" aria-hidden="true" />
+                </div>
+                <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-blue-400 mb-2">
+                  You have a class, a book, or notes
+                </p>
+                <h3 className="text-xl font-bold font-serif mb-2 text-white">Just start studying</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-5 flex-1">
+                  Skip the search. Open a note and write, paste, or upload what you are studying, and the
+                  <span className="font-mono text-blue-400"> **Vocab:** </span>
+                  lines in it become cards.
+                </p>
+                <Link
+                  href={user ? '/dashboard' : '/login'}
+                  className="text-sm font-semibold text-blue-400 hover:text-blue-400/80 transition-colors inline-flex items-center gap-1.5 min-h-[44px] self-start"
+                >
+                  Open a note <MoveRight className="w-3.5 h-3.5" aria-hidden="true" />
+                </Link>
+              </TiltCard>
+            </m.div>
+          </m.div>
         </m.div>
 
         {/* Live Interactive Demo Widget - same colors, border, typography, and
@@ -369,7 +498,7 @@ export default function Home() {
               >
                 <p className="text-lg font-serif leading-relaxed text-white">What is the core philosophy of Quad Encode?</p>
                 {!heroFlipped && (
-                  <p className="absolute bottom-4 text-[10px] text-gray-400 font-mono tracking-widest uppercase">Tap to reveal</p>
+                  <p className="absolute bottom-4 text-[11px] text-gray-400 font-mono tracking-widest uppercase">Tap to reveal</p>
                 )}
               </div>
               {/* Back */}
@@ -436,12 +565,12 @@ export default function Home() {
                     <span className="font-mono text-sm text-gray-500">{feature.n}</span>
                   </div>
                   <h3 className="text-2xl font-bold font-serif mb-3 text-white transform-gpu translate-z-10">{feature.title}</h3>
-                  <p className="text-gray-400 text-sm md:text-base leading-relaxed transform-gpu translate-z-10 font-light flex-1">
+                  <p className="text-gray-400 text-sm md:text-base leading-relaxed transform-gpu translate-z-10 flex-1">
                     {feature.description}
                   </p>
                   {feature.citation && (
                     <div className="mt-6 pt-4 border-t border-white/5 transform-gpu translate-z-10">
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-400">
+                      <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-400">
                         {feature.citation}
                       </span>
                     </div>
@@ -515,7 +644,7 @@ export default function Home() {
             Reading feels productive. <br className="hidden md:block" />It is the cheapest thing you can do <br className="hidden md:block" />with an hour.
           </p>
           <p className="text-gray-400 text-base md:text-lg leading-relaxed max-w-xl mx-auto font-light">
-            Every other tool will happily show you the answer. That is the moment the work stops. Quad Encode holds the answer back until you have produced one, and then shows you your own words, not a stranger&apos;s.
+            Every other tool will happily show you the answer. That is the moment the work stops. Quad Encode puts the prompt up on its own and waits, and the answer it shows you is the one you wrote when you understood it, not a stranger&apos;s.
           </p>
 
           <div className="mt-16 md:mt-24 flex flex-col md:flex-row flex-wrap items-center justify-center gap-8 perspective-1000">
@@ -575,7 +704,7 @@ export default function Home() {
                       <method.icon className="w-6 h-6" />
                     </div>
                     <h3 className="text-2xl font-bold font-serif mb-3 text-white transform-gpu translate-z-10">{method.title}</h3>
-                    <p className="text-gray-400 text-sm md:text-base leading-relaxed transform-gpu translate-z-10 font-light">{method.body}</p>
+                    <p className="text-gray-400 text-sm md:text-base leading-relaxed transform-gpu translate-z-10">{method.body}</p>
                   </TiltCard>
                 </m.div>
               );
@@ -583,9 +712,40 @@ export default function Home() {
           </m.div>
         </m.div>
 
-
+        {/* Closing call to action. "Free" is a plain fact here, not a
+            promotion: there is no paid tier and nothing asks for a card
+            (CLAUDE.md's phase list keeps paid tiers explicitly out of
+            scope). No claim about how fast a path generates - the first
+            search for a new subject runs a real pipeline and takes about
+            20 seconds, so "in seconds" would be a promise the product
+            doesn't keep. Deliberately worded differently from the
+            mid-page CTA in ContainerScrollAnimation so the two read as
+            separate moments rather than the same block twice. */}
+        <m.div
+          className="mt-24 md:mt-32 w-full text-center"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <h2 className="text-3xl md:text-5xl font-serif font-bold text-white mb-4 tracking-tight">
+            Start with one card
+          </h2>
+          <p className="text-gray-400 text-base md:text-lg max-w-xl mx-auto mb-8 font-light leading-relaxed">
+            Free to use, and nothing here asks for a card. Search a subject to see a path, or write a note and watch one line of it become something that tests you.
+          </p>
+          <Link
+            href={user ? '/dashboard' : '/login'}
+            className="inline-flex items-center gap-2 text-sm md:text-base font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-4 min-h-[44px] rounded-xl transition-all active:scale-95"
+          >
+            {user ? 'Go to your dashboard' : 'Get started free'}
+            <MoveRight className="w-4 h-4" aria-hidden="true" />
+          </Link>
+        </m.div>
 
       </main>
+
+      <Footer />
     </div>
   );
 }

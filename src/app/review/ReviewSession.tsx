@@ -43,6 +43,10 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
   const [picked, setPicked] = useState<string | null>(null);
   const [graduateNext, setGraduateNext] = useState(false);
   const [reExplainDraft, setReExplainDraft] = useState('');
+  // What the learner typed from memory before revealing. Never graded and
+  // never stored: it exists so the definition lands against an actual
+  // retrieval attempt instead of a blank stare, and so they can compare.
+  const [attempt, setAttempt] = useState('');
 
   // queue[index] can be undefined once the session is complete. Every hook
   // below must still run in the same order on that render, so the "session
@@ -62,6 +66,9 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
 
   const isBoxZero = card?.box === 0;
   const displayPrompt = edited?.prompt ?? card?.prompt ?? '';
+  // Vocab cards are term -> definition, so they get the write-then-reveal
+  // flow. Multiple choice and cloze keep what they had.
+  const isVocab = card?.type === 'vocab' && !mcData;
 
   // graduate: true intercepts the advance entirely and routes to the
   // re-explain stage instead - section 4's tier graduation happens in place
@@ -80,12 +87,16 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
       setPicked(null);
       setGraduateNext(false);
       setReExplainDraft('');
+      setAttempt('');
       setIsExiting(false);
       setExitDirection(null);
     }, 150);
   };
 
   const handleReveal = () => {
+    // A vocab card reveals only after an actual attempt, so a stray Space
+    // press can't hand over the definition before any retrieval happened.
+    if (isVocab && !attempt.trim()) return;
     if (stage === 'question') setStage('answer');
   };
 
@@ -232,7 +243,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
         <Link href="/dashboard" className="text-gray-500 hover:text-white transition-colors flex items-center gap-2 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2">
           <ArrowLeft className="w-5 h-5" aria-hidden="true" /> Dashboard
         </Link>
-        <div className="text-[10px] font-bold tracking-wider text-gray-400 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
+        <div className="text-[11px] font-bold tracking-wider text-gray-400 uppercase border border-white/10 rounded-full px-3 py-1 font-mono">
           Card {index + 1} of {queue.length}
         </div>
       </header>
@@ -255,7 +266,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                   <BrainCircuit className="w-6 h-6 text-accent/30" aria-hidden="true" />
                 </div>
                 {isBoxZero && (
-                  <div className="absolute top-4 right-4 text-[10px] font-bold tracking-wider text-accent uppercase">
+                  <div className="absolute top-4 right-4 text-[11px] font-bold tracking-wider text-accent uppercase">
                     New card
                   </div>
                 )}
@@ -313,51 +324,56 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                         />
                       </div>
                     </div>
-                  ) : card.type === 'vocab' && !mcData ? (
-                    <div className="relative w-full aspect-[4/3] md:aspect-[21/9]" style={{ perspective: '1000px' }}>
-                      <m.div
-                        key={card.id}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={stage === 'question' ? 'Show answer' : 'Answer revealed'}
-                        aria-pressed={stage !== 'question'}
-                        className="w-full h-full relative cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-4 rounded-3xl"
-                        style={{ transformStyle: 'preserve-3d' }}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0, rotateY: stage !== 'question' ? 180 : 0 }}
-                        transition={{
-                          opacity: { duration: 0.2 },
-                          y: { duration: 0.2 },
-                          // INSTANT REVEAL: the flip itself carries zero duration, per
-                          // section 13 — only the card's entrance (opacity/y) eases in.
-                          rotateY: { duration: 0 }
-                        }}
-                        onClick={handleReveal}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            handleReveal();
-                          }
-                        }}
-                      >
-                        {/* Front */}
-                        <div 
-                          className="absolute inset-0 bg-[#0a0908] border-2 border-white/10 hover:border-white/20 transition-colors p-8 md:p-12 rounded-3xl flex flex-col items-center justify-center text-center shadow-xl"
-                          style={{ backfaceVisibility: 'hidden' }}
-                        >
-                          <h2 className="text-3xl md:text-4xl font-serif leading-relaxed text-white">{displayPrompt}</h2>
-                          {stage === 'question' && (
-                            <p className="absolute bottom-6 text-xs text-gray-400 font-mono tracking-widest uppercase hidden md:block">Press Space to flip</p>
+                  ) : isVocab ? (
+                    /* Write from memory, then reveal. Same shape as the demo on
+                       the landing page: term, attempt box, definition. The
+                       reveal itself has no transition, per section 13. */
+                    <div className="w-full text-left">
+                      <h2 className="text-3xl md:text-4xl font-serif leading-snug text-white mb-6">{displayPrompt}</h2>
+
+                      {stage === 'question' ? (
+                        <>
+                          <label htmlFor="recall-attempt" className="sr-only">
+                            Type what you remember about {displayPrompt}
+                          </label>
+                          <textarea
+                            id="recall-attempt"
+                            name="attempt"
+                            value={attempt}
+                            onChange={(e) => setAttempt(e.target.value)}
+                            onKeyDown={(e) => {
+                              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                e.preventDefault();
+                                handleReveal();
+                              }
+                            }}
+                            placeholder="Type what you remember..."
+                            rows={4}
+                            autoFocus
+                            className="w-full bg-[#0a0908] border-2 border-white/10 rounded-xl p-4 text-base text-gray-200 placeholder-gray-600 focus:outline-none focus:border-accent resize-none"
+                          />
+                          <p className="mt-2 text-[11px] text-gray-400 font-mono tracking-widest uppercase hidden md:block">
+                            Ctrl/Cmd + Enter to reveal
+                          </p>
+                        </>
+                      ) : (
+                        <div className="space-y-3">
+                          {attempt.trim() && (
+                            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                              <div className="text-[11px] font-mono uppercase tracking-widest text-gray-400 mb-1">You wrote</div>
+                              <p className="text-sm md:text-base text-gray-300 whitespace-pre-wrap">{attempt}</p>
+                            </div>
                           )}
+                          <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
+                            <div className="text-[11px] font-mono uppercase tracking-widest text-accent mb-1">Definition</div>
+                            <p
+                              className={`${flashcardTextSizeClass(displayAnswer, ['text-lg md:text-2xl', 'text-base md:text-xl', 'text-sm md:text-lg', 'text-xs md:text-base', 'text-[11px] md:text-sm'])} text-white leading-relaxed font-serif`}
+                            >
+                              {displayAnswer}
+                            </p>
+                          </div>
                         </div>
-                        {/* Back */}
-                        <div 
-                          className="absolute inset-0 bg-[#14120f] border-2 border-white/10 p-8 md:p-12 rounded-3xl flex flex-col items-center justify-center text-center shadow-xl"
-                          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-                        >
-                          <p className={`${flashcardTextSizeClass(displayAnswer, ['text-lg md:text-2xl', 'text-base md:text-xl', 'text-sm md:text-lg', 'text-xs md:text-base'])} text-gray-300 leading-relaxed font-serif`}>{displayAnswer}</p>
-                        </div>
-                      </m.div>
+                      )}
                     </div>
                   ) : (
                     <div className="w-full flex flex-col items-center">
@@ -423,19 +439,26 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
 
           <div className="mt-12 flex flex-col items-center gap-4 min-h-20 w-full">
             {stage === 'question' && !mcData && (
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-2 w-full">
                 <button
                   onClick={handleReveal}
-                  className="w-full md:w-auto px-8 py-3.5 md:px-12 md:py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold tracking-wide transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+                  disabled={isVocab && !attempt.trim()}
+                  className={`w-full md:w-auto px-8 py-3.5 md:px-12 md:py-4 rounded-xl font-bold tracking-wide transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 ${
+                    isVocab
+                      ? 'bg-accent text-[#0a0908] hover:brightness-110 active:scale-[0.98] disabled:bg-white/5 disabled:text-gray-500 disabled:cursor-not-allowed disabled:active:scale-100'
+                      : 'bg-white/10 hover:bg-white/20'
+                  }`}
                 >
-                  Show Answer
+                  {isVocab ? 'Reveal the definition' : 'Show Answer'}
                 </button>
-                <span className="text-[10px] text-gray-400 font-mono tracking-widest uppercase hidden md:block">Press Space</span>
+                {!isVocab && (
+                  <span className="text-[11px] text-gray-400 font-mono tracking-widest uppercase hidden md:block">Press Space</span>
+                )}
               </div>
             )}
 
             {stage === 'question' && mcData && (
-              <span className="text-[10px] text-gray-400 font-mono tracking-widest uppercase mt-4 hidden md:block">Press 1-{mcData.options.length} to select</span>
+              <span className="text-[11px] text-gray-400 font-mono tracking-widest uppercase mt-4 hidden md:block">Press 1-{mcData.options.length} to select</span>
             )}
             {stage === 'answer' && mcData && (
               <div className="flex flex-col items-center gap-2">
@@ -448,7 +471,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                 >
                   Next question <ArrowRight className="w-4 h-4" />
                 </m.button>
-                <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase hidden md:block">Press Enter</div>
+                <div className="text-[11px] text-gray-400 font-mono tracking-widest uppercase hidden md:block">Press Enter</div>
               </div>
             )}
 
@@ -500,7 +523,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                   >
                     Wrong
                   </m.button>
-                  <span className="text-[10px] text-gray-400 font-mono tracking-widest uppercase text-center hidden md:block">Press 1</span>
+                  <span className="text-[11px] text-gray-400 font-mono tracking-widest uppercase text-center hidden md:block">Press 1</span>
                 </div>
                 <div className="flex flex-col gap-2">
                   <m.button
@@ -511,7 +534,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
                   >
                     Correct
                   </m.button>
-                  <span className="text-[10px] text-gray-400 font-mono tracking-widest uppercase text-center hidden md:block">Press 2</span>
+                  <span className="text-[11px] text-gray-400 font-mono tracking-widest uppercase text-center hidden md:block">Press 2</span>
                 </div>
               </m.div>
             )}

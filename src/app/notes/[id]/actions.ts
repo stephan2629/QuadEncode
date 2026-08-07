@@ -3,7 +3,13 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { generateText, capSourceText } from '@/lib/ai'
-import { parseBlanks } from '@/lib/parseBlanks'
+import { parseBlanks, haveBlanksChanged } from '@/lib/parseBlanks'
+
+// Generous enough that no real note ever hits it (a note that size is
+// already unusual), but it stops a runaway paste or a malformed client
+// payload from writing an unbounded row. Rejected outright, never
+// truncated - truncating typed content is silent data loss.
+const MAX_BODY_MD_CHARS = 500_000
 
 function friendlyAIError(e: Error): string {
   const msg = e.message || 'Something went wrong generating that.'
@@ -19,6 +25,27 @@ function friendlyAIError(e: Error): string {
   return msg
 }
 
+interface NewCardRow {
+  note_id: string
+  line: number
+  tier: string
+  type: string
+  prompt: string
+  answer: string
+  explanation: string | null
+  video_id: string | null
+  t: number | null
+  box: number
+  due: string
+}
+
+// Postgres unique_violation. Only ever hit here on the (note_id, line)
+// partial index added for basic/vocab cards (supabase/schema.sql) - the
+// DB-level guarantee that a race between autosave and manual save (both
+// deciding the same blank is new, both syncing concurrently) can't produce
+// two cards for one line. See docs/decisions/0009.
+const UNIQUE_VIOLATION = '23505'
+
 async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClient>>, noteId: string, bodyMd: string, videoId: string | null) {
   const blanks = parseBlanks(bodyMd).filter((b) => b.answer !== '')
   if (blanks.length === 0) return
@@ -32,9 +59,12 @@ async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClien
   const existingByLine = new Map((existing ?? []).map((c) => [c.line, c]))
   // Same definition already on another card in this note - skip making a
   // second card for it. Seeded from existing rows, then grown as new cards
-  // are created in this pass, so pasting or generating the same definition
-  // twice in one save doesn't slip through either.
+  // are decided for insertion below, so pasting or generating the same
+  // definition twice in one save doesn't slip through either.
   const seenAnswers = new Set((existing ?? []).map((c) => c.answer.trim().toLowerCase()))
+
+  const toInsert: NewCardRow[] = []
+  const toUpdate: { id: string; prompt: string; answer: string; explanation: string | null }[] = []
 
   for (const blank of blanks) {
     const current = existingByLine.get(blank.line)
@@ -54,30 +84,69 @@ async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClien
     if (!current) {
       if (seenAnswers.has(normalizedAnswer)) continue
       seenAnswers.add(normalizedAnswer)
-      await supabase.from('cards').insert([
-        {
-          note_id: noteId,
-          line: blank.line,
-          tier,
-          type,
-          prompt: blank.prompt,
-          answer: blank.answer,
-          explanation,
-          // The video back-pointer only makes sense alongside a captured
-          // moment - a blank with no preceding **At:** marker gets neither.
-          video_id: blank.videoT != null ? videoId : null,
-          t: blank.videoT ?? null,
-          box: 0,
-          due: new Date().toISOString(),
-        },
-      ])
+      toInsert.push({
+        note_id: noteId,
+        line: blank.line,
+        tier,
+        type,
+        prompt: blank.prompt,
+        answer: blank.answer,
+        explanation,
+        // The video back-pointer only makes sense alongside a captured
+        // moment - a blank with no preceding **At:** marker gets neither.
+        video_id: blank.videoT != null ? videoId : null,
+        t: blank.videoT ?? null,
+        box: 0,
+        due: new Date().toISOString(),
+      })
     } else if (current.prompt !== blank.prompt || current.answer !== blank.answer || current.explanation !== explanation) {
-      await supabase
-        .from('cards')
-        .update({ prompt: blank.prompt, answer: blank.answer, explanation })
-        .eq('id', current.id)
+      toUpdate.push({ id: current.id, prompt: blank.prompt, answer: blank.answer, explanation })
     }
   }
+
+  // One round trip each instead of one per card (up to 20 after a full AI
+  // generation pass, previously sequential). The two arrays never target
+  // the same row - toInsert is exactly the lines with no existing card,
+  // toUpdate is exactly the lines that do - so running them concurrently is
+  // safe. Update goes through upsert-by-id: sending only the changed
+  // columns means Postgres's ON CONFLICT (id) DO UPDATE SET only touches
+  // prompt/answer/explanation, leaving box/due/tier/etc alone.
+  await Promise.all([
+    insertCardsIgnoringConflicts(supabase, noteId, toInsert),
+    toUpdate.length > 0
+      ? supabase.from('cards').upsert(toUpdate, { onConflict: 'id' })
+      : Promise.resolve(),
+  ])
+}
+
+async function insertCardsIgnoringConflicts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  noteId: string,
+  rows: NewCardRow[]
+) {
+  if (rows.length === 0) return
+  const { error } = await supabase.from('cards').insert(rows)
+  if (!error) return
+  if (error.code !== UNIQUE_VIOLATION) {
+    console.error('Error inserting cards:', error)
+    return
+  }
+  // Lost the race on at least one row - a concurrent save (autosave vs.
+  // manual, or two overlapping autosaves) already inserted a card at one
+  // of these lines. Postgres rejects the whole batch as one statement, so
+  // find out which lines actually still need a card and retry once with
+  // just those. If that retry also conflicts, the note text itself already
+  // saved regardless - log and move on rather than looping.
+  const { data: nowExisting } = await supabase
+    .from('cards')
+    .select('line')
+    .eq('note_id', noteId)
+    .in('type', ['basic', 'vocab'])
+    .in('line', rows.map((r) => r.line))
+  const stillMissing = rows.filter((r) => !nowExisting?.some((e) => e.line === r.line))
+  if (stillMissing.length === 0) return
+  const { error: retryError } = await supabase.from('cards').insert(stillMissing)
+  if (retryError) console.error('Error inserting cards on retry:', retryError)
 }
 
 const PDF_BUCKET = 'note-pdfs'
@@ -85,9 +154,18 @@ const PDF_BUCKET = 'note-pdfs'
 export async function getNote(id: string) {
   const supabase = await createClient()
 
+  // Explicit columns, not '*': only what NoteEditor/page.tsx actually read
+  // off the returned note (body_md, title, video_id, pdf_path for the
+  // signed-URL check below, cards, subjects.name). No app-level ownership
+  // check here or in any of this file's other reads/writes - row level
+  // security (supabase/schema.sql, "own notes"/"own cards" policies) is
+  // the entire access boundary, and every one of these queries goes through
+  // it the same way, so an app-level check would just be a second copy of
+  // the same rule, not real defense in depth. See docs/decisions/0009 and
+  // the RLS test in src/lib/__tests__/notes-rls.test.ts.
   const { data, error } = await supabase
     .from('notes')
-    .select('*, subjects(name), cards(id, note_id, line, type, tier, prompt, answer, explanation, box, due, fails)')
+    .select('id, title, body_md, video_id, pdf_path, subjects(name), cards(id, note_id, line, type, tier, prompt, answer, explanation, box, due, fails)')
     .eq('id', id)
     .single()
 
@@ -98,15 +176,38 @@ export async function getNote(id: string) {
     return null
   }
 
-  if (!data.pdf_path) return { ...data, pdfUrl: null }
+  // This project has no generated Supabase Database type (createClient()
+  // isn't parameterized with one), so supabase-js can't tell notes->subjects
+  // is many-to-one and infers `subjects` as an array either way. It's a
+  // single embedded object at runtime (PostgREST's normal behavior for a
+  // to-one FK, and the pre-existing shape NoteEditor.tsx already reads via
+  // `initialData.subjects?.name`) - this cast fixes the type to match, not
+  // the runtime behavior, which was already correct.
+  type NoteRow = Omit<typeof data, 'subjects'> & { subjects: { name: string } | null }
+  const note = data as unknown as NoteRow
+
+  if (!note.pdf_path) return { ...note, pdfUrl: null }
 
   // Stored as a durable object path, not a URL, since signed URLs expire —
   // a fresh one is minted on every note load instead.
-  const { data: signed } = await supabase.storage.from(PDF_BUCKET).createSignedUrl(data.pdf_path, 3600)
-  return { ...data, pdfUrl: signed?.signedUrl ?? null }
+  const { data: signed } = await supabase.storage.from(PDF_BUCKET).createSignedUrl(note.pdf_path, 3600)
+  return { ...note, pdfUrl: signed?.signedUrl ?? null }
 }
 
-export async function updateNoteContent(id: string, body_md: string) {
+// prevBodyMd: what the caller last successfully saved, if it knows (the
+// editor tracks this in a ref - see NoteEditor.tsx). When given and the
+// note's blanks (Vocab/Def, Quiz/A pairs) haven't changed between the two,
+// syncCardsFromNote is skipped entirely - prose-only edits, the overwhelming
+// majority of autosaves, cost one lightweight UPDATE and zero card queries
+// instead of a full reconciliation pass every keystroke. Omitted entirely
+// (undefined) means "sync anyway" - the safe default for the one other
+// caller, generateAIQuizAction (src/app/actions/quiz-actions.ts), which
+// always appends genuinely new cards and has no "previous" to compare.
+export async function updateNoteContent(id: string, body_md: string, prevBodyMd?: string) {
+  if (body_md.length > MAX_BODY_MD_CHARS) {
+    return { error: `Note is too long to save (${body_md.length.toLocaleString()} characters, limit ${MAX_BODY_MD_CHARS.toLocaleString()}). Trim it and try again.` }
+  }
+
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -121,10 +222,24 @@ export async function updateNoteContent(id: string, body_md: string) {
     return { error: error.message }
   }
 
-  await syncCardsFromNote(supabase, id, body_md, data?.video_id ?? null)
+  if (prevBodyMd === undefined || haveBlanksChanged(prevBodyMd, body_md)) {
+    await syncCardsFromNote(supabase, id, body_md, data?.video_id ?? null)
+  }
 
-  // We do not revalidate path aggressively here to prevent
-  // interrupting the user's typing experience in the client.
+  // This used to be skipped ("to prevent interrupting the user's typing"),
+  // which left the client Router Cache holding whatever the note looked
+  // like when the page first loaded. Editing a note, navigating to the
+  // dashboard, and coming back showed the pre-edit text, as if the work had
+  // been lost - reproduced on a production build, not just in dev. The text
+  // was always safe in Postgres; only the cached RSC payload was stale.
+  //
+  // Safe to do on every save: autosave is debounced, so it fires once after
+  // the user stops typing rather than per keystroke, and the re-render this
+  // triggers doesn't reset the editor - `content` lives in useState, which
+  // survives a server re-render of the same mounted component (only
+  // `initialData` changes, and that's read once on mount).
+  revalidatePath(`/notes/${id}`)
+
   return { success: true }
 }
 

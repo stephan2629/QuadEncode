@@ -4,13 +4,14 @@ import { useState, useEffect, useRef, useDeferredValue } from 'react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, FileDown, FileText, Brain, BookOpen, HelpCircle, Bold, Italic, Heading2, List, Scissors } from 'lucide-react';
+import { ArrowLeft, Save, FileDown, FileText, Brain, BookOpen, HelpCircle, Bold, Italic, Heading2, List, Scissors, AlertTriangle } from 'lucide-react';
 import { m, AnimatePresence } from "framer-motion";
 import dynamic from 'next/dynamic';
 import ImportModal from '@/components/ui/ImportModal';
 import GuideModal from '@/components/ui/GuideModal';
 import QuizTab from './QuizTab';
 import PracticeTab from './PracticeTab';
+import GenerateCardsButton from './GenerateCardsButton';
 
 import { toast } from 'sonner';
 
@@ -20,7 +21,7 @@ const VideoPlayer = dynamic(() => import('@/components/video/VideoPlayer'), { ss
 
 import { updateNoteContent, updateNoteTitle, createClozeCard } from './actions';
 
-import { renderNoteForPreview, formatTimestamp } from '@/lib/parseBlanks';
+import { renderNoteForPreview, formatTimestamp, hasEnoughForPracticeAndQuiz } from '@/lib/parseBlanks';
 
 interface NoteCard {
   id: string;
@@ -42,8 +43,11 @@ interface NoteData {
 }
 type Tab = 'notes' | 'practice' | 'quiz';
 
-const TABS: { id: Tab; label: string; Icon: typeof FileText }[] = [
-  { id: 'notes', label: 'Notes', Icon: FileText },
+const NOTES_TAB = { id: 'notes' as const, label: 'Notes', Icon: FileText };
+// Absent, not disabled, until the note holds a real batch to work through -
+// CLAUDE.md section 3 ("Build the absence instead"). Threshold lives in
+// hasEnoughForPracticeAndQuiz (src/lib/parseBlanks.ts).
+const BATCH_TABS: { id: Tab; label: string; Icon: typeof FileText }[] = [
   { id: 'practice', label: 'Practice', Icon: BookOpen },
   { id: 'quiz', label: 'Quiz', Icon: Brain },
 ];
@@ -91,12 +95,11 @@ export default function NoteEditor({
 }) {
   const [content, setContent] = useState(initialData.body_md || '');
   const [title, setTitle] = useState(initialData.title || '');
-  const [activeTab, setActiveTab] = useSessionStorage<Tab>(`note-${noteId}-activeTab`, 'notes');
   const [showPreview, setShowPreview] = useSessionStorage(`note-${noteId}-showPreview`, false);
   const [showPdfOnMobile, setShowPdfOnMobile] = useSessionStorage(`note-${noteId}-showPdf`, false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [pdfUrl, setPdfUrl] = useState<string | null>(initialData.pdfUrl ?? null);
   const [videoId] = useState<string | null>(initialData.video_id ?? null);
   const [showVideoOnMobile, setShowVideoOnMobile] = useSessionStorage(`note-${noteId}-showVideo`, false);
@@ -105,8 +108,42 @@ export default function NoteEditor({
   );
 
   const deferredContent = useDeferredValue(content);
+  const searchParams = useSearchParams();
+
+  // Derived from the live editor content, not from saved cards, so crossing
+  // the threshold reveals the tabs as soon as the 10th pair is typed rather
+  // than after the next save round trip.
+  const hasBatch = hasEnoughForPracticeAndQuiz(content);
+  const visibleTabs = hasBatch ? [NOTES_TAB, ...BATCH_TABS] : [NOTES_TAB];
+
+  // The open tab lives in the URL (?tab=quiz), not in client state: the
+  // server renders the note with that tab already selected, so a refresh
+  // stays put instead of painting Notes and snapping across once a
+  // post-mount effect restores it (which is what sessionStorage did here).
+  // Written with the native History API, which Next syncs into
+  // useSearchParams without a server round trip.
+  const tabParam = searchParams.get('tab');
+  // Clamped rather than trusted: a hand-typed ?tab=quiz on a note below the
+  // threshold, or content deleted back below it, must fall back to Notes or
+  // the editor would render no panel at all.
+  const activeTab: Tab =
+    hasBatch && (tabParam === 'practice' || tabParam === 'quiz') ? tabParam : 'notes';
+  const setActiveTab = (id: Tab) => {
+    const params = new URLSearchParams(searchParams);
+    if (id === 'notes') params.delete('tab');
+    else params.set('tab', id);
+    const query = params.toString();
+    window.history.replaceState(null, '', query ? `?${query}` : window.location.pathname);
+  };
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // What was last successfully written to the DB - the baseline both the
+  // "did anything change" check and the server's "did the blanks change"
+  // sync-skip compare against. Previously that comparison used the initial
+  // server-rendered prop directly, which never advanced past the first
+  // save, so every keystroke after that looked "changed" relative to a
+  // stale snapshot instead of the actual last save.
+  const lastSyncedContentRef = useRef(initialData.body_md || '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
 
@@ -114,20 +151,19 @@ export default function NoteEditor({
   // the standard ARIA tablist keyboard pattern instead of relying on Tab key
   // presses to step through each one.
   const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, currentId: Tab) => {
-    const i = TABS.findIndex((t) => t.id === currentId);
+    const i = visibleTabs.findIndex((t) => t.id === currentId);
     let nextIndex: number | null = null;
-    if (e.key === 'ArrowRight') nextIndex = (i + 1) % TABS.length;
-    else if (e.key === 'ArrowLeft') nextIndex = (i - 1 + TABS.length) % TABS.length;
+    if (e.key === 'ArrowRight') nextIndex = (i + 1) % visibleTabs.length;
+    else if (e.key === 'ArrowLeft') nextIndex = (i - 1 + visibleTabs.length) % visibleTabs.length;
     else if (e.key === 'Home') nextIndex = 0;
-    else if (e.key === 'End') nextIndex = TABS.length - 1;
+    else if (e.key === 'End') nextIndex = visibleTabs.length - 1;
     if (nextIndex === null) return;
 
     e.preventDefault();
-    const nextId = TABS[nextIndex].id;
+    const nextId = visibleTabs[nextIndex].id;
     setActiveTab(nextId);
     tabRefs.current[nextId]?.focus();
   };
-  const searchParams = useSearchParams();
   // Derived directly from the URL at render time rather than synced through
   // an effect + setState, which would trigger an extra render on mount for
   // no benefit - the value is only ever needed once, as VideoPlayer's
@@ -141,7 +177,7 @@ export default function NoteEditor({
 
   const handleContentChange = (value: string) => {
     setContent(value);
-    setSaveStatus(value === initialData.body_md ? 'saved' : 'saving');
+    setSaveStatus(value === lastSyncedContentRef.current ? 'saved' : 'saving');
   };
 
   // Section 9's quick-action buttons: insert a blank template at the cursor
@@ -215,19 +251,27 @@ export default function NoteEditor({
 
   // Auto-save logic for content
   useEffect(() => {
-    if (content === initialData.body_md) return;
+    if (content === lastSyncedContentRef.current) return;
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
     debounceTimerRef.current = setTimeout(async () => {
-      await updateNoteContent(noteId, content);
+      const contentAtSaveTime = content;
+      const prev = lastSyncedContentRef.current;
+      const result = await updateNoteContent(noteId, contentAtSaveTime, prev);
+      if ('error' in result) {
+        setSaveStatus('error');
+        toast.error(`Autosave failed: ${result.error}. Your last saved version is still safe - copy your latest changes somewhere before leaving.`);
+        return;
+      }
+      lastSyncedContentRef.current = contentAtSaveTime;
       setSaveStatus('saved');
     }, 1000); // 1s debounce
 
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
-  }, [content, noteId, initialData.body_md]);
+  }, [content, noteId]);
 
   // Manual save on top of the debounced autosave above - either one alone
   // already writes the same content, so firing both isn't a correctness
@@ -235,7 +279,15 @@ export default function NoteEditor({
   const handleManualSave = async () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     setSaveStatus('saving');
-    await updateNoteContent(noteId, content);
+    const contentAtSaveTime = content;
+    const prev = lastSyncedContentRef.current;
+    const result = await updateNoteContent(noteId, contentAtSaveTime, prev);
+    if ('error' in result) {
+      setSaveStatus('error');
+      toast.error(`Save failed: ${result.error}`);
+      return;
+    }
+    lastSyncedContentRef.current = contentAtSaveTime;
     setSaveStatus('saved');
     toast.success('Note saved');
   };
@@ -258,7 +310,12 @@ export default function NoteEditor({
   const handleTitleBlur = async () => {
     if (title !== initialData.title) {
       setSaveStatus('saving');
-      await updateNoteTitle(noteId, title);
+      const result = await updateNoteTitle(noteId, title);
+      if ('error' in result) {
+        setSaveStatus('error');
+        toast.error(`Title didn't save: ${result.error}`);
+        return;
+      }
       setSaveStatus('saved');
     }
   };
@@ -298,7 +355,12 @@ export default function NoteEditor({
       lineText.slice(0, selectedOffsetInLine) + '___' + lineText.slice(selectedOffsetInLine + selected.length);
 
     setSaveStatus('saving');
-    await createClozeCard(noteId, lineNumber, prompt.trim(), selected.trim());
+    const result = await createClozeCard(noteId, lineNumber, prompt.trim(), selected.trim());
+    if ('error' in result) {
+      setSaveStatus('error');
+      toast.error(`Card wasn't created: ${result.error}`);
+      return;
+    }
     setClozeCards((prev) => [...prev, { line: lineNumber, prompt: prompt.trim(), answer: selected.trim() }]);
     setSaveStatus('saved');
     toast.success('Card created');
@@ -366,7 +428,7 @@ export default function NoteEditor({
       {/* Premium Glassmorphic Header */}
       <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/5 bg-[#14120f]/80 backdrop-blur-xl sticky top-0 z-10">
         <div className="flex items-center gap-4 min-w-0 flex-1">
-          <Link href="/dashboard" className="shrink-0 text-gray-500 hover:text-accent transition-colors p-1 hover:bg-accent/10 rounded-lg">
+          <Link href="/dashboard" aria-label="Back to dashboard" className="shrink-0 text-gray-500 hover:text-accent transition-colors p-1 hover:bg-accent/10 rounded-lg">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="flex flex-col min-w-0 flex-1">
@@ -375,6 +437,8 @@ export default function NoteEditor({
             </span>
             <input
               type="text"
+              id="note-title"
+              name="title"
               aria-label="Note title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -395,12 +459,16 @@ export default function NoteEditor({
           <button
             type="button"
             onClick={handleManualSave}
-            title="Save now (Cmd/Ctrl+S)"
-            className="sr-only sm:not-sr-only sm:flex text-xs items-center gap-1.5 text-gray-500 hover:text-accent px-3 py-1.5 rounded-full bg-white/5 hover:bg-accent/10 transition-colors min-h-[44px] sm:min-h-0"
+            title={saveStatus === 'error' ? 'Save failed - click to retry' : 'Save now (Cmd/Ctrl+S)'}
+            className={`sr-only sm:not-sr-only sm:flex text-xs items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors min-h-[44px] sm:min-h-0 ${saveStatus === 'error' ? 'text-red-400 bg-red-500/10 hover:bg-red-500/20' : 'text-gray-500 hover:text-accent bg-white/5 hover:bg-accent/10'}`}
             aria-live="polite"
           >
-            <Save className={`w-3.5 h-3.5 ${saveStatus === 'saving' ? 'animate-pulse text-accent' : ''}`} aria-hidden="true" />
-            <span className="hidden sm:inline">{saveStatus === 'saving' ? 'Saving…' : 'Saved'}</span>
+            {saveStatus === 'error' ? (
+              <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+            ) : (
+              <Save className={`w-3.5 h-3.5 ${saveStatus === 'saving' ? 'animate-pulse text-accent' : ''}`} aria-hidden="true" />
+            )}
+            <span className="hidden sm:inline">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Save failed' : 'Saved'}</span>
           </button>
 
           <button
@@ -440,31 +508,43 @@ export default function NoteEditor({
         </div>
       </header>
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation. Practice and Quiz are absent until the note holds
+          a real batch, then animate in - "Review nav first appearing:
+          animate it. This is the app growing." (CLAUDE.md section 13). The
+          120ms/8px values match that section's "Prompt enters" row; the
+          root MotionConfig reducedMotion="user" zeroes them when the user
+          asks for reduced motion, so there's nothing to handle here. */}
       <div role="tablist" aria-label="Note sections" className="flex items-center justify-center px-4 border-b border-white/5 bg-[#14120f] gap-1 sm:gap-2">
-        {TABS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            ref={(el) => { tabRefs.current[id] = el; }}
-            role="tab"
-            id={`tab-${id}`}
-            aria-selected={activeTab === id}
-            aria-controls={`panel-${id}`}
-            tabIndex={activeTab === id ? 0 : -1}
-            onClick={() => setActiveTab(id)}
-            onKeyDown={(e) => handleTabKeyDown(e, id)}
-            className={`relative px-3 sm:px-4 py-3 text-sm font-medium flex items-center gap-2 transition-colors rounded-t-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-[-2px] ${activeTab === id ? 'text-accent' : 'text-gray-400 hover:text-gray-200'}`}
-          >
-            <Icon className="w-4 h-4" /> {label}
-            {activeTab === id && (
-              <m.div
-                layoutId="note-tab-underline"
-                className="absolute left-0 right-0 -bottom-px h-0.5 bg-accent"
-                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-              />
-            )}
-          </button>
-        ))}
+        <AnimatePresence initial={false}>
+          {visibleTabs.map(({ id, label, Icon }) => (
+            <m.button
+              key={id}
+              layout
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12, ease: 'easeOut' }}
+              ref={(el: HTMLButtonElement | null) => { tabRefs.current[id] = el; }}
+              role="tab"
+              id={`tab-${id}`}
+              aria-selected={activeTab === id}
+              aria-controls={`panel-${id}`}
+              tabIndex={activeTab === id ? 0 : -1}
+              onClick={() => setActiveTab(id)}
+              onKeyDown={(e: React.KeyboardEvent<HTMLButtonElement>) => handleTabKeyDown(e, id)}
+              className={`relative px-3 sm:px-4 py-3 text-sm font-medium flex items-center gap-2 transition-colors rounded-t-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-[-2px] ${activeTab === id ? 'text-accent' : 'text-gray-400 hover:text-gray-200'}`}
+            >
+              <Icon className="w-4 h-4" /> {label}
+              {activeTab === id && (
+                <m.div
+                  layoutId="note-tab-underline"
+                  className="absolute left-0 right-0 -bottom-px h-0.5 bg-accent"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
+              )}
+            </m.button>
+          ))}
+        </AnimatePresence>
       </div>
 
       {/* Editor Surface */}
@@ -585,6 +665,12 @@ export default function NoteEditor({
                     Tip: write &quot;Term: definition&quot; on its own line, or select any text and tap <Scissors className="w-3 h-3 inline -mt-0.5" aria-hidden="true" />, to make a flashcard. More in the <HelpCircle className="w-3 h-3 inline -mt-0.5" aria-hidden="true" /> Guide, top right.
                   </p>
 
+                  {/* Its own row, below the tip and apart from the
+                      formatting toolbar, so it reads as an action on the
+                      note rather than one of the template-insert buttons
+                      section 23 forbids. */}
+                  <GenerateCardsButton noteId={noteId} content={content} onGenerated={handleContentChange} />
+
                   <m.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -651,7 +737,7 @@ export default function NoteEditor({
               tabIndex={0}
               className="flex-1 flex flex-col overflow-hidden w-full h-full relative"
             >
-              <QuizTab noteId={noteId} content={content} onGenerated={handleContentChange} />
+              <QuizTab noteId={noteId} content={content} />
             </m.div>
           )}
         </AnimatePresence>

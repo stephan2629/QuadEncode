@@ -13,9 +13,22 @@ import PendingPathSaver from './PendingPathSaver';
 import PathTracker, { type PathData } from './PathTracker';
 import NotesGrid from './NotesGrid';
 import SubjectNav from './SubjectNav';
+import Footer from '@/components/ui/Footer';
 import StudyHeatmap from '@/components/ui/StudyHeatmap';
 import { DashboardHeroBanner } from '@/components/ui/DashboardHeroBanner';
 import { QuickStudyHub } from '@/components/ui/QuickStudyHub';
+
+// Shape of the per-subject notes query below. Declared rather than inferred
+// because `notes` is assigned inside a conditional block and read from JSX
+// outside it.
+type DashboardNote = {
+  id: string;
+  title: string;
+  section: string | null;
+  body_md: string | null;
+  updated_at: string | null;
+  cards: { type: string; answer: string }[] | null;
+};
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -27,23 +40,15 @@ export default async function DashboardPage() {
 
   const userName = user.user_metadata?.name || user.user_metadata?.full_name || null;
 
-  // Fetch all subjects for the switcher
+  // Subjects only, no embedded notes. Every subject's notes used to be
+  // embedded here, which meant one dashboard load pulled the full body_md of
+  // every note in every subject (plus every card's answer text) and then
+  // rendered exactly one subject's worth - the rest was fetched, sent over
+  // the wire, and discarded. The active subject's notes are fetched on their
+  // own below, once that subject is known.
   const { data: subjects, error } = await supabase
     .from('subjects')
-    .select(`
-      id,
-      name,
-      slug,
-      created_at,
-      notes (
-        id,
-        title,
-        section,
-        body_md,
-        updated_at,
-        cards (type, answer)
-      )
-    `)
+    .select('id, name, slug, created_at')
     .order('created_at', { ascending: false });
 
   if (error) console.error('Error fetching subjects:', error);
@@ -75,39 +80,52 @@ export default async function DashboardPage() {
   let dueCount = 0;
   let importCount = 0;
   let paths: PathData[] | null = null;
+  let notes: DashboardNote[] = [];
 
   if (activeSubject) {
-    // Fetch active paths scoped to subject
-    const { data: pData } = await supabase
-      .from('paths')
-      .select(`
-        id,
-        subject_id,
-        subjects ( name, slug ),
-        path_steps (
+    // Paths and notes don't depend on each other, so they go out together
+    // rather than one after the other - this keeps splitting the notes out
+    // of the subjects query above from costing an extra sequential round
+    // trip.
+    const [pathsResult, notesResult] = await Promise.all([
+      supabase
+        .from('paths')
+        .select(`
           id,
-          order,
-          status,
-          resources (
+          subject_id,
+          subjects ( name, slug ),
+          path_steps (
             id,
-            title,
-            url,
-            provider,
-            format,
-            is_free,
-            cost
+            order,
+            status,
+            resources (
+              id,
+              title,
+              url,
+              provider,
+              format,
+              is_free,
+              cost
+            )
           )
-        )
-      `)
-      .eq('subject_id', activeSubject.id)
-      .order('generated_at', { ascending: false });
-    paths = pData as PathData[] | null;
+        `)
+        .eq('subject_id', activeSubject.id)
+        .order('generated_at', { ascending: false }),
+      supabase
+        .from('notes')
+        .select('id, title, section, body_md, updated_at, cards (type, answer)')
+        .eq('subject_id', activeSubject.id),
+    ]);
+
+    paths = pathsResult.data as PathData[] | null;
+    if (notesResult.error) console.error('Error fetching notes:', notesResult.error.message);
+    notes = (notesResult.data ?? []) as DashboardNote[];
 
     // Resolved to a plain note-id list rather than filtering cards through an
     // embedded `notes!inner(subject_id)` join - that dot-notation embedded
     // filter is fragile (silently returns zero rows on some PostgREST/RLS
     // combinations with no error surfaced) and a plain `.in()` is unambiguous.
-    const noteIds = (activeSubject.notes ?? []).map((n) => n.id);
+    const noteIds = notes.map((n) => n.id);
 
     if (noteIds.length > 0) {
       // Total Cards for Subject
@@ -206,7 +224,7 @@ export default async function DashboardPage() {
         userName={userName}
         totalCards={totalCards}
         dueCount={dueCount}
-        noteCount={activeSubject?.notes?.length ?? 0}
+        noteCount={notes.length}
       />
 
       <QuickStudyHub
@@ -296,7 +314,7 @@ export default async function DashboardPage() {
             <h2 className="text-xl font-bold font-serif text-white mb-6 relative z-10">Notes</h2>
 
             <div className="flex-1 relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <NotesGrid notes={activeSubject.notes ?? []} />
+              <NotesGrid notes={notes} />
             </div>
 
             <form action={createNote} className="mt-8 pt-6 border-t border-white/5 relative z-10 flex gap-4 max-w-lg">
@@ -317,6 +335,12 @@ export default async function DashboardPage() {
         </>
       )}
       </main>
+
+      {/* Inside the scroll container, not a sibling of it: the page root is
+          h-dvh/overflow-hidden, so a footer outside would pin itself to the
+          bottom of the viewport as a permanent bar instead of sitting at the
+          end of the content. */}
+      <Footer />
       </div>
     </div>
   );

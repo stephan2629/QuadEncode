@@ -3,10 +3,11 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
 import { generatePath } from './actions';
-import SavePathButton from './SavePathButton';
-import PathTimeline from '@/components/ui/PathTimeline';
+import { getHardcodedCertPath } from '@/lib/certPaths';
+import PathResult from './PathResult';
 import WordCycleLoader from '@/components/ui/WordCycleLoader';
 import SquareLoader from '@/components/ui/SquareLoader';
+import Footer from '@/components/ui/Footer';
 
 // ISR per CLAUDE.md section 16 ("generated at build time or with ISR,
 // never client side"). The Serper + YouTube + Gemini + link-check pipeline
@@ -18,10 +19,26 @@ import SquareLoader from '@/components/ui/SquareLoader';
 // window pays the 21s once, everyone else gets the cached page instantly.
 export const revalidate = 604800;
 
+// The actual missing piece, found by isolated testing (docs/decisions/0008):
+// a dynamic segment with no generateStaticParams never enters Next's ISR
+// system at all in this Next version, regardless of `revalidate` - every
+// request re-renders from scratch no matter what the render itself does or
+// doesn't fetch. Returning [] (no params known at build time) is enough to
+// register the route; `dynamicParams` defaults to true, so an unknown slug
+// still renders on first request and gets cached from then on.
+export async function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ query: string }> }): Promise<Metadata> {
   const resolvedParams = await params;
   const decodedQuery = decodeURIComponent(resolvedParams.query).replace(/-/g, ' ');
-  const titleName = decodedQuery.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  // Title-casing the slug turns "comptia-security-plus" into "Comptia
+  // Security Plus", which is not what the exam is called. A pinned
+  // certification knows its own name, so use that when there is one.
+  const titleName =
+    getHardcodedCertPath(resolvedParams.query)?.subjectName ??
+    decodedQuery.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const title = `Study ${titleName} - Quad Encode Learning Path`;
   const description = `Get a free, AI-curated learning path to study ${titleName}. Ranked resources, video courses, and more.`;
 
@@ -44,7 +61,10 @@ export default async function StudyPage({ params }: { params: Promise<{ query: s
     <div className="min-h-screen bg-[#0a0908] text-white">
       <header className="sticky top-0 z-50 bg-[#0a0908]/80 backdrop-blur-xl border-b border-white/10 px-4 md:px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4 min-w-0 flex-1">
-          <Link href="/" className="text-gray-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-full shrink-0">
+          {/* Icon-only link: without an explicit label its accessible name
+              is empty, which Lighthouse flags as link-name and a screen
+              reader reads as just "link". */}
+          <Link href="/" aria-label="Back to home" className="text-gray-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-full shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="hidden md:block w-px h-6 bg-white/10 shrink-0" />
@@ -69,6 +89,8 @@ export default async function StudyPage({ params }: { params: Promise<{ query: s
           <PathRenderer query={query} />
         </Suspense>
       </main>
+
+      <Footer />
     </div>
   );
 }
@@ -86,43 +108,5 @@ async function PathRenderer({ query }: { query: string }) {
     );
   }
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Course',
-    name: pathData.subjectName,
-    description: pathData.overview,
-    provider: {
-      '@type': 'Organization',
-      name: 'Quad Encode',
-      sameAs: 'https://quadencode.com'
-    },
-    hasCourseInstance: {
-      '@type': 'CourseInstance',
-      courseMode: 'Online',
-    }
-  };
-
-  return (
-    <div className="fade-in-up">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <div className="mb-12 flex flex-col md:flex-row md:items-start justify-between gap-6 text-center md:text-left">
-        <div>
-          <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-4 tracking-tight">
-            {pathData.subjectName}
-          </h2>
-          <p className="text-gray-400 text-lg md:text-xl font-light max-w-2xl">
-            {pathData.overview}
-          </p>
-        </div>
-        <div className="flex-shrink-0 flex justify-center md:justify-end">
-          <SavePathButton pathData={pathData} />
-        </div>
-      </div>
-
-      <PathTimeline resources={pathData.resources} />
-    </div>
-  );
+  return <PathResult query={query} initialPath={pathData} />;
 }
