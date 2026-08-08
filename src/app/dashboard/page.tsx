@@ -183,7 +183,7 @@ export default async function DashboardPage() {
             clever one here. */}
         <div className="sm:hidden flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <Link href="/" className="font-serif text-xl font-bold tracking-tight text-accent flex items-center gap-2 whitespace-nowrap shrink-0">
+            <Link href="/" className="font-serif text-xl font-bold tracking-tight text-accent flex items-center gap-2 whitespace-nowrap shrink-0 min-h-[44px]">
               <Image src="/logo.png" alt="Quad Encode Logo" width={32} height={32} className="w-6 h-6" /> Quad Encode
             </Link>
             <AccountMenu
@@ -200,7 +200,7 @@ export default async function DashboardPage() {
 
         <div className="hidden sm:flex justify-between items-center">
           <div className="flex items-center gap-6">
-            <Link href="/" className="font-serif text-2xl font-bold tracking-tight text-accent flex items-center gap-2 whitespace-nowrap shrink-0">
+            <Link href="/" className="font-serif text-2xl font-bold tracking-tight text-accent flex items-center gap-2 whitespace-nowrap shrink-0 min-h-[44px]">
               <Image src="/logo.png" alt="Quad Encode Logo" width={32} height={32} className="w-8 h-8" /> Quad Encode
             </Link>
 
@@ -263,7 +263,11 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <>
-          <div className="mb-8 md:mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
+          {/* Stacked until lg, same reason as the hero banner: at 768 the
+              add-subject form took its natural width and left the heading
+              about 330px, which wrapped a two-word subject name across two
+              lines next to a half-empty row. */}
+          <div className="mb-8 md:mb-12 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 lg:gap-0">
             <div>
               <div className="flex items-center gap-4 mb-2">
                 <h1 className="text-3xl md:text-4xl font-bold font-serif">{activeSubject.name}</h1>
@@ -292,13 +296,13 @@ export default async function DashboardPage() {
               )}
             </div>
             
-            <form action={createSubject} className="flex gap-2 w-full md:w-auto">
+            <form action={createSubject} className="flex gap-2 w-full lg:w-auto">
               <input 
                 type="text" 
                 name="name" 
                 placeholder="New subject..."
                 required
-                className="flex-1 md:flex-none bg-[#14120f] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-accent text-base md:text-sm"
+                className="flex-1 lg:flex-none min-w-0 bg-[#14120f] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-accent text-base md:text-sm"
               />
               <button type="submit" className="bg-white/10 hover:bg-white/20 text-white rounded-lg px-4 py-2 min-h-[44px] text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap">
                 <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add subject</span>
@@ -317,7 +321,11 @@ export default async function DashboardPage() {
               <NotesGrid notes={notes} />
             </div>
 
-            <form action={createNote} className="mt-8 pt-6 border-t border-white/5 relative z-10 flex gap-4 max-w-lg">
+            {/* gap-2 on a phone and a non-wrapping button: at 375 the label
+                broke onto two lines and the button pushed past the card's
+                own padding. min-w-0 lets the flex-1 input actually shrink
+                below its content width instead of forcing the overflow. */}
+            <form action={createNote} className="mt-8 pt-6 border-t border-white/5 relative z-10 flex gap-2 sm:gap-4 max-w-lg">
               <input type="hidden" name="subjectId" value={activeSubject.id} />
               <input
                 type="text"
@@ -325,9 +333,9 @@ export default async function DashboardPage() {
                 aria-label="New note title"
                 placeholder="New note title…"
                 required
-                className="bg-[#1a1815] border border-white/5 rounded-lg px-4 py-2 flex-1 text-base md:text-sm focus:outline-none focus:border-accent/50 text-white placeholder-gray-600"
+                className="bg-[#1a1815] border border-white/5 rounded-lg px-4 py-2 flex-1 min-w-0 text-base md:text-sm focus:outline-none focus:border-accent/50 text-white placeholder-gray-600"
               />
-              <button type="submit" aria-label="Add note" className="text-[#0a0908] bg-accent hover:bg-accent/90 px-4 py-2 min-h-[44px] rounded-lg transition-colors font-medium flex items-center gap-2 text-sm">
+              <button type="submit" aria-label="Add note" className="text-[#0a0908] bg-accent hover:bg-accent/90 px-4 py-2 min-h-[44px] rounded-lg transition-colors font-medium flex items-center gap-2 text-sm whitespace-nowrap shrink-0">
                 <Plus className="w-4 h-4" aria-hidden="true" /> Create note
               </button>
             </form>

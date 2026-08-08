@@ -48,7 +48,11 @@ export function SubjectSwitcher({ subjects, activeSubjectId }: SubjectSwitcherPr
         defaultValue={activeSubjectId}
         onChange={(e) => handleChange(e.target.value)}
         disabled={isPending}
-        className="bg-transparent border-none text-gray-300 font-medium text-sm focus:outline-none focus:ring-0 cursor-pointer hover:text-white transition-colors p-0 disabled:opacity-60 [&>option]:bg-[#14120f] [&>option]:text-white"
+        // min-h-44 and real padding: p-0 left this at 19px tall, well under
+        // the 44px touch target, and it is the control for switching subjects
+        // on a phone. focus-visible rather than the outline-none it had, so
+        // keyboard users can see where they are.
+        className="bg-transparent border-none text-gray-300 font-medium text-sm cursor-pointer hover:text-white transition-colors min-h-[44px] py-2 pr-2 disabled:opacity-60 rounded-lg focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 [&>option]:bg-[#14120f] [&>option]:text-white"
         aria-label="Switch Subject"
       >
         {subjects.map((s) => (
