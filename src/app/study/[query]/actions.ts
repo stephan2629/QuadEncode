@@ -1,8 +1,9 @@
 'use server';
 
-import { unstable_cache, revalidatePath, updateTag } from 'next/cache';
+import { unstable_cache } from 'next/cache';
 import { generateText } from '@/lib/ai';
 import { createPublicClient } from '@/utils/supabase/public';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { checkLinkStatus } from '@/lib/link-checker';
 import { searchYouTube } from '@/lib/youtube';
 import { normalizeCertPlus } from '@/lib/certQuery';
@@ -88,8 +89,11 @@ function certSearches(cert: Certification, query: string): string[] {
 }
 
 // We'll define the mock API responses here temporarily until the real keys are added
-export async function generatePath(query: string, skipCache = false): Promise<GeneratedPath | { error: string }> {
+export async function generatePath(query: string): Promise<GeneratedPath | { error: string }> {
   try {
+    if (query.length > 80 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(query)) {
+      return { error: 'Enter a subject using letters, numbers, and spaces.' };
+    }
     const cleanQuery = query.replace(/-/g, ' ').trim();
     const searchQuery = normalizeCertPlus(cleanQuery);
 
@@ -110,10 +114,10 @@ export async function generatePath(query: string, skipCache = false): Promise<Ge
     // Cookie-free client per docs/decisions/0005 and 0006 - any cookies()
     // read here would make this whole ISR route dynamic again.
     const cacheSlug = query.toLowerCase().trim();
+
     // Versioned, so the format change below doesn't keep serving old-shape
     // rows for 30 days (see docs/decisions/0010).
     const cacheRow = pathCacheKey(cacheSlug);
-    const publicSupabase = createPublicClient();
     const cert = detectCertification(searchQuery);
 
     // CompTIA A+/Network+/Security+ are hardcoded (see lib/certPaths.ts) and
@@ -123,7 +127,7 @@ export async function generatePath(query: string, skipCache = false): Promise<Ge
     const hardcoded = getHardcodedCertPath(searchQuery);
     if (hardcoded) {
       try {
-        await publicSupabase
+        await createAdminClient()
           .from('indexed_subjects')
           .upsert({ slug: cacheSlug, name: hardcoded.subjectName }, { onConflict: 'slug', ignoreDuplicates: true });
       } catch (e) {
@@ -132,22 +136,17 @@ export async function generatePath(query: string, skipCache = false): Promise<Ge
       return { subjectName: hardcoded.subjectName, slug: cacheSlug, overview: hardcoded.overview, resources: hardcoded.resources };
     }
 
-    // ponytail: shared cache, one row per slug, no per-user variant and no
-    // moderation - a bad generated path is served to every visitor until the
-    // 30-day window in isPathCacheFresh() lapses or someone retries and
-    // overwrites it. Upgrade path if that turns out too slow: a manual
-    // invalidation action, or shortening the window.
-    if (!skipCache) {
-      const cached = await readPathCache(cacheRow);
+    // Shared cache, one row per slug and no per-user variant. A generated
+    // path is reused until its freshness window expires.
+    const cached = await readPathCache(cacheRow);
 
-      if (cached && isPathCacheFresh(new Date(cached.generated_at), new Date(), !!cert)) {
-        return {
-          subjectName: cached.subject_name,
-          slug: cacheSlug,
-          overview: cached.overview,
-          resources: cached.resources as PathResource[],
-        };
-      }
+    if (cached && isPathCacheFresh(new Date(cached.generated_at), new Date(), !!cert)) {
+      return {
+        subjectName: cached.subject_name,
+        slug: cacheSlug,
+        overview: cached.overview,
+        resources: cached.resources as PathResource[],
+      };
     }
 
     // Only needed from here down - the hardcoded certs and a path_cache hit
@@ -303,7 +302,7 @@ ${certPrompt}
 
     if (parsed?.slug && parsed?.subjectName) {
       try {
-        await publicSupabase
+        await createAdminClient()
           .from('indexed_subjects')
           .upsert({ slug: parsed.slug, name: parsed.subjectName }, { onConflict: 'slug', ignoreDuplicates: true });
       } catch (e) {
@@ -313,32 +312,14 @@ ${certPrompt}
     }
 
     try {
-      // Overwrite on conflict, not ignore: a skipCache retry is the user
-      // deliberately replacing this row, and the point is that every future
-      // first-time visitor gets the newer path too, not the one just rejected.
-      await publicSupabase.from('path_cache').upsert({
+      // Store the generated result for future visitors.
+      await createAdminClient().from('path_cache').upsert({
         slug: cacheRow,
         subject_name: parsed.subjectName,
         overview: parsed.overview,
         resources: parsed.resources,
         generated_at: new Date().toISOString(),
       });
-      // Only on a skipCache retry - not on a first-generation write. Next
-      // forbids calling updateTag/revalidatePath "during render", and a
-      // first-time write happens inside PathRenderer's own render (the
-      // page calling generatePath directly for its initial data); a retry
-      // is a genuine client-invoked Server Action call, outside any render,
-      // where these are allowed. First-generation doesn't need them anyway:
-      // that render's own output becomes the freshly-cached page directly,
-      // nothing stale to bust. updateTag(), not revalidateTag(): this Next
-      // version's revalidateTag needs a profile argument and defaults to
-      // stale-while-revalidate (serves the just-superseded value once more)
-      // - updateTag() is the one-arg, immediate, read-your-own-writes
-      // primitive, Server-Action-only, which is exactly this call site.
-      if (skipCache) {
-        updateTag(`path-cache:${cacheRow}`);
-        revalidatePath(`/study/${cacheSlug}`);
-      }
     } catch (e) {
       // A caching problem must never break the search the user is waiting on.
       console.error('Failed to write path cache:', e);

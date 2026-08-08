@@ -79,7 +79,7 @@ test.describe('Note editor', () => {
     if (userId) await admin.auth.admin.deleteUser(userId);
   });
 
-  test('autosave creates a card from typed Vocab/Def syntax exactly once, and the text persists', async ({ page }) => {
+  test('autosave persists a typed pair without creating cards before the ten-pair minimum', async ({ page }) => {
     // Real sign-in through the real form. The app redirects to /dashboard
     // on success, which is also the signal that the session cookie is set.
     await page.goto('/login');
@@ -100,19 +100,17 @@ test.describe('Note editor', () => {
 
     await editor.fill('**Vocab:** Photosynthesis\n**Def:** How plants turn light into chemical energy.');
 
-    // Nothing is clicked from here on: the point is that the 1s debounced
-    // autosave both persists the text and creates the card by itself, with
-    // no manual save (CLAUDE.md section 9 - filling an answer promotes it
-    // to a card automatically, never behind a button).
+    // Nothing is clicked from here on: the debounced autosave must persist
+    // the note, while the ten-pair rule keeps study cards absent for now.
     await expect
       .poll(async () => {
-        const { data } = await admin.from('cards').select('id').eq('note_id', noteId);
-        return data?.length ?? 0;
+        const { data } = await admin.from('notes').select('body_md').eq('id', noteId).single();
+        return data?.body_md.includes('Photosynthesis') ?? false;
       }, {
-        message: 'autosave should create exactly one card from the typed pair',
+        message: 'autosave should persist the typed pair',
         timeout: 15_000,
       })
-      .toBe(1);
+      .toBe(true);
 
     // Give any second (racing) save a chance to land before asserting the
     // count held - asserting immediately would pass even if a duplicate
@@ -122,8 +120,7 @@ test.describe('Note editor', () => {
       .from('cards')
       .select('id, prompt, line')
       .eq('note_id', noteId);
-    expect(cardsAfter).toHaveLength(1);
-    expect(cardsAfter![0].prompt).toBe('Photosynthesis');
+    expect(cardsAfter).toHaveLength(0);
 
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Note content' }))

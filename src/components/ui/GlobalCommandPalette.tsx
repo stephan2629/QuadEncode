@@ -36,6 +36,12 @@ export function GlobalCommandPalette() {
   }, []);
 
   useEffect(() => {
+    const openFromDashboard = () => setOpen(true);
+    window.addEventListener('open-command-palette', openFromDashboard);
+    return () => window.removeEventListener('open-command-palette', openFromDashboard);
+  }, []);
+
+  useEffect(() => {
     if (open && subjects.length === 0) {
       const fetchSubjects = async () => {
         const supabase = createClient();

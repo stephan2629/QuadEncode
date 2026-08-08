@@ -1,42 +1,44 @@
 'use client';
 
+import { useTransition } from 'react';
 import { m } from "framer-motion";
 import Link from 'next/link';
 import { FileText, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { deleteNote } from './actions';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { TiltCard } from '@/components/ui/TiltCard';
 
 interface NoteCard {
   type: string;
-  answer: string;
 }
 
 interface Note {
   id: string;
   title: string;
   section?: string | null;
-  body_md?: string | null;
+  created_at?: string | null;
   updated_at?: string | null;
   cards?: NoteCard[] | null;
 }
 
-// Plain-text preview only - strips the markdown prefixes and punctuation a
-// reader doesn't need to skim three sentences of a note.
-function stripMarkdown(md: string): string {
-  return md
-    .replace(/\*\*(Vocab|Def|Quiz|A|Explain):\*\*/g, '')
-    .replace(/[*_`#>]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function formatUpdated(iso?: string | null): string | null {
+function formatTimestamp(iso?: string | null): string | null {
   if (!iso) return null;
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  // Explicit locale and time zone make server and browser output identical,
+  // avoiding hydration mismatches from each environment's local settings.
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(iso));
 }
 
 export default function NotesGrid({ notes }: { notes: Note[] }) {
+  const [isPending, startTransition] = useTransition();
+
   if (notes.length === 0) {
     return <p className="text-gray-500 text-sm italic col-span-full">No notes yet.</p>;
   }
@@ -46,9 +48,24 @@ export default function NotesGrid({ notes }: { notes: Note[] }) {
       {notes.map((note, i) => {
         const cards = note.cards ?? [];
         const vocabCount = cards.filter((c) => c.type === 'vocab').length;
-        const quizCount = cards.filter((c) => c.answer.includes('|')).length;
-        const snippet = note.body_md ? stripMarkdown(note.body_md) : '';
-        const updated = formatUpdated(note.updated_at);
+        const quizCount = cards.filter((c) => c.type === 'basic').length;
+        const created = formatTimestamp(note.created_at);
+        const updated = formatTimestamp(note.updated_at);
+
+        function handleDelete() {
+          startTransition(async () => {
+            const fd = new FormData();
+            fd.set('id', note.id);
+            fd.set('title', note.title);
+            const result = await deleteNote(fd);
+            if (result?.error) {
+              toast.error(result.error);
+            } else {
+              toast.success(`"${note.title}" deleted`);
+              window.dispatchEvent(new CustomEvent('dashboard-note-deleted', { detail: note.id }));
+            }
+          });
+        }
 
         return (
           <m.div
@@ -83,11 +100,9 @@ export default function NotesGrid({ notes }: { notes: Note[] }) {
                         <span className="text-xs text-gray-500 shrink-0">{note.section}</span>
                       )}
                     </div>
-                    {snippet && (
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-3">{snippet}</p>
-                    )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      {updated && <span className="text-[11px] text-gray-400 font-mono">{updated}</span>}
+                      {created && <span className="text-[11px] text-gray-500 font-mono">Created {created}</span>}
+                      {updated && <span className="text-[11px] text-gray-400 font-mono">Updated {updated}</span>}
                       {vocabCount > 0 && (
                         <m.span
                           whileHover={{ scale: 1.08 }}
@@ -107,17 +122,16 @@ export default function NotesGrid({ notes }: { notes: Note[] }) {
                     </div>
                   </div>
                 </Link>
-                <form action={deleteNote}>
-                  <input type="hidden" name="id" value={note.id} />
-                  <ConfirmButton
-                    confirmTitle="Delete note?"
-                    confirmMessage={`Delete "${note.title}"? This can't be undone.`}
-                    aria-label="Delete note"
-                    className="text-gray-400 hover:text-red-400 p-2 md:p-1 rounded-lg hover:bg-white/5 transition-colors opacity-100 md:opacity-0 md:group-hover/note:opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center focus:opacity-100 shrink-0"
-                  >
-                    <Trash2 className="w-4 h-4" aria-hidden="true" />
-                  </ConfirmButton>
-                </form>
+                <ConfirmButton
+                  confirmTitle="Delete note?"
+                  confirmMessage={`Delete "${note.title}"? This can't be undone.`}
+                  aria-label="Delete note"
+                  disabled={isPending}
+                  onClick={handleDelete}
+                  className="text-gray-400 hover:text-red-400 p-2 md:p-1 rounded-lg hover:bg-white/5 transition-colors opacity-100 md:opacity-0 md:group-hover/note:opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center focus:opacity-100 shrink-0 disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
+                </ConfirmButton>
               </div>
             </TiltCard>
           </m.div>

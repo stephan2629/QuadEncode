@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { m } from "framer-motion";
 import Link from 'next/link';
 import { Info } from 'lucide-react';
@@ -15,6 +16,8 @@ export default function SubjectNav({
   totalCards: number;
   importCount: number;
 }) {
+  const [reviewHelpOpen, setReviewHelpOpen] = useState(false);
+
   return (
     <m.div
       initial={{ opacity: 0, y: 8 }}
@@ -34,11 +37,21 @@ export default function SubjectNav({
           >
             Review
           </Link>
-          <div className="text-gray-500 hover:text-gray-300 transition-colors cursor-help">
-            <Info className="w-4 h-4" />
-          </div>
-          {/* Tooltip */}
-          <div className="absolute left-0 bottom-full mb-2 hidden group-hover/tooltip:block w-64 p-3 bg-[#1a1815] border border-white/10 rounded-lg text-xs text-gray-300 shadow-xl z-50">
+          <button
+            type="button"
+            aria-label="How review scheduling works"
+            aria-expanded={reviewHelpOpen}
+            aria-controls="review-scheduling-help"
+            onClick={() => setReviewHelpOpen((open) => !open)}
+            className="text-gray-500 hover:text-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent rounded-lg p-3 -m-3 min-h-[44px] min-w-[44px] transition-colors"
+          >
+            <Info className="w-4 h-4" aria-hidden="true" />
+          </button>
+          <div
+            id="review-scheduling-help"
+            role="tooltip"
+            className={`absolute left-0 bottom-full mb-2 ${reviewHelpOpen ? 'block' : 'hidden group-hover/tooltip:block group-focus-within/tooltip:block'} w-64 p-3 bg-[#1a1815] border border-white/10 rounded-lg text-xs text-gray-300 shadow-xl z-50`}
+          >
             Cards move up a box when you remember them. Box 4 means it&apos;s stored in long-term memory.
           </div>
         </div>

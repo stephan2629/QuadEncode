@@ -25,10 +25,10 @@ export interface ParsedBlank {
 // "**Vocab -**", and "**Vocab-**" all satisfy the same regex instead of each
 // spacing variant needing its own hardcoded entry.
 const PROMPT_PATTERNS: { re: RegExp; kind: ParsedBlank['kind'] }[] = [
-  { re: /^\*\*Vocab\s*[-:]\*\*/, kind: 'vocab' },
-  { re: /^\*\*Quiz\s*[-:]\*\*/, kind: 'quiz' },
+  { re: /^(?:\*\*Vocab\s*[-:]\*\*|Vocab\s*[-:])/, kind: 'vocab' },
+  { re: /^(?:\*\*Quiz\s*[-:]\*\*|Quiz\s*[-:])/, kind: 'quiz' },
 ];
-const ANSWER_RE = /^\*\*(?:A|Def)\s*[-:]\*\*/;
+const ANSWER_RE = /^(?:\*\*(?:A|Def)\s*[-:]\*\*|(?:A|Def)\s*[-:])/;
 const EXPLAIN_RE = /^\*\*Explain\s*[-:]\*\*/;
 const TIMESTAMP_RE = /^\*\*At\s*[-:]\*\*/;
 
@@ -112,6 +112,10 @@ export function parseBlanks(bodyMd: string): ParsedBlank[] {
 
     const match = PROMPT_PATTERNS.find((p) => p.re.test(trimmed));
     if (!match) {
+      // An unbolded answer label such as "Def - definition" is valid only
+      // after a prompt. It must not also become a plain "term - definition"
+      // vocabulary card on its own.
+      if (ANSWER_RE.test(trimmed) || EXPLAIN_RE.test(trimmed) || TIMESTAMP_RE.test(trimmed)) continue;
       const inline = insideImportedSection ? null : trimmed.match(INLINE_VOCAB_RE);
       if (!inline) continue;
       const blank: ParsedBlank = { line: i, answerLine: i, kind: 'vocab', prompt: inline[1].trim(), answer: inline[2].trim() };
@@ -177,10 +181,26 @@ export function haveBlanksChanged(prevBodyMd: string, newBodyMd: string): boolea
 // pairs, counted separately so 6 of each doesn't count as "10" of anything.
 // Cloze cards don't count - see docs/decisions/0009.
 export function hasEnoughForPracticeAndQuiz(bodyMd: string, threshold = 10): boolean {
-  const blanks = parseBlanks(bodyMd).filter((b) => b.answer !== '');
-  const vocabCount = blanks.filter((b) => b.kind === 'vocab').length;
-  const quizCount = blanks.filter((b) => b.kind === 'quiz').length;
-  return vocabCount >= threshold || quizCount >= threshold;
+  const { vocabCount } = getStudyMaterialCounts(bodyMd);
+  return vocabCount >= threshold;
+}
+
+export function getStudyMaterialCounts(bodyMd: string) {
+  const blanks = uniqueStudyBlanks(parseBlanks(bodyMd).filter((b) => b.answer !== ''));
+  return {
+    vocabCount: blanks.filter((b) => b.kind === 'vocab').length,
+    quizCount: blanks.filter((b) => b.kind === 'quiz').length,
+  };
+}
+
+export function uniqueStudyBlanks(blanks: ParsedBlank[]): ParsedBlank[] {
+  const seen = new Set<string>();
+  return blanks.filter((blank) => {
+    const key = `${blank.kind}\u0000${blank.prompt.trim().toLocaleLowerCase()}\u0000${blank.answer.trim().toLocaleLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // Renders card pairs as styled blockquote callouts for the markdown preview

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BrainCircuit, Check, X, ArrowRight } from 'lucide-react';
 import { m, AnimatePresence } from "framer-motion";
@@ -73,7 +73,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
   // graduate: true intercepts the advance entirely and routes to the
   // re-explain stage instead - section 4's tier graduation happens in place
   // of moving to the next card, not after it.
-  const advance = (direction: 'left' | 'right', opts?: { graduate?: boolean }) => {
+  const advance = useCallback((direction: 'left' | 'right', opts?: { graduate?: boolean }) => {
     if (opts?.graduate) {
       setStage('re-explain');
       return;
@@ -91,16 +91,16 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
       setIsExiting(false);
       setExitDirection(null);
     }, 150);
-  };
+  }, []);
 
-  const handleReveal = () => {
+  const handleReveal = useCallback(() => {
     // A vocab card reveals only after an actual attempt, so a stray Space
     // press can't hand over the definition before any retrieval happened.
     if (isVocab && !attempt.trim()) return;
     if (stage === 'question') setStage('answer');
-  };
+  }, [attempt, isVocab, stage]);
 
-  const handleRate = async (correct: boolean) => {
+  const handleRate = useCallback(async (correct: boolean) => {
     if (busy || !card) return;
     setBusy(true);
     const result = await submitReview(card.id, correct);
@@ -111,9 +111,9 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
     } else {
       setStage('wrong-feedback');
     }
-  };
+  }, [advance, busy, card]);
 
-  const handlePick = async (option: string) => {
+  const handlePick = useCallback(async (option: string) => {
     if (picked !== null || busy || !card || !mcData) return;
     setPicked(option);
     const isCorrect = option === mcData.correct;
@@ -123,7 +123,7 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
     setBusy(false);
     setGraduateNext('readyToGraduate' in result && !!result.readyToGraduate);
     setStage('answer');
-  };
+  }, [busy, card, mcData, picked]);
 
   const handleGraduate = async () => {
     if (busy || !card || !reExplainDraft.trim()) return;
@@ -133,13 +133,13 @@ export default function ReviewSession({ initialQueue }: { initialQueue: Card[] }
     advance('right');
   };
 
-  const handleKeep = async () => {
+  const handleKeep = useCallback(async () => {
     if (busy || !card) return;
     setBusy(true);
     await keepCard(card.id);
     setBusy(false);
     advance('right');
-  };
+  }, [advance, busy, card]);
 
   const handleDelete = async () => {
     if (busy || !card) return;

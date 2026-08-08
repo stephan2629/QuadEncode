@@ -3,10 +3,11 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Book, Plus, Trash2 } from 'lucide-react';
-import { createSubject, createNote, deleteSubject } from './actions';
+import { Book, Plus } from 'lucide-react';
+import { createSubject } from './actions';
+import CreateNoteForm from './CreateNoteForm';
 import { logout } from '../login/actions';
-import { ConfirmButton } from '@/components/ui/ConfirmButton';
+import DeleteSubjectButton from './DeleteSubjectButton';
 import { SubjectSwitcher } from '@/components/ui/SubjectSwitcher';
 import AccountMenu from '@/components/ui/AccountMenu';
 import PendingPathSaver from './PendingPathSaver';
@@ -25,9 +26,9 @@ type DashboardNote = {
   id: string;
   title: string;
   section: string | null;
-  body_md: string | null;
+  created_at: string | null;
   updated_at: string | null;
-  cards: { type: string; answer: string }[] | null;
+  cards: { type: string }[] | null;
 };
 
 export default async function DashboardPage() {
@@ -113,13 +114,25 @@ export default async function DashboardPage() {
         .order('generated_at', { ascending: false }),
       supabase
         .from('notes')
-        .select('id, title, section, body_md, updated_at, cards (type, answer)')
+        .select('id, title, section, created_at, updated_at, cards (type)')
         .eq('subject_id', activeSubject.id),
     ]);
 
     paths = pathsResult.data as PathData[] | null;
-    if (notesResult.error) console.error('Error fetching notes:', notesResult.error.message);
-    notes = (notesResult.data ?? []) as DashboardNote[];
+    if (notesResult.error?.message.includes('notes.created_at')) {
+      // The timestamp migration may be deployed after this app build. Keep
+      // the dashboard usable against that older schema; created dates appear
+      // automatically once the migration has been applied.
+      const { data: legacyNotes, error: legacyNotesError } = await supabase
+        .from('notes')
+        .select('id, title, section, updated_at, cards (type)')
+        .eq('subject_id', activeSubject.id);
+      if (legacyNotesError) console.error('Error fetching notes:', legacyNotesError.message);
+      notes = (legacyNotes ?? []) as DashboardNote[];
+    } else {
+      if (notesResult.error) console.error('Error fetching notes:', notesResult.error.message);
+      notes = (notesResult.data ?? []) as DashboardNote[];
+    }
 
     // Resolved to a plain note-id list rather than filtering cards through an
     // embedded `notes!inner(subject_id)` join - that dot-notation embedded
@@ -252,9 +265,10 @@ export default async function DashboardPage() {
             <input 
               type="text" 
               name="name" 
+              aria-label="New subject name"
               placeholder="New subject name..."
               required
-              className="flex-1 bg-[#1a1815] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-accent text-base md:text-sm"
+              className="flex-1 bg-[#1a1815] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 text-base md:text-sm"
             />
             <button type="submit" className="bg-accent text-[#0a0908] hover:bg-accent/90 rounded-lg px-4 py-2 min-h-[44px] text-sm font-bold transition-colors flex items-center gap-2">
               <Plus className="w-4 h-4" /> Create
@@ -271,17 +285,7 @@ export default async function DashboardPage() {
             <div>
               <div className="flex items-center gap-4 mb-2">
                 <h1 className="text-3xl md:text-4xl font-bold font-serif">{activeSubject.name}</h1>
-                <form action={deleteSubject}>
-                  <input type="hidden" name="id" value={activeSubject.id} />
-                  <ConfirmButton
-                    confirmTitle="Delete subject?"
-                    confirmMessage={`Delete "${activeSubject.name}" and all its notes? This can't be undone.`}
-                    aria-label={`Delete ${activeSubject.name}`}
-                    className="text-gray-500 hover:text-red-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  >
-                    <Trash2 className="w-5 h-5" aria-hidden="true" />
-                  </ConfirmButton>
-                </form>
+                <DeleteSubjectButton id={activeSubject.id} name={activeSubject.name} />
               </div>
               
               {totalCards > 0 || importCount > 0 ? (
@@ -300,9 +304,10 @@ export default async function DashboardPage() {
               <input 
                 type="text" 
                 name="name" 
+                aria-label="New subject name"
                 placeholder="New subject..."
                 required
-                className="flex-1 lg:flex-none min-w-0 bg-[#14120f] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-accent text-base md:text-sm"
+                className="flex-1 lg:flex-none min-w-0 bg-[#14120f] border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 text-base md:text-sm"
               />
               <button type="submit" className="bg-white/10 hover:bg-white/20 text-white rounded-lg px-4 py-2 min-h-[44px] text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap">
                 <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add subject</span>
@@ -325,20 +330,7 @@ export default async function DashboardPage() {
                 broke onto two lines and the button pushed past the card's
                 own padding. min-w-0 lets the flex-1 input actually shrink
                 below its content width instead of forcing the overflow. */}
-            <form action={createNote} className="mt-8 pt-6 border-t border-white/5 relative z-10 flex gap-2 sm:gap-4 max-w-lg">
-              <input type="hidden" name="subjectId" value={activeSubject.id} />
-              <input
-                type="text"
-                name="title"
-                aria-label="New note title"
-                placeholder="New note title…"
-                required
-                className="bg-[#1a1815] border border-white/5 rounded-lg px-4 py-2 flex-1 min-w-0 text-base md:text-sm focus:outline-none focus:border-accent/50 text-white placeholder-gray-600"
-              />
-              <button type="submit" aria-label="Add note" className="text-[#0a0908] bg-accent hover:bg-accent/90 px-4 py-2 min-h-[44px] rounded-lg transition-colors font-medium flex items-center gap-2 text-sm whitespace-nowrap shrink-0">
-                <Plus className="w-4 h-4" aria-hidden="true" /> Create note
-              </button>
-            </form>
+            <CreateNoteForm subjectId={activeSubject.id} />
           </div>
         </>
       )}

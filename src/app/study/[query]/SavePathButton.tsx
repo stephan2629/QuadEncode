@@ -38,9 +38,10 @@ export default function SavePathButton({ pathData }: { pathData: GeneratedPath }
 
       toast.success('Learning path saved!');
       router.push('/dashboard');
-    } catch (err: unknown) {
-      console.error('Error saving path:', err);
-      toast.error('Failed to save learning path');
+  } catch (err: unknown) {
+    console.error('Error saving path:', err);
+      const message = err instanceof Error ? err.message : '';
+      toast.error(message.includes('3 active learning paths') ? message : 'Failed to save learning path. Try again.');
       setLoading(false);
     }
   };
@@ -53,11 +54,11 @@ export default function SavePathButton({ pathData }: { pathData: GeneratedPath }
     >
       {loading ? (
         <>
-          <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Saving…
         </>
       ) : (
         <>
-          <Save className="w-4 h-4" /> Save path
+          <Save className="w-4 h-4" aria-hidden="true" /> Save path
         </>
       )}
     </button>

@@ -114,7 +114,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0908] text-white flex flex-col justify-center items-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#14120f] text-white flex flex-col justify-center items-center p-4 relative overflow-hidden">
       {/* Ambient background glows */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent/15 blur-[120px] rounded-full pointer-events-none -z-10" />
       <div className="absolute bottom-10 right-10 w-72 h-72 bg-amber-600/10 blur-[100px] rounded-full pointer-events-none -z-10" />
@@ -312,7 +312,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => switchMode(isLogin ? 'signup' : 'login')}
-              className="text-xs text-gray-400 hover:text-white transition-colors"
+              className="text-xs text-gray-400 hover:text-white transition-colors min-h-[44px] inline-flex items-center justify-center"
             >
               {isLogin
                 ? "Don't have an account? Sign up"
@@ -323,7 +323,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => switchMode('login')}
-                className="text-xs text-accent hover:text-amber-300 transition-colors flex items-center justify-center gap-1.5 mt-2"
+                className="text-xs text-accent hover:text-amber-300 transition-colors flex items-center justify-center gap-1.5 mt-2 min-h-[44px]"
               >
                 <ArrowLeft className="w-3.5 h-3.5" /> Back to sign in
               </button>

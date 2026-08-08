@@ -8,9 +8,10 @@ interface ImportModalProps {
   onClose: () => void;
   onImportComplete: (generatedPrompts: string, sourceText?: string, pdfUrl?: string | null) => void;
   noteId: string;
+  initialText?: string;
 }
 
-export default function ImportModal({ isOpen, onClose, onImportComplete, noteId }: ImportModalProps) {
+export default function ImportModal({ isOpen, onClose, onImportComplete, noteId, initialText = '' }: ImportModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [textMode, setTextMode] = useState(false);
   const [pastedText, setPastedText] = useState('');
@@ -18,15 +19,27 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!isOpen || !initialText) return;
+    // Defer the prefill until after this render commits. The modal is opened
+    // by an editor paste event, so this is synchronization with that external
+    // event rather than state derived during render.
+    const frame = requestAnimationFrame(() => {
+      setTextMode(true);
+      setPastedText(initialText);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [initialText, isOpen]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (selected) {
-      if (selected.type === 'application/pdf' || selected.type.startsWith('image/')) {
+      if (['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown'].includes(selected.type) || selected.type.startsWith('image/')) {
         setFile(selected);
         setTextMode(false);
         setError(null);
       } else {
-        setError('Please upload a PDF or an Image (PNG/JPEG).');
+        setError('Use a PDF, DOCX, TXT, Markdown, or image file.');
       }
     }
   };
@@ -108,6 +121,9 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
             </button>
 
             <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Import source material</h2>
+            <p className="-mt-4 mb-5 text-xs text-gray-400" aria-live="polite">
+              AI imports are limited to 3 per subject in each 24-hour window.
+            </p>
 
             {/* Toggle Tabs */}
             <div className="flex bg-black/40 p-1 rounded-xl mb-6 border border-white/5 relative">
@@ -148,7 +164,7 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
                   name="file"
                   ref={fileInputRef}
                   onChange={handleFileChange}
-                  accept="application/pdf,image/png,image/jpeg,image/webp"
+                  accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,image/png,image/jpeg,image/webp,.md,.docx"
                   className="hidden"
                 />
                 {file ? (
@@ -167,7 +183,7 @@ export default function ImportModal({ isOpen, onClose, onImportComplete, noteId 
                       <UploadCloud className="w-7 h-7 text-gray-400 group-hover:text-accent transition-colors" />
                     </div>
                     <p className="text-gray-200 font-semibold mb-2">Click to upload file</p>
-                    <p className="text-gray-500 text-xs max-w-[200px]">Supports PDF documents and Images (PNG, JPG)</p>
+                    <p className="text-gray-500 text-xs max-w-[220px]">Supports PDF, DOCX, TXT, Markdown, and note images</p>
                   </div>
                 )}
               </div>

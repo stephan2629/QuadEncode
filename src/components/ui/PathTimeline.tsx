@@ -126,12 +126,12 @@ function PathStep({
     >
       {/* Dot, centred on the rail */}
       <div className="mt-5 flex items-center justify-center w-10 h-10 rounded-full border-4 border-[#0a0908] bg-[#14120f] shadow-lg shrink-0 z-10 transition-colors duration-300 group-hover:bg-accent/20 group-hover:border-accent/60 group-hover:shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-        {resource.format === 'video' ? <PlayCircle className="w-4 h-4 text-accent" /> : <FileText className="w-4 h-4 text-accent" />}
+        {resource.format === 'video' ? <PlayCircle className="w-4 h-4 text-accent" aria-hidden="true" /> : <FileText className="w-4 h-4 text-accent" aria-hidden="true" />}
       </div>
 
       {/* Content Card */}
       <m.div
-        className="flex-1 min-w-0 p-6 rounded-3xl bg-[#14120f]/90 backdrop-blur-md border border-white/10 relative overflow-hidden cursor-pointer shadow-xl hover:border-accent/40 hover:shadow-[0_0_30px_rgba(245,158,11,0.18)]"
+        className="flex-1 min-w-0 p-6 rounded-3xl bg-[#14120f]/90 backdrop-blur-md border border-white/10 relative overflow-hidden shadow-xl hover:border-accent/40 hover:shadow-[0_0_30px_rgba(245,158,11,0.18)]"
         whileHover={{ y: -3 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
       >
@@ -196,7 +196,7 @@ function PathStep({
 
         <div className="flex items-center gap-3 text-xs text-gray-500">
           <span className="flex items-center gap-1.5 bg-white/5 border border-white/5 px-2.5 py-1 rounded-lg text-gray-300">
-            <BookOpen className="w-3.5 h-3.5 text-accent" />
+            <BookOpen className="w-3.5 h-3.5 text-accent" aria-hidden="true" />
             {resource.provider}
           </span>
         </div>

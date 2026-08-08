@@ -52,6 +52,7 @@ create table notes (
   section text,
   title text,
   body_md text not null default '',
+  created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   pdf_path text,
   video_id text
@@ -101,6 +102,14 @@ create table imports (
   created_at timestamptz not null default now()
 );
 
+-- One row per subject makes AI import limits independent between subjects.
+-- The database function below locks this row before spending a scan.
+create table ai_subject_import_usage (
+  subject_id uuid primary key references subjects(id) on delete cascade,
+  scan_count int not null default 0 check (scan_count between 0 and 3),
+  window_started_at timestamptz not null default now()
+);
+
 -- Public registry of subjects that have been searched, decoupled from any
 -- one user's private `subjects` rows. Backs the /study/[slug] sitemap: those
 -- pages are public and searchable signed out, but `subjects` is per-user and
@@ -135,29 +144,17 @@ alter table notes enable row level security;
 alter table cards enable row level security;
 alter table reviews enable row level security;
 alter table imports enable row level security;
+alter table ai_subject_import_usage enable row level security;
 alter table indexed_subjects enable row level security;
 alter table path_cache enable row level security;
 
--- Anyone, signed in or not, can look up or register a searched slug —
--- this table holds no user data, just what subjects exist to index.
+-- Anyone can read public search indexes; server-side generation writes them
+-- with the service role so an anonymous client cannot poison shared results.
 create policy "public read indexed subjects" on indexed_subjects
   for select using (true);
 
-create policy "anyone can register a searched subject" on indexed_subjects
-  for insert with check (true);
-
--- Same reasoning as indexed_subjects: no user data, search works signed
--- out, one shared row per slug. Update policy is needed alongside insert
--- because a retry (skipCache) overwrites an existing row rather than only
--- ever inserting a new one.
 create policy "public read path cache" on path_cache
   for select using (true);
-
-create policy "anyone can write path cache" on path_cache
-  for insert with check (true);
-
-create policy "anyone can update path cache" on path_cache
-  for update using (true) with check (true);
 
 create policy "own profile" on profiles
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -215,6 +212,10 @@ create policy "own imports" on imports
   for all using (exists (select 1 from subjects s where s.id = imports.subject_id and s.user_id = auth.uid()))
   with check (exists (select 1 from subjects s where s.id = imports.subject_id and s.user_id = auth.uid()));
 
+create policy "own subject import usage" on ai_subject_import_usage
+  for all using (exists (select 1 from subjects s where s.id = ai_subject_import_usage.subject_id and s.user_id = auth.uid()))
+  with check (exists (select 1 from subjects s where s.id = ai_subject_import_usage.subject_id and s.user_id = auth.uid()));
+
 -- Storage bucket for the original PDF behind an import (notes.pdf_path),
 -- kept as a private file so the source stays visible only to the user who
 -- imported it (section 20). Objects are stored at {user_id}/{note_id}/{name}
@@ -227,6 +228,73 @@ on conflict (id) do nothing;
 create policy "own pdf uploads" on storage.objects
   for all using (bucket_id = 'note-pdfs' and (storage.foldername(name))[1] = auth.uid()::text)
   with check (bucket_id = 'note-pdfs' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- AI-backed imports are limited to three scans per subject per rolling
+-- 24-hour window. The row lock makes the count safe against simultaneous
+-- Server Action requests, and the note lookup rejects forged note ids.
+create or replace function public.consume_subject_ai_import(p_note_id uuid)
+returns table (remaining int, reset_at timestamptz)
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  note_subject_id uuid;
+  subject_usage public.ai_subject_import_usage%rowtype;
+  next_count int;
+  next_reset_at timestamptz;
+  hours_until_reset int;
+begin
+  if auth.uid() is null then
+    raise exception 'Unauthorized' using errcode = '28000';
+  end if;
+
+  select n.subject_id into note_subject_id
+  from public.notes n
+  join public.subjects s on s.id = n.subject_id
+  where n.id = p_note_id and s.user_id = auth.uid();
+
+  if note_subject_id is null then
+    raise exception 'Note not found' using errcode = 'P0002';
+  end if;
+
+  insert into public.ai_subject_import_usage (subject_id)
+  values (note_subject_id)
+  on conflict (subject_id) do nothing;
+
+  select * into subject_usage
+  from public.ai_subject_import_usage
+  where subject_id = note_subject_id
+  for update;
+
+  if not found then
+    raise exception 'Import usage record not found' using errcode = 'P0002';
+  end if;
+
+  if subject_usage.window_started_at <= now() - interval '24 hours' then
+    next_count := 1;
+    next_reset_at := now();
+  else
+    next_count := subject_usage.scan_count + 1;
+    next_reset_at := subject_usage.window_started_at;
+  end if;
+
+  if next_count > 3 then
+    hours_until_reset := greatest(1, ceil(extract(epoch from (next_reset_at + interval '24 hours' - now())) / 3600.0)::int);
+    raise exception 'Daily import scan limit reached (3/3 used). Try again in about % hour(s).', hours_until_reset using errcode = 'P0001';
+  end if;
+
+  update public.ai_subject_import_usage
+  set scan_count = next_count,
+      window_started_at = next_reset_at
+  where subject_id = note_subject_id;
+
+  return query select 3 - next_count, next_reset_at;
+end;
+$$;
+
+revoke execute on function public.consume_subject_ai_import(uuid) from anon, public;
+grant execute on function public.consume_subject_ai_import(uuid) to authenticated;
 
 -- Auto-create a profile row for every new auth user, covering both
 -- email/password signup and OAuth (Google) signup uniformly, since OAuth
@@ -275,3 +343,110 @@ $$;
 
 revoke execute on function public.delete_own_account() from anon, public;
 grant execute on function public.delete_own_account() to authenticated;
+
+-- A subject receives three newly started quiz sessions in a rolling 24-hour
+-- window. Imports are intentionally not counted here.
+create table if not exists public.subject_quiz_session_usage (
+  subject_id uuid primary key references public.subjects(id) on delete cascade,
+  session_count int not null default 0 check (session_count between 0 and 3),
+  window_started_at timestamptz not null default now()
+);
+
+alter table public.subject_quiz_session_usage enable row level security;
+create policy "own subject quiz usage" on public.subject_quiz_session_usage
+  for all using (
+    exists (
+      select 1 from public.subjects s
+      where s.id = subject_quiz_session_usage.subject_id and s.user_id = auth.uid()
+    )
+  ) with check (
+    exists (
+      select 1 from public.subjects s
+      where s.id = subject_quiz_session_usage.subject_id and s.user_id = auth.uid()
+    )
+  );
+
+create or replace function public.consume_subject_quiz_session(p_note_id uuid)
+returns table (remaining int)
+language plpgsql
+security invoker set search_path = public
+as $$
+declare
+  note_subject_id uuid;
+  usage_row public.subject_quiz_session_usage%rowtype;
+  next_count int;
+  hours_until_reset int;
+begin
+  select n.subject_id into note_subject_id
+  from public.notes n
+  join public.subjects s on s.id = n.subject_id
+  where n.id = p_note_id and s.user_id = auth.uid();
+
+  if note_subject_id is null then raise exception 'Note not found'; end if;
+
+  insert into public.subject_quiz_session_usage(subject_id) values(note_subject_id)
+  on conflict do nothing;
+
+  select * into usage_row from public.subject_quiz_session_usage
+  where subject_id = note_subject_id for update;
+
+  next_count := case
+    when usage_row.window_started_at <= now() - interval '24 hours' then 1
+    else usage_row.session_count + 1
+  end;
+
+  if next_count > 3 then
+    hours_until_reset := greatest(1, ceil(extract(epoch from (usage_row.window_started_at + interval '24 hours' - now())) / 3600.0)::int);
+    raise exception 'Quiz limit reached (3/3 used). Try again in about % hour(s).', hours_until_reset;
+  end if;
+
+  update public.subject_quiz_session_usage
+  set session_count = next_count,
+      window_started_at = case when usage_row.window_started_at <= now() - interval '24 hours' then now() else usage_row.window_started_at end
+  where subject_id = note_subject_id;
+
+  return query select 3 - next_count;
+end;
+$$;
+
+revoke execute on function public.consume_subject_quiz_session(uuid) from anon, public;
+grant execute on function public.consume_subject_quiz_session(uuid) to authenticated;
+
+-- Protect the global three-active-path limit from concurrent requests. The
+-- application check remains for immediate UI feedback; this trigger is the
+-- final authority.
+create or replace function public.enforce_active_path_limit()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  owner_id uuid;
+  active_path_count integer;
+begin
+  select user_id into owner_id
+  from public.subjects
+  where id = new.subject_id;
+
+  if owner_id is null then
+    raise exception 'Subject not found';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext(owner_id::text));
+
+  select count(*) into active_path_count
+  from public.paths p
+  join public.subjects s on s.id = p.subject_id
+  where s.user_id = owner_id;
+
+  if active_path_count >= 3 then
+    raise exception 'You already have 3 active learning paths. Delete one before saving another.';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger enforce_active_path_limit
+  before insert on public.paths
+  for each row execute function public.enforce_active_path_limit();

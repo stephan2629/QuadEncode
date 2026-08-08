@@ -20,7 +20,7 @@ import Image from 'next/image';
 // pages that section 16 exists to make indexable. Swap them for whatever is
 // worth surfacing; each is just a slug.
 const SUBJECTS = [
-  { slug: 'comptia-security', label: 'CompTIA Security+' },
+  { slug: 'comptia-security-plus', label: 'CompTIA Security+' },
   { slug: 'spanish', label: 'Spanish' },
   { slug: 'python-programming', label: 'Python programming' },
 ];

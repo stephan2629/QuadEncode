@@ -63,32 +63,52 @@ export async function createNote(formData: FormData) {
   const title = formData.get('title') as string || 'Untitled Note'
   const section = formData.get('section') as string || ''
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('notes')
     .insert([{ subject_id: subjectId, title, section, body_md: '' }])
+    .select('id')
+    .single()
 
   if (error) {
     console.error('Error creating note:', error)
-    return
+    return { error: 'Could not create note. Try again.' }
   }
 
   revalidatePath('/dashboard')
+  return { success: true, title, id: data.id }
+}
+
+export async function deleteSubjectById(id: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase.from('subjects').delete().eq('id', id)
+  if (error) {
+    console.error('Error deleting subject:', error)
+    return { error: 'Could not delete subject. Try again.' }
+  }
+
+  revalidatePath('/dashboard')
+  return { success: true }
 }
 
 export async function deleteSubject(formData: FormData) {
-  const supabase = await createClient()
-  const id = formData.get('id') as string
-
-  await supabase.from('subjects').delete().eq('id', id)
-  revalidatePath('/dashboard')
+  return deleteSubjectById(formData.get('id') as string)
 }
 
 export async function deleteNote(formData: FormData) {
   const supabase = await createClient()
   const id = formData.get('id') as string
+  const title = formData.get('title') as string | null
 
-  await supabase.from('notes').delete().eq('id', id)
+  const { error } = await supabase.from('notes').delete().eq('id', id)
+
+  if (error) {
+    console.error('Error deleting note:', error)
+    return { error: 'Could not delete note. Try again.' }
+  }
+
   revalidatePath('/dashboard')
+  return { success: true, title: title ?? 'Note' }
 }
 
 export async function saveGeneratedPath(pathData: GeneratedPath) {
@@ -217,10 +237,11 @@ export async function updatePathStepStatus(stepId: string, status: 'unstarted' |
 
   if (error) {
     console.error('Error updating step status:', error)
-    return
+    return { error: 'Could not update this path step. Try again.' }
   }
 
   revalidatePath('/dashboard')
+  return { success: true }
 }
 
 export async function deletePath(pathId: string) {
@@ -236,10 +257,11 @@ export async function deletePath(pathId: string) {
 
   if (error) {
     console.error('Error deleting path:', error)
-    return
+    return { error: 'Could not delete path. Try again.' }
   }
 
   revalidatePath('/dashboard')
+  return { success: true }
 }
 
 

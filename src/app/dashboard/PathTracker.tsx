@@ -79,13 +79,14 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
   // a card also shortens the page, which alone can force a scroll
   // reset). Capturing and restoring scrollTop across the update fixes both
   // causes regardless of which one is actually responsible.
-  const withScrollPreserved = async (action: () => Promise<void>) => {
+  const withScrollPreserved = async <T,>(action: () => Promise<T>) => {
     const scrollEl = document.querySelector<HTMLElement>('[data-dashboard-scroll]');
     const scrollTop = scrollEl?.scrollTop;
-    await action();
+    const result = await action();
     if (scrollEl && scrollTop != null) {
       requestAnimationFrame(() => { scrollEl.scrollTop = scrollTop; });
     }
+    return result;
   };
 
   const handleToggle = async (pathId: string, stepId: string, currentStatus: string) => {
@@ -101,13 +102,22 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
       };
     }));
 
-    await withScrollPreserved(() => updatePathStepStatus(stepId, newStatus));
+    const result = await withScrollPreserved(() => updatePathStepStatus(stepId, newStatus));
+    if (result?.error) {
+      setOptimisticPaths(initialPaths);
+      toast.error(result.error);
+    }
     setLoadingStepId(null);
   };
 
   const handleDelete = async (pathId: string) => {
     setDeletingPathId(pathId);
-    await withScrollPreserved(() => deletePath(pathId));
+    const result = await withScrollPreserved(() => deletePath(pathId));
+    if (result?.error) {
+      setDeletingPathId(null);
+      toast.error(result.error);
+      return;
+    }
     setOptimisticPaths(prev => prev.filter(p => p.id !== pathId));
     setDeletingPathId(null);
     toast.success('Path deleted');
@@ -115,7 +125,7 @@ export default function PathTracker({ initialPaths }: { initialPaths: PathData[]
 
   return (
     <div className="space-y-6 mb-12">
-      <h2 className="text-xl md:text-2xl font-bold font-serif">Active paths</h2>
+      <h2 id="active-paths" className="text-xl md:text-2xl font-bold font-serif scroll-mt-6">Active paths</h2>
       <AnimatePresence initial={false}>
         {optimisticPaths.map((path) => {
           const sortedSteps = [...path.path_steps].sort((a, b) => a.order - b.order);
