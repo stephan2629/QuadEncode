@@ -34,10 +34,10 @@ export function ContainerScrollAnimation() {
           <Sparkles className="w-3.5 h-3.5 text-accent" /> Active Recall Architecture
         </div>
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold font-serif text-white tracking-tight leading-tight">
-          Designed for maximum <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent via-yellow-400 to-amber-500">long-term memory</span> retention.
+          How Quad Encode builds <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent via-yellow-400 to-amber-500">long-term memory</span>.
         </h2>
         <p className="text-gray-300 text-sm md:text-base mt-4 leading-relaxed">
-          Scroll through how Quad Encode transforms raw notes and open-web topics into high-efficiency active recall prompts.
+          Three mechanics that turn raw notes and open-web topics into active recall prompts.
         </p>
       </m.div>
 
@@ -100,7 +100,7 @@ export function ContainerScrollAnimation() {
           <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-left">
             <div>
               <p className="text-sm font-serif font-bold text-white">Ready to study without the boredom?</p>
-              <p className="text-xs text-gray-400">Join Quad Encode and force active recall on every topic.</p>
+              <p className="text-xs text-gray-400">Search a subject or open a note and start today.</p>
             </div>
             <Link
               href="/dashboard"
