@@ -97,11 +97,14 @@ export default function Home() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Clears the local user state as well as the session, so the header
-  // reverts to "Sign in" immediately instead of waiting on a refresh.
-  const handleLogout = async () => {
-    await logout();
+  // Clears local user state and signs out on the client immediately so the
+  // header reverts to "Sign in" before any server round-trip completes.
+  // The server action runs concurrently (not awaited) and its redirect
+  // navigates the page away once the server-side session is also cleared.
+  const handleLogout = () => {
     setUser(null);
+    const supabase = createClient();
+    supabase.auth.signOut().then(() => logout());
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -212,7 +215,7 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#0a0908] overflow-hidden selection:bg-accent/30 text-white font-sans">
+    <div className="relative min-h-screen bg-[#14120f] overflow-hidden selection:bg-accent/30 text-white font-sans">
 
       {/* Uiverse-Style Dotted Background */}
       <div className="absolute inset-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none -z-20 [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_100%)] opacity-70"></div>
@@ -249,7 +252,7 @@ export default function Home() {
       <m.nav
         className={`fixed top-0 w-full flex justify-between items-center z-50 transition-[padding,background-color,border-color] duration-300 border-b ${
           scrolled
-            ? 'py-3 px-4 md:px-10 bg-[#0a0908]/80 backdrop-blur-xl border-white/10'
+            ? 'py-3 px-4 md:px-10 bg-[#14120f]/80 backdrop-blur-xl border-white/10'
             : 'p-4 md:p-10 bg-transparent border-transparent'
         }`}
         initial={{ opacity: 0, y: -16 }}
@@ -376,7 +379,7 @@ export default function Home() {
                   key={chip}
                   type="button"
                   onClick={() => setSearchQuery(chip)}
-                  className="px-3.5 py-3 sm:py-1.5 min-h-[44px] sm:min-h-0 text-xs bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-all font-medium active:scale-95"
+                  className="px-3.5 py-3 sm:py-1.5 min-h-[44px] text-xs bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-all font-medium active:scale-95"
                 >
                   {chip}
                 </button>
@@ -493,7 +496,7 @@ export default function Home() {
             >
               {/* Front */}
               <div
-                className="absolute inset-0 bg-[#0a0908] border-2 border-white/10 hover:border-white/20 transition-colors p-6 rounded-3xl flex flex-col items-center justify-center text-center shadow-xl"
+                className="absolute inset-0 bg-[#14120f] border-2 border-white/10 hover:border-white/20 transition-colors p-6 rounded-3xl flex flex-col items-center justify-center text-center shadow-xl"
                 style={{ backfaceVisibility: 'hidden' }}
               >
                 <p className="text-lg font-serif leading-relaxed text-white">What is the core philosophy of Quad Encode?</p>
@@ -618,7 +621,7 @@ export default function Home() {
           </m.div>
 
           <div className="mt-16 w-full max-w-4xl mx-auto rounded-3xl overflow-hidden border border-white/10 relative h-64 md:h-96">
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0908] via-transparent to-transparent z-10"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#14120f] via-transparent to-transparent z-10"></div>
             <Image
               src="/study-notes.png"
               alt="Handwritten study notes alongside a tablet"
