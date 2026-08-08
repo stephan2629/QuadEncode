@@ -27,9 +27,12 @@ export function parseLocalQuiz(markdown: string): QuizQuestion[] {
     if (blank.kind === 'quiz') {
       const parts = blank.answer.split('|').map(s => s.trim()).filter(Boolean);
       if (parts.length === 0) continue;
-      
-      const correct = parts[0];
-      const options = shuffle([...parts]); // already contains distractors
+
+      const uniqueParts = parts.filter((option, index) =>
+        parts.findIndex((candidate) => candidate.toLocaleLowerCase() === option.toLocaleLowerCase()) === index
+      );
+      const correct = uniqueParts[0];
+      const options = shuffle(uniqueParts);
       
       questions.push({
         id: `quiz-${blank.line}`,

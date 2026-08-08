@@ -312,7 +312,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => switchMode(isLogin ? 'signup' : 'login')}
-              className="text-xs text-gray-400 hover:text-white transition-colors"
+              className="text-xs text-gray-400 hover:text-white transition-colors min-h-[44px] inline-flex items-center justify-center"
             >
               {isLogin
                 ? "Don't have an account? Sign up"
@@ -323,7 +323,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => switchMode('login')}
-                className="text-xs text-accent hover:text-amber-300 transition-colors flex items-center justify-center gap-1.5 mt-2"
+                className="text-xs text-accent hover:text-amber-300 transition-colors flex items-center justify-center gap-1.5 mt-2 min-h-[44px]"
               >
                 <ArrowLeft className="w-3.5 h-3.5" /> Back to sign in
               </button>

@@ -24,7 +24,7 @@ test.describe('Discovery & Path Generation', () => {
     // but we verify the routing and UI state transitions correctly.
   });
 
-  test('A certification returns three ordered steps and no retry', async ({ page }) => {
+  test('A certification returns three ordered steps', async ({ page }) => {
     // "CompTIA Security+" slugifies to this, and it is one of the three
     // pinned paths (src/lib/certPaths.ts), so it renders without the Serper
     // or YouTube keys CI does not have.
@@ -51,7 +51,7 @@ test.describe('Discovery & Path Generation', () => {
     await expect(page.locator('a[href*="udemy.com"]')).toHaveCount(1);
     await expect(page.locator('a[href*="youtube.com/playlist"]')).toHaveCount(0);
 
-    // Deterministic path, so there is nothing to retry into.
+    // Path regeneration is not exposed in the interface.
     await expect(page.getByRole('button', { name: /Try a different path/i })).toHaveCount(0);
   });
 
@@ -70,15 +70,13 @@ test.describe('Discovery & Path Generation', () => {
     expect(urls.some((u: string) => u.includes('youtube.com'))).toBe(false);
   });
 
-  test('A skill keeps the flat path and its retry button', async ({ page }) => {
+  test('A skill keeps a flat path without a retry control', async ({ page }) => {
     // Unlike the certification above, this one runs the real pipeline.
     test.skip(!process.env.SERPER_API_KEY, 'Needs the live search keys');
     test.setTimeout(120_000);
 
     await page.goto('/study/spanish-vocabulary');
-    await expect(page.getByRole('button', { name: /Try a different path/i })).toBeVisible({
-      timeout: 90_000,
-    });
+    await expect(page.getByRole('button', { name: /Try a different path/i })).toHaveCount(0);
     // No step headings: a subject stays a flat list.
     await expect(page.getByTestId('step-heading')).toHaveCount(0);
   });
@@ -96,7 +94,7 @@ test.describe('Discovery & Path Generation', () => {
     await expect(footer.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
     await expect(footer.getByRole('link', { name: 'CompTIA Security+' })).toHaveAttribute(
       'href',
-      '/study/comptia-security'
+      '/study/comptia-security-plus'
     );
   });
 

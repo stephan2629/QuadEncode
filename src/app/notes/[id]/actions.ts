@@ -3,7 +3,9 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { generateText, capSourceText } from '@/lib/ai'
-import { parseBlanks, haveBlanksChanged } from '@/lib/parseBlanks'
+import { consumeSubjectAIImportQuota } from '@/lib/ai-quota'
+import { getImportInputError, MAX_IMPORT_TEXT_CHARS } from '@/lib/import-guard'
+import { parseBlanks, haveBlanksChanged, uniqueStudyBlanks } from '@/lib/parseBlanks'
 
 // Generous enough that no real note ever hits it (a note that size is
 // already unusual), but it stops a runaway paste or a malformed client
@@ -47,8 +49,15 @@ interface NewCardRow {
 const UNIQUE_VIOLATION = '23505'
 
 async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClient>>, noteId: string, bodyMd: string, videoId: string | null) {
-  const blanks = parseBlanks(bodyMd).filter((b) => b.answer !== '')
-  if (blanks.length === 0) return
+  const parsed = uniqueStudyBlanks(parseBlanks(bodyMd).filter((b) => b.answer !== ''))
+  const vocabReady = parsed.filter((b) => b.kind === 'vocab').length >= 10
+  if (!vocabReady) {
+    // The editor promises that study cards exist only after ten unique vocab
+    // pairs. Remove generated cards if later edits drop below that minimum.
+    await supabase.from('cards').delete().eq('note_id', noteId).in('type', ['basic', 'vocab'])
+    return
+  }
+  const blanks = parsed.filter((b) => b.kind === 'vocab')
 
   const { data: existing } = await supabase
     .from('cards')
@@ -57,11 +66,8 @@ async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClien
     .in('type', ['basic', 'vocab'])
 
   const existingByLine = new Map((existing ?? []).map((c) => [c.line, c]))
-  // Same definition already on another card in this note - skip making a
-  // second card for it. Seeded from existing rows, then grown as new cards
-  // are decided for insertion below, so pasting or generating the same
-  // definition twice in one save doesn't slip through either.
-  const seenAnswers = new Set((existing ?? []).map((c) => c.answer.trim().toLowerCase()))
+  const cardKey = (prompt: string, answer: string) => `${prompt.trim().toLocaleLowerCase()}\u0000${answer.trim().toLocaleLowerCase()}`
+  const seenCards = new Set((existing ?? []).map((c) => cardKey(c.prompt, c.answer)))
 
   const toInsert: NewCardRow[] = []
   const toUpdate: { id: string; prompt: string; answer: string; explanation: string | null }[] = []
@@ -80,10 +86,10 @@ async function syncCardsFromNote(supabase: Awaited<ReturnType<typeof createClien
     // graduates to 'authored' via the section 4 mechanic (two correct
     // answers, then the user re-explains it in their own words).
     const tier = 'imported'
-    const normalizedAnswer = blank.answer.trim().toLowerCase()
+    const key = cardKey(blank.prompt, blank.answer)
     if (!current) {
-      if (seenAnswers.has(normalizedAnswer)) continue
-      seenAnswers.add(normalizedAnswer)
+      if (seenCards.has(key)) continue
+      seenCards.add(key)
       toInsert.push({
         note_id: noteId,
         line: blank.line,
@@ -273,31 +279,50 @@ export async function generatePromptsFromFile(noteId: string, formData: FormData
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Unauthorized')
 
-    const file = formData.get('file') as File | null
-    const text = formData.get('text') as string | null
+    const fileEntry = formData.get('file')
+    const textEntry = formData.get('text')
+    const file = fileEntry instanceof File ? fileEntry : null
+    const text = typeof textEntry === 'string' ? textEntry : null
     const provider = (formData.get('provider') as 'auto' | 'gemini' | 'openai' | 'local') || 'auto'
 
-    if (!file && !text) {
-      throw new Error('No file or text provided')
-    }
+    if (!['auto', 'gemini', 'openai', 'local'].includes(provider)) throw new Error('Unsupported AI provider')
+    if ((fileEntry && !file) || (textEntry && text === null)) throw new Error('Invalid import data')
+    const inputError = getImportInputError({
+      file: file ? { size: file.size, type: file.type } : undefined,
+      text: text || undefined,
+    })
+    if (inputError) throw new Error(inputError)
 
-    // Get subject_id from noteId
-    const { data: noteData } = await supabase.from('notes').select('subject_id').eq('id', noteId).single()
-    const subjectId = noteData?.subject_id
+    // Verify ownership before parsing, uploading, or calling a provider. RLS
+    // keeps a forged id indistinguishable from a missing note.
+    const { data: noteData, error: noteError } = await supabase
+      .from('notes')
+      .select('id, subject_id')
+      .eq('id', noteId)
+      .single()
+    if (noteError || !noteData) throw new Error('Note not found')
+    const subjectId = noteData.subject_id
+
+    // Local imports simply add the supplied source text. Every import that
+    // invokes an AI provider reserves one of this subject's three rolling
+    // 24-hour scans before the provider receives the content.
+    const importQuota = provider === 'local'
+      ? null
+      : await consumeSubjectAIImportQuota(supabase, noteId)
 
     const promptText = `
 You are an expert tutor extracting key concepts from study material.
-You must generate exactly 20 flashcards across 2 categories.
+Generate up to 10 vocabulary cards and up to 10 quiz questions from the source.
 CRITICAL RULES:
 1. DO NOT include introductory text, markdown wrappers, or explanations (other than the required Explain field). Only output the raw text in the exact formats below.
-2. If the material is short, extract additional core concepts, definitions, and application scenarios from it so you still reach the full count below - do not stop early.
+2. Only create cards and questions supported by the source material. Never invent concepts, answers, or explanations. If the source cannot support ten items in a category, return fewer items.
 
-2. Generate exactly 10 Vocabulary flashcards, with the definition filled in:
+2. Generate up to 10 Vocabulary flashcards, with the definition filled in:
 **Vocab:** [Word or concept]
 **Def:** [Definition]
 **Explain:** [Quote the exact 1-2 sentences from the source material where this concept was found to provide context]
 
-3. Generate exactly 10 Multiple Choice quiz questions (YOU MUST PROVIDE THE OPTIONS, separated by the | character. The FIRST option must be the correct answer):
+3. Generate up to 10 Multiple Choice quiz questions (YOU MUST PROVIDE THE OPTIONS, separated by the | character. The FIRST option must be the correct answer):
 **Quiz:** [Multiple choice question]
 **A:** [Correct Answer] | [Wrong Answer 1] | [Wrong Answer 2] | [Wrong Answer 3]
 **Explain:** [Quote the exact 1-2 sentences from the source material where this answer was found to provide context]
@@ -325,6 +350,9 @@ CRITICAL RULES:
         const parser = new PDFParse({ data: new Uint8Array(buffer) })
         const parsed = await parser.getText()
         const pdfText = parsed.text
+        if (pdfText.length > MAX_IMPORT_TEXT_CHARS) {
+          throw new Error(`Extracted text is too long. Keep documents under ${MAX_IMPORT_TEXT_CHARS.toLocaleString()} characters.`)
+        }
         sourceText = pdfText
 
         // Keep the original file too, not just its extracted text, so the
@@ -353,6 +381,24 @@ CRITICAL RULES:
             provider,
           })
         }
+      } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        const mammoth = await import('mammoth')
+        const extracted = await mammoth.extractRawText({ buffer })
+        sourceText = extracted.value
+        if (sourceText.length > MAX_IMPORT_TEXT_CHARS) {
+          throw new Error(`Extracted text is too long. Keep documents under ${MAX_IMPORT_TEXT_CHARS.toLocaleString()} characters.`)
+        }
+        generatedText = provider === 'local'
+          ? `## Imported Raw Text\n\n${sourceText}`
+          : await generateText({ prompt: `Here is the extracted text from the document:\n\n${capSourceText(sourceText)}\n\n${promptText}`, provider })
+      } else if (file.type === 'text/plain' || file.type === 'text/markdown') {
+        sourceText = buffer.toString('utf8')
+        if (sourceText.length > MAX_IMPORT_TEXT_CHARS) {
+          throw new Error(`Imported text is too long. Keep documents under ${MAX_IMPORT_TEXT_CHARS.toLocaleString()} characters.`)
+        }
+        generatedText = provider === 'local'
+          ? `## Imported Raw Text\n\n${sourceText}`
+          : await generateText({ prompt: `${promptText}\n\nSource Material:\n${capSourceText(sourceText)}`, provider })
       } else {
         // For images, we can safely use inline base64 data as they are usually small
         if (provider === 'local') {
@@ -397,7 +443,7 @@ CRITICAL RULES:
         .from('imports')
         .insert({
           subject_id: subjectId,
-          kind: file ? (file.type === 'application/pdf' ? 'pdf' : 'image') : 'text',
+          kind: file ? (file.type === 'application/pdf' ? 'pdf' : file.type.startsWith('image/') ? 'image' : 'text') : 'text',
           raw_ref: file ? file.name : 'pasted_text',
           status: 'completed'
         })
@@ -409,7 +455,13 @@ CRITICAL RULES:
 
     revalidatePath(`/notes/${noteId}`)
     revalidatePath('/dashboard')
-    return { success: true, text: finalPrompts, sourceText, pdfUrl }
+    return {
+      success: true,
+      text: finalPrompts,
+      sourceText,
+      pdfUrl,
+      remainingImports: importQuota?.remaining ?? null,
+    }
   } catch (err: unknown) {
     const e = err as Error;
     console.error('Error generating prompts:', e)
@@ -435,4 +487,3 @@ export async function updateNoteTitle(id: string, title: string) {
   revalidatePath('/dashboard')
   return { success: true }
 }
-

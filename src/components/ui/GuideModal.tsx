@@ -1,7 +1,7 @@
 'use client';
 
 import { m, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Video, Keyboard, Clock, Link2, PlaySquare, Scissors, Wand2 } from 'lucide-react';
+import { X, Sparkles, Video, Clock, Link2, PlaySquare, UploadCloud } from 'lucide-react';
 
 interface GuideModalProps {
   isOpen: boolean;
@@ -79,7 +79,7 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                   <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-widest text-gray-400">
                     <PlaySquare className="w-4 h-4 text-accent" /> Smart Flashcards
                   </h3>
-                  <p className="text-xs text-gray-400 mb-4">Type these anywhere in your notes to automatically generate spaced-repetition flashcards in the Practice tab.</p>
+                  <p className="text-xs text-gray-400 mb-4">Add 10 unique vocabulary pairs to unlock both flashcards and quizzes. Repeated entries count once.</p>
                   <div className="flex flex-col gap-3">
                     <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="font-mono text-xs text-gray-300">
@@ -107,38 +107,26 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
                   </div>
                 </section>
 
-                {/* Turn text into cards - keyboard shortcut and its
-                    no-keyboard equivalents side by side, so this isn't just
-                    a Mac/desktop-only page. */}
+                {/* The editor only creates study material from note syntax
+                    and imported source material. */}
                 <section>
                   <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-widest text-gray-400">
-                    <Keyboard className="w-4 h-4 text-accent" /> Turn text into cards
+                    <UploadCloud className="w-4 h-4 text-accent" /> Three ways to make study cards
                   </h3>
                   <div className="flex flex-col gap-3">
                     <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <h4 className="text-sm font-semibold text-white mb-1">Cloze deletion (fill in the blank)</h4>
-                        <p className="text-xs text-gray-400">Highlight any text in your editor, then press the shortcut on a keyboard, or tap the scissors button in the toolbar on any device.</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 sm:ml-4">
-                        <div className="flex items-center gap-1">
-                          <kbd className="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs font-mono text-gray-300">Ctrl/Cmd</kbd>
-                          <span className="text-gray-500">+</span>
-                          <kbd className="px-2 py-1 bg-white/10 border border-white/10 rounded text-xs font-mono text-gray-300">K</kbd>
-                        </div>
-                        <span className="text-xs text-gray-600">or</span>
-                        <div className="p-1.5 bg-white/10 border border-white/10 rounded" title="Toolbar button">
-                          <Scissors className="w-3.5 h-3.5 text-gray-300" aria-hidden="true" />
-                        </div>
+                        <h4 className="text-sm font-semibold text-white mb-1">Write a term and definition</h4>
+                        <p className="text-xs text-gray-400">Use a line such as <code className="font-mono text-accent">Term: definition</code>. It becomes a card automatically once you have 10 unique pairs.</p>
                       </div>
                     </div>
 
                     <div className="bg-[#1a1815] p-4 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <h4 className="text-sm font-semibold text-white mb-1">Generate from your notes</h4>
-                        <p className="text-xs text-gray-400">Write normally, no syntax needed, then hit &quot;Generate 10 Quizzes &amp; 10 Cards&quot; on the Quiz tab. Same on every device, 2 free generations a day.</p>
+                        <h4 className="text-sm font-semibold text-white mb-1">Paste or import source material</h4>
+                        <p className="text-xs text-gray-400">Paste into the editor to open Import, or upload a PDF, DOCX, TXT, Markdown file, or note image. Import creates source-based study material.</p>
                       </div>
-                      <Wand2 className="w-5 h-5 text-gray-300 shrink-0" aria-hidden="true" />
+                      <UploadCloud className="w-5 h-5 text-gray-300 shrink-0" aria-hidden="true" />
                     </div>
                   </div>
                 </section>

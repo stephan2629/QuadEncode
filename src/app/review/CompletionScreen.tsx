@@ -15,7 +15,13 @@ interface SessionResult {
   correct: boolean;
 }
 
-export default function CompletionScreen({ results = [] }: { results?: SessionResult[] }) {
+export default function CompletionScreen({
+  results = [],
+  quotaMessage,
+}: {
+  results?: SessionResult[]
+  quotaMessage?: string
+}) {
   const correct = results.filter((r) => r.correct).length;
   const missed = results.filter((r) => !r.correct);
   const graded = results.length > 0;
@@ -93,7 +99,7 @@ export default function CompletionScreen({ results = [] }: { results?: SessionRe
         ) : (
           <>
             <h1 className="text-3xl md:text-4xl font-serif font-bold mb-4 text-white">You&apos;re all caught up!</h1>
-            <p className="text-gray-400 mb-10 text-lg">No more cards are due for review.</p>
+            <p className="text-gray-400 mb-10 text-lg">{quotaMessage || 'No more cards are due for review.'}</p>
           </>
         )}
 

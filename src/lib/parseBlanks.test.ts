@@ -30,6 +30,20 @@ describe('parseBlanks', () => {
     ]);
   });
 
+  it('accepts unbolded dash syntax for vocabulary and quizzes', () => {
+    const md = [
+      'Vocab - Diminished chord',
+      'Def - Tense and unstable.',
+      '',
+      'Quiz - What is 2+2?',
+      'A - 4 | 5 | 22 | 3',
+    ].join('\n');
+    expect(parseBlanks(md)).toEqual([
+      { line: 0, answerLine: 1, kind: 'vocab', prompt: 'Diminished chord', answer: 'Tense and unstable.' },
+      { line: 3, answerLine: 4, kind: 'quiz', prompt: 'What is 2+2?', answer: '4 | 5 | 22 | 3' },
+    ]);
+  });
+
   it('accepts a dash with no surrounding space, and Def instead of A', () => {
     const md = '**Vocab-**Diminished chord\n**Def-**Tense and unstable.';
     expect(parseBlanks(md)).toEqual([
@@ -256,8 +270,8 @@ describe('hasEnoughForPracticeAndQuiz', () => {
     expect(hasEnoughForPracticeAndQuiz(md)).toBe(false);
   });
 
-  it('is true at 10 quiz pairs', () => {
-    expect(hasEnoughForPracticeAndQuiz(quizPairs(10))).toBe(true);
+  it('does not unlock from quiz pairs alone', () => {
+    expect(hasEnoughForPracticeAndQuiz(quizPairs(10))).toBe(false);
   });
 });
 

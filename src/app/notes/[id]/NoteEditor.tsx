@@ -4,14 +4,13 @@ import { useState, useEffect, useRef, useDeferredValue } from 'react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, FileDown, FileText, Brain, BookOpen, HelpCircle, Bold, Italic, Heading2, List, Scissors, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, FileDown, FileText, Brain, BookOpen, HelpCircle, Bold, Italic, Heading2, List, AlertTriangle } from 'lucide-react';
 import { m, AnimatePresence } from "framer-motion";
 import dynamic from 'next/dynamic';
 import ImportModal from '@/components/ui/ImportModal';
 import GuideModal from '@/components/ui/GuideModal';
 import QuizTab from './QuizTab';
 import PracticeTab from './PracticeTab';
-import GenerateCardsButton from './GenerateCardsButton';
 
 import { toast } from 'sonner';
 
@@ -19,9 +18,9 @@ const MarkdownPreview = dynamic(() => import('@/components/ui/MarkdownPreview'),
 const PDFViewer = dynamic(() => import('@/components/pdf/PDFViewer'), { ssr: false });
 const VideoPlayer = dynamic(() => import('@/components/video/VideoPlayer'), { ssr: false });
 
-import { updateNoteContent, updateNoteTitle, createClozeCard } from './actions';
+import { updateNoteContent, updateNoteTitle } from './actions';
 
-import { renderNoteForPreview, formatTimestamp, hasEnoughForPracticeAndQuiz } from '@/lib/parseBlanks';
+import { renderNoteForPreview, formatTimestamp, getStudyMaterialCounts, hasEnoughForPracticeAndQuiz } from '@/lib/parseBlanks';
 
 interface NoteCard {
   id: string;
@@ -98,12 +97,13 @@ export default function NoteEditor({
   const [showPreview, setShowPreview] = useSessionStorage(`note-${noteId}-showPreview`, false);
   const [showPdfOnMobile, setShowPdfOnMobile] = useSessionStorage(`note-${noteId}-showPdf`, false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importText, setImportText] = useState('');
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [pdfUrl, setPdfUrl] = useState<string | null>(initialData.pdfUrl ?? null);
   const [videoId] = useState<string | null>(initialData.video_id ?? null);
   const [showVideoOnMobile, setShowVideoOnMobile] = useSessionStorage(`note-${noteId}-showVideo`, false);
-  const [clozeCards, setClozeCards] = useState(
+  const [clozeCards] = useState(
     initialData.cards?.filter((c) => c.type === 'cloze').map(c => ({ line: c.line, prompt: c.prompt, answer: c.answer })) || []
   );
 
@@ -114,6 +114,7 @@ export default function NoteEditor({
   // the threshold reveals the tabs as soon as the 10th pair is typed rather
   // than after the next save round trip.
   const hasBatch = hasEnoughForPracticeAndQuiz(content);
+  const { vocabCount } = getStudyMaterialCounts(content);
   const visibleTabs = hasBatch ? [NOTES_TAB, ...BATCH_TABS] : [NOTES_TAB];
 
   // The open tab lives in the URL (?tab=quiz), not in client state: the
@@ -178,6 +179,14 @@ export default function NoteEditor({
   const handleContentChange = (value: string) => {
     setContent(value);
     setSaveStatus(value === lastSyncedContentRef.current ? 'saved' : 'saving');
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = e.clipboardData.getData('text/plain').trim();
+    if (!pasted) return;
+    e.preventDefault();
+    setImportText(pasted);
+    setIsImportModalOpen(true);
   };
 
   // Section 9's quick-action buttons: insert a blank template at the cursor
@@ -337,60 +346,17 @@ export default function NoteEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Selected text becomes a cloze card. Doesn't touch the note body — the
-  // card is created directly. Shared by Cmd+K (desktop) and the "Make card"
-  // toolbar button (touch devices have no Cmd/Ctrl key to bind to).
-  const makeClozeFromSelection = async (start: number, end: number) => {
-    if (start === end) return;
-
-    const selected = content.slice(start, end);
-    const lineStart = content.lastIndexOf('\n', start - 1) + 1;
-    const lineEndIndex = content.indexOf('\n', end);
-    const lineEnd = lineEndIndex === -1 ? content.length : lineEndIndex;
-    const lineText = content.slice(lineStart, lineEnd);
-    const lineNumber = content.slice(0, lineStart).split('\n').length - 1;
-
-    const selectedOffsetInLine = start - lineStart;
-    const prompt =
-      lineText.slice(0, selectedOffsetInLine) + '___' + lineText.slice(selectedOffsetInLine + selected.length);
-
-    setSaveStatus('saving');
-    const result = await createClozeCard(noteId, lineNumber, prompt.trim(), selected.trim());
-    if ('error' in result) {
-      setSaveStatus('error');
-      toast.error(`Card wasn't created: ${result.error}`);
-      return;
-    }
-    setClozeCards((prev) => [...prev, { line: lineNumber, prompt: prompt.trim(), answer: selected.trim() }]);
-    setSaveStatus('saved');
-    toast.success('Card created');
-  };
-
   // Ctrl on Windows/Linux, Cmd on Mac - every shortcut in this editor
   // checks both, never metaKey alone, so nothing here is Mac-only.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (!(e.metaKey || e.ctrlKey)) return;
-    if (e.key === 'k') {
-      e.preventDefault();
-      makeClozeFromSelection(e.currentTarget.selectionStart, e.currentTarget.selectionEnd);
-    } else if (e.key === 'b') {
+    if (e.key === 'b') {
       e.preventDefault();
       wrapSelection('**');
     } else if (e.key === 'i') {
       e.preventDefault();
       wrapSelection('_');
     }
-  };
-
-  // Tap equivalent of Cmd+K: select text on a phone (no keyboard, no
-  // Cmd/Ctrl key to bind), then tap this instead. Reads the textarea's
-  // selection the same way wrapSelection() below does, since the underlying
-  // selectionStart/selectionEnd survive the textarea losing focus to the
-  // button - proven by wrapSelection already relying on that.
-  const handleMakeCardTap = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    makeClozeFromSelection(textarea.selectionStart, textarea.selectionEnd);
   };
 
   const handleImportComplete = async (generatedPrompts: string, sourceText?: string, importedPdfUrl?: string | null) => {
@@ -415,7 +381,12 @@ export default function NoteEditor({
       : `${trimmed}\n\n${heading}\n\n${generatedPrompts}\n`;
     setContent(newContent);
     setSaveStatus('saving');
-    await updateNoteContent(noteId, newContent);
+    const saveResult = await updateNoteContent(noteId, newContent);
+    if ('error' in saveResult) {
+      setSaveStatus('error');
+      toast.error(saveResult.error);
+      return;
+    }
     if (importedPdfUrl) setPdfUrl(importedPdfUrl);
     setSaveStatus('saved');
     toast.success('Import completed successfully!');
@@ -651,25 +622,31 @@ export default function NoteEditor({
                     <ToolbarButton onClick={() => prefixLine('- ')} label="Bullet list">
                       <List className="w-4 h-4" aria-hidden="true" />
                     </ToolbarButton>
-                    <div className="w-px h-4 bg-white/10 mx-1" aria-hidden="true" />
-                    <ToolbarButton onClick={handleMakeCardTap} label="Make card from selection (Ctrl/Cmd+K)" accent>
-                      <Scissors className="w-4 h-4" aria-hidden="true" />
-                    </ToolbarButton>
                   </div>
 
-                  {/* Always visible, not just on an empty note - a syntax
-                      reminder is only useful right when you've forgotten
-                      the format, which is just as likely mid-note as on a
-                      blank one. */}
-                  <p className="px-8 md:px-12 mt-2 text-xs text-gray-500">
-                    Tip: write &quot;Term: definition&quot; on its own line, or select any text and tap <Scissors className="w-3 h-3 inline -mt-0.5" aria-hidden="true" />, to make a flashcard. More in the <HelpCircle className="w-3 h-3 inline -mt-0.5" aria-hidden="true" /> Guide, top right.
-                  </p>
-
-                  {/* Its own row, below the tip and apart from the
-                      formatting toolbar, so it reads as an action on the
-                      note rather than one of the template-insert buttons
-                      section 23 forbids. */}
-                  <GenerateCardsButton noteId={noteId} content={content} onGenerated={handleContentChange} />
+                  <m.div
+                    role="status"
+                    aria-live="polite"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                    className={`mx-8 md:mx-12 mt-3 rounded-xl border px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm ${hasBatch ? 'border-accent/40 bg-accent/10 text-accent' : 'border-amber-400/40 bg-amber-400/10 text-amber-100'}`}
+                  >
+                    <Brain className="w-5 h-5 shrink-0" aria-hidden="true" />
+                    {hasBatch ? (
+                      <span className="font-semibold">Study cards are ready.</span>
+                    ) : (
+                      <>
+                        <span className="font-semibold">Add 10 unique vocabulary pairs to start flashcards and quizzes.</span>
+                        <span className="font-mono text-xs">Vocab: {vocabCount}/10 ({Math.max(0, 10 - vocabCount)} left)</span>
+                        <button type="button" onClick={() => setIsGuideModalOpen(true)} className="underline underline-offset-4 font-medium hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent rounded">Open the Guide for help</button>
+                      </>
+                    )}
+                  </m.div>
+                  <div className="mx-8 md:mx-12 mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-300" aria-label="Ways to make study cards">
+                    <span><strong className="text-white">1.</strong> Type <code className="font-mono text-accent">Term: definition</code></span>
+                    <span><strong className="text-white">2.</strong> Paste or import a file</span>
+                  </div>
 
                   <m.div
                     initial={{ opacity: 0, y: 8 }}
@@ -682,6 +659,7 @@ export default function NoteEditor({
                       aria-label="Note content"
                       value={content}
                       onChange={(e) => handleContentChange(e.target.value)}
+                      onPaste={handlePaste}
                       onKeyDown={handleKeyDown}
                       placeholder="Start writing..."
                       className="w-full h-full resize-none bg-transparent text-gray-300 font-sans leading-relaxed focus:outline-none placeholder-gray-600 custom-scrollbar p-8 md:p-12 rounded-2xl border border-transparent hover:border-white/5 focus:border-white/10 transition-colors"
@@ -748,6 +726,7 @@ export default function NoteEditor({
         onClose={() => setIsImportModalOpen(false)}
         onImportComplete={handleImportComplete}
         noteId={noteId}
+        initialText={importText}
       />
 
       <GuideModal

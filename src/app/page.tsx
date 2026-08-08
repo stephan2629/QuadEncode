@@ -281,7 +281,7 @@ export default function Home() {
           // signed-out visitor there anyway, so this skips a redirect.
           <Link
             href="/login"
-            className="text-xs md:text-sm font-semibold text-accent hover:text-[#0a0908] bg-[#14120f] hover:bg-gradient-to-b hover:from-accent hover:to-yellow-600 border border-white/10 hover:border-accent/0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all duration-300 inline-block active:scale-95"
+            className="text-xs md:text-sm font-semibold text-accent hover:text-[#0a0908] bg-[#14120f] hover:bg-gradient-to-b hover:from-accent hover:to-yellow-600 border border-white/10 hover:border-accent/0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)] px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-[color,background-color,border-color,box-shadow] duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 inline-block active:scale-95"
           >
             Sign in
           </Link>
@@ -320,7 +320,7 @@ export default function Home() {
             the next-largest text block and was becoming the LCP element
             once the headline stopped blocking on it. */}
         <p className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-10 md:mb-14 max-w-2xl mx-auto font-light px-4 leading-relaxed tracking-wide">
-          Turn notes, PDFs, and web topics into cards that test you. Answer from memory before the card shows you.
+          Turn notes and imported files into cards that test you, and web topics into curated learning paths.
         </p>
 
         {/* Search Bar Component */}
@@ -332,7 +332,7 @@ export default function Home() {
         >
           <form
             onSubmit={handleSearch}
-            className={`w-full relative transition-all duration-500 rounded-2xl overflow-hidden bg-[#14120f]/90 backdrop-blur-2xl border ${isFocused ? 'border-accent shadow-[0_0_0_2px_#f59e0b,0_0_40px_rgba(245,158,11,0.3)]' : 'border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_10px_40px_rgba(0,0,0,0.6)] hover:border-accent/50'}`}
+            className={`w-full relative transition-[border-color,box-shadow] duration-500 rounded-2xl overflow-hidden bg-[#14120f]/90 backdrop-blur-2xl border ${isFocused ? 'border-accent shadow-[0_0_0_2px_#f59e0b,0_0_40px_rgba(245,158,11,0.3)]' : 'border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_10px_40px_rgba(0,0,0,0.6)] hover:border-accent/50'}`}
           >
             <div className="flex items-center px-2 py-2">
               <input
@@ -340,6 +340,7 @@ export default function Home() {
                 type="text"
                 id="subject-search"
                 name="subject"
+                maxLength={80}
                 // The placeholder rotates through examples, so it can't be the
                 // accessible name for this field.
                 aria-label="What do you want to learn?"
@@ -351,13 +352,13 @@ export default function Home() {
                 onBlur={() => setTimeout(() => setIsFocused(false), 200)}
               />
               <SearchCharCount length={searchQuery.length} />
-              <button type="submit" disabled={isSearching} className="hidden md:flex flex-shrink-0 items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:brightness-110 px-6 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 disabled:opacity-70">
-                {isSearching ? <><Loader2 className="w-4 h-4 animate-spin" /> Curating path...</> : <>Find path <MoveRight className="w-4 h-4" /></>}
+              <button type="submit" disabled={isSearching} className="hidden md:flex flex-shrink-0 items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:brightness-110 px-6 py-3.5 rounded-xl transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 cursor-pointer active:scale-95 disabled:opacity-70">
+                {isSearching ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Curating path…</> : <>Find path <MoveRight className="w-4 h-4" aria-hidden="true" /></>}
               </button>
             </div>
           </form>
-          <button onClick={handleSearch} disabled={isSearching} className="md:hidden mt-4 flex items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-3.5 rounded-xl transition-all cursor-pointer active:scale-95 w-full justify-center disabled:opacity-70">
-            {isSearching ? <><Loader2 className="w-4 h-4 animate-spin" /> Curating path...</> : <>Find path <MoveRight className="w-4 h-4" /></>}
+          <button onClick={handleSearch} disabled={isSearching} className="md:hidden mt-4 flex items-center gap-2 text-sm font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-3.5 rounded-xl transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 cursor-pointer active:scale-95 w-full justify-center disabled:opacity-70">
+            {isSearching ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Curating path…</> : <>Find path <MoveRight className="w-4 h-4" aria-hidden="true" /></>}
           </button>
 
           {/* Example Chips */}
@@ -379,7 +380,7 @@ export default function Home() {
                   key={chip}
                   type="button"
                   onClick={() => setSearchQuery(chip)}
-                  className="px-3.5 py-3 sm:py-1.5 min-h-[44px] text-xs bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-all font-medium active:scale-95"
+                  className="px-3.5 py-3 sm:py-1.5 min-h-[44px] text-xs bg-white/5 hover:bg-accent/20 text-gray-300 hover:text-accent border border-white/10 hover:border-accent/50 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 font-medium active:scale-95"
                 >
                   {chip}
                 </button>
@@ -477,7 +478,8 @@ export default function Home() {
         >
           <div className="text-xs font-bold text-accent uppercase tracking-wider mb-4 text-left">Try it instantly</div>
           <div className="relative h-40" style={{ perspective: '1000px' }}>
-            <m.div
+            <m.button
+              type="button"
               role="button"
               tabIndex={0}
               aria-label={heroFlipped ? 'Answer revealed. Press to flip back.' : 'Show answer'}
@@ -501,7 +503,7 @@ export default function Home() {
               >
                 <p className="text-lg font-serif leading-relaxed text-white">What is the core philosophy of Quad Encode?</p>
                 {!heroFlipped && (
-                  <p className="absolute bottom-4 text-[11px] text-gray-400 font-mono tracking-widest uppercase">Tap to reveal</p>
+                  <p className="absolute bottom-4 text-[11px] text-gray-400 font-mono tracking-widest uppercase">Tap, Enter, or Space to reveal</p>
                 )}
               </div>
               {/* Back */}
@@ -511,7 +513,7 @@ export default function Home() {
               >
                 <p className="text-base text-gray-300 leading-relaxed font-serif">Never see an answer you didn&apos;t try to retrieve yourself.</p>
               </div>
-            </m.div>
+            </m.button>
           </div>
         </m.div>
 
@@ -563,7 +565,7 @@ export default function Home() {
                   <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
                   <div className="flex items-center justify-between mb-6 transform-gpu translate-z-10">
                     <div className="bg-accent/10 w-12 h-12 rounded-2xl flex items-center justify-center text-accent group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-                      <feature.icon className="w-6 h-6" />
+                      <feature.icon className="w-6 h-6" aria-hidden="true" />
                     </div>
                     <span className="font-mono text-sm text-gray-500">{feature.n}</span>
                   </div>
@@ -613,7 +615,7 @@ export default function Home() {
                   <h3 className="text-xl font-bold font-serif mb-3 text-white transform-gpu translate-z-10">{step.title}</h3>
                   <p className="text-gray-400 text-sm leading-relaxed mb-6 flex-1 transform-gpu translate-z-10">{step.body}</p>
                   <Link href={step.href} className="group/cta text-sm font-semibold text-accent hover:text-accent/80 transition-colors inline-flex items-center gap-1.5 transform-gpu translate-z-10">
-                    {step.cta} <MoveRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover/cta:translate-x-1" />
+                    {step.cta} <MoveRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover/cta:translate-x-1" aria-hidden="true" />
                   </Link>
                 </TiltCard>
               </m.div>
@@ -704,7 +706,7 @@ export default function Home() {
                 <m.div key={method.title} variants={fadeUpItem} className={isLarge ? "md:col-span-2" : "col-span-1"}>
                   <TiltCard tiltAmount={isLarge ? 3 : 5} className="group bg-[#14120f]/60 backdrop-blur-md border border-white/10 hover:border-white/20 rounded-3xl p-8 md:p-10 h-full transition-colors flex flex-col justify-center">
                     <div className="bg-accent/10 w-12 h-12 rounded-2xl flex items-center justify-center text-accent mb-6 transition-transform duration-500 group-hover:scale-110 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-                      <method.icon className="w-6 h-6" />
+                      <method.icon className="w-6 h-6" aria-hidden="true" />
                     </div>
                     <h3 className="text-2xl font-bold font-serif mb-3 text-white transform-gpu translate-z-10">{method.title}</h3>
                     <p className="text-gray-400 text-sm md:text-base leading-relaxed transform-gpu translate-z-10">{method.body}</p>
@@ -739,7 +741,7 @@ export default function Home() {
           </p>
           <Link
             href={user ? '/dashboard' : '/login'}
-            className="inline-flex items-center gap-2 text-sm md:text-base font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-4 min-h-[44px] rounded-xl transition-all active:scale-95"
+            className="inline-flex items-center gap-2 text-sm md:text-base font-bold text-[#0a0908] bg-gradient-to-r from-accent to-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:brightness-110 px-8 py-4 min-h-[44px] rounded-xl transition-[filter,box-shadow] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 active:scale-95"
           >
             {user ? 'Go to your dashboard' : 'Get started free'}
             <MoveRight className="w-4 h-4" aria-hidden="true" />

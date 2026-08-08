@@ -9,9 +9,7 @@ import { saveGeneratedPath } from './actions';
 // Lazy-initialized from sessionStorage so the "saving" state is derived up
 // front instead of flipped on synchronously inside the effect body.
 export default function PendingPathSaver() {
-  const [saving, setSaving] = useState(
-    () => typeof window !== 'undefined' && sessionStorage.getItem('pendingPathSave') !== null
-  );
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -25,7 +23,10 @@ export default function PendingPathSaver() {
     // land in the same .catch, keeping every setState call inside an async
     // callback rather than synchronously in the effect body.
     Promise.resolve()
-      .then(() => JSON.parse(pendingData))
+      .then(() => {
+        setSaving(true);
+        return JSON.parse(pendingData);
+      })
       .then(saveGeneratedPath)
       .then((res: Awaited<ReturnType<typeof saveGeneratedPath>>) => {
         setSaving(false);
@@ -38,6 +39,7 @@ export default function PendingPathSaver() {
       })
       .catch((err) => {
         console.error("Failed to save path:", err);
+        toast.error(err instanceof Error ? err.message : 'Could not save learning path. Try again.');
         setSaving(false);
       });
   }, [router]);
@@ -45,9 +47,9 @@ export default function PendingPathSaver() {
   if (!saving) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center">
-      <Loader2 className="w-12 h-12 text-accent animate-spin mb-4" />
-      <h2 className="text-xl font-bold font-serif text-white">Saving your curated path...</h2>
+    <div role="status" aria-live="polite" aria-busy="true" className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center">
+      <Loader2 className="w-12 h-12 text-accent animate-spin mb-4" aria-hidden="true" />
+      <h2 className="text-xl font-bold font-serif text-white">Saving your curated path…</h2>
     </div>
   );
 }

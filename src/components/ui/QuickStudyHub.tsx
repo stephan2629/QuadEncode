@@ -77,7 +77,7 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }
         {/* 2. Path Discovery Card */}
         <TiltCard tiltAmount={4} className="h-full">
           <Link
-            href="/"
+            href={atPathLimit ? '#active-paths' : '/'}
             className="group relative flex flex-col justify-between p-6 h-full min-h-[180px] bg-[#14120f]/80 backdrop-blur-xl border border-white/10 hover:border-amber-500/40 rounded-3xl overflow-hidden shadow-xl transition-all duration-500 hover:shadow-[0_0_30px_rgba(245,158,11,0.12)] block"
           >
             <div className="absolute -top-12 -right-12 w-36 h-36 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all pointer-events-none" />
@@ -92,7 +92,7 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }
                 </span>
               </div>
               <h4 className="text-lg font-bold font-serif text-white group-hover:text-amber-400 transition-colors">
-                Discover learning paths
+                {atPathLimit ? 'Active learning paths' : 'Discover learning paths'}
               </h4>
               <p className="text-xs text-gray-400 mt-1 leading-relaxed">
                 {atPathLimit
@@ -102,7 +102,7 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }
             </div>
 
             <div className="mt-6 flex items-center text-xs font-semibold text-amber-400 gap-2 group-hover:translate-x-1 transition-transform">
-              <span>Search paths</span>
+              <span>{atPathLimit ? 'View active paths' : 'Search paths'}</span>
               <Compass className="w-3.5 h-3.5" />
             </div>
           </Link>
@@ -110,7 +110,12 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }
 
         {/* 3. Command Palette Shortcut Card with Artwork Background */}
         <TiltCard tiltAmount={4} className="h-full">
-          <div className="group relative flex flex-col justify-between p-6 h-full min-h-[180px] bg-[#14120f]/90 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-xl transition-all duration-500">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('open-command-palette'))}
+            aria-label="Open command palette"
+            className="group relative flex w-full flex-col justify-between p-6 h-full min-h-[180px] text-left bg-[#14120f]/90 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-xl transition-colors duration-500 hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+          >
             <Image
               src="/dashboard-art.png"
               alt="Memory Cards Artwork"
@@ -133,14 +138,14 @@ export function QuickStudyHub({ activeSubjectId, dueCount, hasCards, pathCount }
                 Command palette
               </h4>
               <p className="text-xs text-gray-300 mt-1 leading-relaxed">
-                Tap or press Ctrl+K (⌘K on Mac) anywhere to jump across subjects, notes, and instant study tools.
+                Tap this card or press Ctrl+K (⌘K on Mac) to jump across subjects, notes, and study tools.
               </p>
             </div>
 
             <div className="relative z-10 mt-6 items-center text-xs font-mono text-gray-400 hidden md:flex">
               Press <kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/10 text-white mx-1">Ctrl/⌘K</kbd> to launch
             </div>
-          </div>
+          </button>
         </TiltCard>
       </div>
     </m.div>
